@@ -1,3 +1,8 @@
+## 1.0.2
+
+### Fix
+* Use correct pixel ratio to avoid small layout shifts and low render quality when switching children.
+
 ## 1.0.1
 
 ### Fixes

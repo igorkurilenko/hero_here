@@ -102,7 +102,7 @@ class _HeroHereSwitcherState extends State<HeroHereSwitcher>
         _childKey.currentContext?.findRenderRepaintBoundary();
 
     return renderRepaintBoundary != null
-        ? _takeScreenshot(renderRepaintBoundary)
+        ? _takeScreenshot(renderRepaintBoundary, pixelRatio: pixelRatio)
         : null;
   }
 
