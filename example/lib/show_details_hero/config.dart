@@ -52,85 +52,71 @@ const kEightThousanders = [
   EightThousander(
     image: 'assets/images/mount-everest.jpeg',
     name: 'Mount Everest',
-    description:
-        'Mount Everest is Earth\'s highest mountain above sea level, located in the Mahalangur Himal sub-range of the Himalayas. The China–Nepal border runs across its summit point. Its elevation of 8,848.86 m was most recently established in 2020 by the Chinese and Nepali authorities.',
+    description: 'Mount Everest is Earth\'s highest mountain above sea level, located in the Mahalangur Himal sub-range of the Himalayas. The China–Nepal border runs across its summit point. Its elevation of 8,848.86 m was most recently established in 2020 by the Chinese and Nepali authorities.',
   ),
   EightThousander(
     image: 'assets/images/k2.jpeg',
     name: 'K2',
-    description:
-        'K2, at 8,611 metres above sea level, is the second-highest mountain on Earth, after Mount Everest at 8,849 metres.',
+    description: 'K2, at 8,611 metres above sea level, is the second-highest mountain on Earth, after Mount Everest at 8,849 metres.',
   ),
   EightThousander(
     image: 'assets/images/kangchenjunga.jpeg',
     name: 'Kangchenjunga',
-    description:
-        'Kangchenjunga, also spelled Kanchenjunga, Kanchanjanghā and Khangchendzonga, is the third-highest mountain in the world. ',
+    description: 'Kangchenjunga, also spelled Kanchenjunga, Kanchanjanghā and Khangchendzonga, is the third-highest mountain in the world. ',
   ),
   EightThousander(
     image: 'assets/images/lhotse.jpeg',
     name: 'Lhotse',
-    description:
-        'Lhotse is the fourth highest mountain in the world at 8,516 metres, after Mount Everest, K2, and Kangchenjunga. The main summit is on the border between Tibet Autonomous Region of China and the Khumbu region of Nepal.',
+    description: 'Lhotse is the fourth highest mountain in the world at 8,516 metres, after Mount Everest, K2, and Kangchenjunga. The main summit is on the border between Tibet Autonomous Region of China and the Khumbu region of Nepal.',
   ),
   EightThousander(
     image: 'assets/images/makalu.jpeg',
     name: 'Makalu',
-    description:
-        'Makalu is the fifth highest mountain in the world at 8,485 metres. It is located in the Mahalangur Himalayas 19 km southeast of Mount Everest, on the China–Nepal border. One of the eight-thousanders, Makalu is an isolated peak in the shape of a four-sided pyramid. Makalu has two notable subsidiary peaks.',
+    description: 'Makalu is the fifth highest mountain in the world at 8,485 metres. It is located in the Mahalangur Himalayas 19 km southeast of Mount Everest, on the China–Nepal border. One of the eight-thousanders, Makalu is an isolated peak in the shape of a four-sided pyramid. Makalu has two notable subsidiary peaks.',
   ),
   EightThousander(
     image: 'assets/images/cho-oyu.jpeg',
     name: 'Cho Oyu',
-    description:
-        'Cho Oyu is the sixth-highest mountain in the world at 8,188 metres above sea level. Cho Oyu means "Turquoise Goddess" in Tibetan. The mountain is the westernmost major peak of the Khumbu sub-section of the Mahalangur Himalaya 20 km west of Mount Everest.',
+    description: 'Cho Oyu is the sixth-highest mountain in the world at 8,188 metres above sea level. Cho Oyu means "Turquoise Goddess" in Tibetan. The mountain is the westernmost major peak of the Khumbu sub-section of the Mahalangur Himalaya 20 km west of Mount Everest.',
   ),
   EightThousander(
     image: 'assets/images/dhaulagiri.jpeg',
     name: 'Dhaulagiri',
-    description:
-        'Dhaulagiri, located in Nepal, is the seventh highest mountain in the world at 8,167 metres above sea level, and the highest mountain within the borders of a single country. It was first climbed on 13 May 1960 by a Swiss-Austrian-Nepali expedition. Annapurna I is 34 km east of Dhaulagiri.',
+    description: 'Dhaulagiri, located in Nepal, is the seventh highest mountain in the world at 8,167 metres above sea level, and the highest mountain within the borders of a single country. It was first climbed on 13 May 1960 by a Swiss-Austrian-Nepali expedition. Annapurna I is 34 km east of Dhaulagiri.',
   ),
   EightThousander(
     image: 'assets/images/manaslu.jpeg',
     name: 'Manaslu',
-    description:
-        'Manaslu is the eighth-highest mountain in the world at 8,163 metres above sea level. It is in the Mansiri Himal, part of the Nepalese Himalayas, in west-central Nepal. Manaslu means "mountain of the spirit" and the word is derived from the Sanskrit word manasa, meaning "intellect" or "soul".',
+    description: 'Manaslu is the eighth-highest mountain in the world at 8,163 metres above sea level. It is in the Mansiri Himal, part of the Nepalese Himalayas, in west-central Nepal. Manaslu means "mountain of the spirit" and the word is derived from the Sanskrit word manasa, meaning "intellect" or "soul".',
   ),
   EightThousander(
     image: 'assets/images/nanga-parbat.jpeg',
     name: 'Nanga Parbat',
-    description:
-        'Nanga Parbat, known locally as Diamer, is the ninth-highest mountain on Earth and its summit is at 8,126 m above sea level.',
+    description: 'Nanga Parbat, known locally as Diamer, is the ninth-highest mountain on Earth and its summit is at 8,126 m above sea level.',
   ),
   EightThousander(
     image: 'assets/images/annapurna-one.jpeg',
     name: 'Annapurna I',
-    description:
-        'Annapurna is a mountain situated in the Annapurna mountain range of Gandaki Province, north-central Nepal. It is the 10th highest mountain in the world at 8,091 metres above sea level and is well known for the difficulty and danger involved in its ascent.',
+    description: 'Annapurna is a mountain situated in the Annapurna mountain range of Gandaki Province, north-central Nepal. It is the 10th highest mountain in the world at 8,091 metres above sea level and is well known for the difficulty and danger involved in its ascent.',
   ),
   EightThousander(
     image: 'assets/images/gasherbrum-one.jpeg',
     name: 'Gasherbrum I',
-    description:
-        'Gasherbrum I, surveyed as K5 and also known as Hidden Peak, is the 11th highest mountain in the world at 8,080 metres above sea level. It is located between Shigar District in the Gilgit–Baltistan region of Pakistan and Tashkurgan in the Xinjiang of China.',
+    description: 'Gasherbrum I, surveyed as K5 and also known as Hidden Peak, is the 11th highest mountain in the world at 8,080 metres above sea level. It is located between Shigar District in the Gilgit–Baltistan region of Pakistan and Tashkurgan in the Xinjiang of China.',
   ),
   EightThousander(
     image: 'assets/images/broad-peak.jpeg',
     name: 'Broad Peak',
-    description:
-        'Broad Peak is one of the eight-thousanders, and is located in the Karakoram range spanning Gilgit-Baltistan, Pakistan and Xinjiang, China. It is the 12th highest mountain in the world with 8,051 metres elevation above sea level.',
+    description: 'Broad Peak is one of the eight-thousanders, and is located in the Karakoram range spanning Gilgit-Baltistan, Pakistan and Xinjiang, China. It is the 12th highest mountain in the world with 8,051 metres elevation above sea level.',
   ),
   EightThousander(
     image: 'assets/images/gasherbrum-two.jpeg',
     name: 'Gasherbrum II',
-    description:
-        'Gasherbrum II; surveyed as K4, is the 13th highest mountain in the world at 8,035 metres above sea level. It is the third-highest peak of the Gasherbrum massif, and is located in the Karakoram, on the border between Gilgit–Baltistan, Pakistan and Xinjiang, China.',
+    description: 'Gasherbrum II; surveyed as K4, is the 13th highest mountain in the world at 8,035 metres above sea level. It is the third-highest peak of the Gasherbrum massif, and is located in the Karakoram, on the border between Gilgit–Baltistan, Pakistan and Xinjiang, China.',
   ),
   EightThousander(
     image: 'assets/images/shishapangma.jpeg',
     name: 'Shishapangma',
-    description:
-        'Shishapangma, or Shishasbangma or Xixiabangma, is the 14th-highest mountain in the world, at 8,027 metres above sea level. It is located entirely within Tibet. In 1964, it became the final eight-thousander to be climbed.',
+    description: 'Shishapangma, or Shishasbangma or Xixiabangma, is the 14th-highest mountain in the world, at 8,027 metres above sea level. It is located entirely within Tibet. In 1964, it became the final eight-thousander to be climbed.',
   ),
 ];
