@@ -49,6 +49,15 @@ typedef HeroHereFlightShuttleBuilder = Widget Function(
   HeroHere toHero,
 );
 
+/// Flies [HeroHere] widgets between their places in [child] when [child]
+/// changes.
+///
+/// Every rebuild of the switcher runs a switch: it takes a snapshot of the
+/// current child, lays the new child out offstage for a frame to find its
+/// heroes, then flies each tag whose [HeroHere] changed. The new child shows
+/// two frames after the rebuild. Keep frequently changing state, such as
+/// timers, streams or text being typed, below the switcher, so it rebuilds
+/// only when heroes may move.
 class HeroHereSwitcher extends StatefulWidget {
   final Widget? child;
   final HeroHereSwitcherLayoutBuilder layoutBuilder;
