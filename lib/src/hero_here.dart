@@ -506,17 +506,67 @@ class _FlightWidgetState extends State<_FlightWidget> {
             ? flight.evaluateRect(fromRect, toRect)!
             : curRect;
 
-        return Transform.translate(
-          offset: curRect.topLeft,
-          child: SizedBox(
-            width: curRect.width,
-            height: curRect.height,
-            child: IgnorePointer(child: child),
-          ),
+        return _GlobalRect(
+          rect: curRect,
+          child: IgnorePointer(child: child),
         );
       },
       child: flight.buildShuttle(context),
     );
+  }
+}
+
+/// Sizes its child to [rect] and paints it there. The [rect] is global, so
+/// the flight lands on its heroes wherever the switcher's sky is placed.
+class _GlobalRect extends SingleChildRenderObjectWidget {
+  final Rect rect;
+
+  const _GlobalRect({required this.rect, super.child});
+
+  @override
+  _RenderGlobalRect createRenderObject(BuildContext context) =>
+      _RenderGlobalRect(rect);
+
+  @override
+  void updateRenderObject(
+    BuildContext context,
+    _RenderGlobalRect renderObject,
+  ) => renderObject.rect = rect;
+}
+
+class _RenderGlobalRect extends RenderProxyBox {
+  Rect _rect;
+
+  _RenderGlobalRect(this._rect);
+
+  set rect(Rect value) {
+    if (_rect == value) return;
+    if (_rect.size != value.size) {
+      markNeedsLayout();
+    } else {
+      markNeedsPaint();
+    }
+    _rect = value;
+  }
+
+  Offset get _childOffset => _rect.topLeft - localToGlobal(Offset.zero);
+
+  @override
+  void performLayout() {
+    child?.layout(BoxConstraints.tight(_rect.size));
+    size = constraints.smallest;
+  }
+
+  @override
+  void paint(PaintingContext context, Offset offset) {
+    if (child == null) return;
+    context.paintChild(child!, offset + _childOffset);
+  }
+
+  @override
+  void applyPaintTransform(RenderBox child, Matrix4 transform) {
+    final childOffset = _childOffset;
+    transform.translateByDouble(childOffset.dx, childOffset.dy, 0, 1);
   }
 }
 
