@@ -132,7 +132,7 @@ class _HeroHereSwitcherState extends State<HeroHereSwitcher>
             child: _child,
           ),
         ),
-        if (_childScreenshot != null) _childScreenshot!,
+        ?_childScreenshot,
       ],
     );
   }

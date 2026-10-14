@@ -12,6 +12,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-library hero_here;
+library;
 
 export 'src/hero_here.dart';
