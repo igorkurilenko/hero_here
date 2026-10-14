@@ -1,3 +1,19 @@
+## 1.1.0
+
+### Fixes
+
+* Fly heroes in place when `HeroHereSwitcher` is not at the screen origin, for example below an app bar, beside a sidebar or in a right-to-left layout.
+* Use the device pixel ratio for the switch snapshot to avoid small layout shifts and low render quality when switching children ([#1](https://github.com/igorkurilenko/hero_here/pull/1), thanks [@andrei-bucurei](https://github.com/andrei-bucurei)).
+
+### Documentation
+
+* Explain what a `HeroHereSwitcher` rebuild costs.
+
+### Maintenance
+
+* Require Dart 3.13 and Flutter 3.47.
+* Update the example to the current Flutter templates.
+
 ## 1.0.1
 
 ### Fixes

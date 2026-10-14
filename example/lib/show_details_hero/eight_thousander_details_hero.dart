@@ -46,10 +46,9 @@ class _EightThousanderDetailsHeroState
 
   String get tag => widget.tag;
 
-  TextStyle get titleStyle => Theme.of(context)
-      .textTheme
-      .titleLarge!
-      .copyWith(fontWeight: FontWeight.w900);
+  TextStyle get titleStyle =>
+      Theme.of(context).textTheme.titleLarge!
+          .copyWith(fontWeight: FontWeight.w900);
 
   Size get screenSize => MediaQuery.sizeOf(context);
 
@@ -63,8 +62,9 @@ class _EightThousanderDetailsHeroState
   Velocity? get imageDragVelocity => _imageDragVelocityTracker?.getVelocity();
 
   Size get imageSize => Size(
-      min(screenSize.width, kGridViewConstraints.maxWidth),
-      min(screenSize.width, kGridViewConstraints.maxWidth) * kGoldenRatio);
+    min(screenSize.width, kGridViewConstraints.maxWidth),
+    min(screenSize.width, kGridViewConstraints.maxWidth) * kGoldenRatio,
+  );
 
   BorderRadius get imageBorderRadius =>
       BorderRadius.circular(kPreviewImageBorderRadius * factorToClose);
@@ -87,110 +87,103 @@ class _EightThousanderDetailsHeroState
 
   @override
   Widget build(BuildContext context) => ScrollConfiguration(
-        behavior: kScrollBehavior,
-        child: ListView(
-          controller: _scrollController,
-          physics: const AlwaysScrollableScrollPhysics(),
-          padding: EdgeInsets.zero,
-          children: [
-            SizedBox(
-              width: imageSize.width,
-              height: imageSize.height,
-              child: Align(
-                alignment: Alignment.center,
-                child: SizedBox(
-                  width: imageSize.width * imageScale,
-                  child: Listener(
-                    onPointerDown: _handleImagePointerDown,
-                    onPointerMove: _handleImagePointerMove,
-                    onPointerUp: _handleImagePointerUp,
-                    child: AspectRatio(
-                      aspectRatio: 1 / kGoldenRatio,
-                      child: ClipRRect(
-                        borderRadius: imageBorderRadius,
-                        child: _buildImageHero(),
-                      ),
-                    ),
+    behavior: kScrollBehavior,
+    child: ListView(
+      controller: _scrollController,
+      physics: const AlwaysScrollableScrollPhysics(),
+      padding: EdgeInsets.zero,
+      children: [
+        SizedBox(
+          width: imageSize.width,
+          height: imageSize.height,
+          child: Align(
+            alignment: Alignment.center,
+            child: SizedBox(
+              width: imageSize.width * imageScale,
+              child: Listener(
+                onPointerDown: _handleImagePointerDown,
+                onPointerMove: _handleImagePointerMove,
+                onPointerUp: _handleImagePointerUp,
+                child: AspectRatio(
+                  aspectRatio: 1 / kGoldenRatio,
+                  child: ClipRRect(
+                    borderRadius: imageBorderRadius,
+                    child: _buildImageHero(),
                   ),
                 ),
               ),
             ),
-            Padding(
-              padding: const EdgeInsets.all(16.0),
-              child: _buildTitleHero(),
-            ),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16),
-              child: _buildDescriptionHero(),
-            ),
-            const SizedBox(height: 32),
-          ],
+          ),
         ),
-      );
+        Padding(padding: const EdgeInsets.all(16.0), child: _buildTitleHero()),
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16),
+          child: _buildDescriptionHero(),
+        ),
+        const SizedBox(height: 32),
+      ],
+    ),
+  );
   HeroHere _buildImageHero() => HeroHere(
-        key: ValueKey('$kDetailsHeroKeyPrefix$kImageHeroTagPrefix$tag'),
-        tag: '$kImageHeroTagPrefix$tag',
-        payload: imageBorderRadius,
-        flightShuttleBuilder: _buildImageHeroFlightShuttle,
-        rectTweenFactory: _createImageHeroRectTween,
-        child: Image(
-          fit: BoxFit.cover,
-          alignment: Alignment.topCenter,
-          image: AssetImage(widget.eightThousander.image),
-        ),
-      );
+    key: ValueKey('$kDetailsHeroKeyPrefix$kImageHeroTagPrefix$tag'),
+    tag: '$kImageHeroTagPrefix$tag',
+    payload: imageBorderRadius,
+    flightShuttleBuilder: _buildImageHeroFlightShuttle,
+    rectTweenFactory: _createImageHeroRectTween,
+    child: Image(
+      fit: BoxFit.cover,
+      alignment: Alignment.topCenter,
+      image: AssetImage(widget.eightThousander.image),
+    ),
+  );
 
   HeroHere _buildTitleHero() => HeroHere(
-        key: ValueKey('$kDetailsHeroKeyPrefix$kTitleHeroTagPrefix$tag'),
-        tag: '$kTitleHeroTagPrefix$tag',
-        rectTweenFactory: _createTitleOrDescriptionHeroRectTween,
-        flightShuttleBuilder: _buildTitleOrDescriptionHeroFlightShuttle,
-        child: Opacity(
-          opacity: titleOrDescriptionOpacity,
-          child: Text(
-            widget.eightThousander.name,
-            style: titleStyle,
-          ),
-        ),
-      );
+    key: ValueKey('$kDetailsHeroKeyPrefix$kTitleHeroTagPrefix$tag'),
+    tag: '$kTitleHeroTagPrefix$tag',
+    rectTweenFactory: _createTitleOrDescriptionHeroRectTween,
+    flightShuttleBuilder: _buildTitleOrDescriptionHeroFlightShuttle,
+    child: Opacity(
+      opacity: titleOrDescriptionOpacity,
+      child: Text(widget.eightThousander.name, style: titleStyle),
+    ),
+  );
 
   HeroHere _buildDescriptionHero() => HeroHere(
-        key: ValueKey('$kDetailsHeroKeyPrefix$kDescriptionHeroTagPrefix$tag'),
-        tag: '$kDescriptionHeroTagPrefix$tag',
-        rectTweenFactory: _createTitleOrDescriptionHeroRectTween,
-        flightShuttleBuilder: _buildTitleOrDescriptionHeroFlightShuttle,
-        child: Opacity(
-          opacity: titleOrDescriptionOpacity,
-          child: Text(
-            widget.eightThousander.description,
-            softWrap: true,
-            maxLines: null,
-          ),
-        ),
-      );
+    key: ValueKey('$kDetailsHeroKeyPrefix$kDescriptionHeroTagPrefix$tag'),
+    tag: '$kDescriptionHeroTagPrefix$tag',
+    rectTweenFactory: _createTitleOrDescriptionHeroRectTween,
+    flightShuttleBuilder: _buildTitleOrDescriptionHeroFlightShuttle,
+    child: Opacity(
+      opacity: titleOrDescriptionOpacity,
+      child: Text(
+        widget.eightThousander.description,
+        softWrap: true,
+        maxLines: null,
+      ),
+    ),
+  );
 
   Widget _buildImageHeroFlightShuttle(
     BuildContext flightContext,
     Animation<double> animation,
     HeroHere fromHero,
     HeroHere toHero,
-  ) =>
-      Stack(
-        fit: StackFit.expand,
-        children: [
-          AnimatedBuilder(
-            animation: animation,
-            builder: (context, child) => ClipRRect(
-              borderRadius: BorderRadiusTween(
-                begin: BorderRadius.circular(kPreviewImageBorderRadius),
-                end: BorderRadius.zero,
-              ).evaluate(animation)!,
-              child: child,
-            ),
-            child: toHero.child,
-          ),
-        ],
-      );
+  ) => Stack(
+    fit: StackFit.expand,
+    children: [
+      AnimatedBuilder(
+        animation: animation,
+        builder: (context, child) => ClipRRect(
+          borderRadius: BorderRadiusTween(
+            begin: BorderRadius.circular(kPreviewImageBorderRadius),
+            end: BorderRadius.zero,
+          ).evaluate(animation)!,
+          child: child,
+        ),
+        child: toHero.child,
+      ),
+    ],
+  );
 
   RectTween _createImageHeroRectTween(Rect? begin, Rect? end) =>
       RectTween(begin: begin, end: end);
@@ -203,18 +196,14 @@ class _EightThousanderDetailsHeroState
     Animation<double> animation,
     HeroHere fromHero,
     HeroHere toHero,
-  ) =>
-      FadeTransition(
-        opacity: animation,
-        child: toHero.child,
-      );
+  ) => FadeTransition(opacity: animation, child: toHero.child);
 
   void _handleScroll() {
     if (_scrollController.position.pixels > 0) return;
 
     factorToClose =
         min(_scrollController.position.pixels.abs(), kDragDistanceToClose) /
-            kDragDistanceToClose;
+        kDragDistanceToClose;
   }
 
   void _handleImagePointerDown(PointerDownEvent event) =>

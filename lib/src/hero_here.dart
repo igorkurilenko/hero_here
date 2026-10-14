@@ -22,10 +22,14 @@ typedef _Hero = _HeroHereState;
 typedef _Switcher = _HeroHereSwitcherState;
 
 typedef HeroHereSwitcherLayoutBuilder = Widget Function(
-    Widget child, Widget sky);
+  Widget child,
+  Widget sky,
+);
 
 typedef AnimationControllerFactory = AnimationController Function(
-    TickerProvider tickerProvider, Duration duration);
+  TickerProvider tickerProvider,
+  Duration duration,
+);
 
 typedef AnimationFactory<T> = Animation<T> Function(
   AnimationController controller,
@@ -45,6 +49,15 @@ typedef HeroHereFlightShuttleBuilder = Widget Function(
   HeroHere toHero,
 );
 
+/// Flies [HeroHere] widgets between their places in [child] when [child]
+/// changes.
+///
+/// Every rebuild of the switcher runs a switch: it takes a snapshot of the
+/// current child, lays the new child out offstage for a frame to find its
+/// heroes, then flies each tag whose [HeroHere] changed. The new child shows
+/// two frames after the rebuild. Keep frequently changing state, such as
+/// timers, streams or text being typed, below the switcher, so it rebuilds
+/// only when heroes may move.
 class HeroHereSwitcher extends StatefulWidget {
   final Widget? child;
   final HeroHereSwitcherLayoutBuilder layoutBuilder;
@@ -58,11 +71,8 @@ class HeroHereSwitcher extends StatefulWidget {
   @override
   State<HeroHereSwitcher> createState() => _HeroHereSwitcherState();
 
-  static Widget defaultLayoutBuilder(Widget child, Widget sky) => Material(
-        child: Stack(
-          children: [child, sky],
-        ),
-      );
+  static Widget defaultLayoutBuilder(Widget child, Widget sky) =>
+      Material(child: Stack(children: [child, sky]));
 }
 
 class _HeroHereSwitcherState extends State<HeroHereSwitcher>
@@ -98,24 +108,28 @@ class _HeroHereSwitcherState extends State<HeroHereSwitcher>
   _Flight? getFlight(Object tag) => _flightsByTag[tag];
 
   RawImage? takeChildScreenshot({double pixelRatio = 1.0}) {
-    final renderRepaintBoundary =
-        _childKey.currentContext?.findRenderRepaintBoundary();
+    final renderRepaintBoundary = _childKey.currentContext
+        ?.findRenderRepaintBoundary();
 
     return renderRepaintBoundary != null
-        ? _takeScreenshot(renderRepaintBoundary)
+        ? _takeScreenshot(renderRepaintBoundary, pixelRatio: pixelRatio)
         : null;
   }
 
   @override
   Widget build(BuildContext context) {
-    final child = StatefulBuilder(builder: (context, setState) {
-      setChildState = setState;
-      return _buildChild();
-    });
-    final sky = StatefulBuilder(builder: (context, setState) {
-      setSkyState = setState;
-      return _buildSky();
-    });
+    final child = StatefulBuilder(
+      builder: (context, setState) {
+        setChildState = setState;
+        return _buildChild();
+      },
+    );
+    final sky = StatefulBuilder(
+      builder: (context, setState) {
+        setSkyState = setState;
+        return _buildSky();
+      },
+    );
 
     return widget.layoutBuilder(child, sky);
   }
@@ -127,26 +141,20 @@ class _HeroHereSwitcherState extends State<HeroHereSwitcher>
       children: [
         Offstage(
           offstage: _childOffstage,
-          child: RepaintBoundary(
-            key: _childKey,
-            child: _child,
-          ),
+          child: RepaintBoundary(key: _childKey, child: _child),
         ),
-        if (_childScreenshot != null) _childScreenshot!,
+        ?_childScreenshot,
       ],
     );
   }
 
   Widget _buildSky() => Stack(
-        children: [
-          ...flights.map(
-            (flight) => _FlightWidget(
-              key: ValueKey(flight.tag),
-              flight: flight,
-            ),
-          ),
-        ],
-      );
+    children: [
+      ...flights.map(
+        (flight) => _FlightWidget(key: ValueKey(flight.tag), flight: flight),
+      ),
+    ],
+  );
 
   RawImage? _takeScreenshot(
     RenderRepaintBoundary renderRepaintBoundary, {
@@ -168,10 +176,7 @@ abstract class _SwitchingState {
   final _Switcher switcher;
   final Set<_Hero>? prevSwitchHeroes;
 
-  _SwitchingState(
-    this.switcher, {
-    this.prevSwitchHeroes,
-  });
+  _SwitchingState(this.switcher, {this.prevSwitchHeroes});
 
   void notifyWillSwitch(Iterable<_Hero> heroes) {
     for (final hero in heroes) {
@@ -183,10 +188,7 @@ abstract class _SwitchingState {
 }
 
 class _Idle extends _SwitchingState {
-  _Idle(
-    super.switcher, {
-    super.prevSwitchHeroes,
-  });
+  _Idle(super.switcher, {super.prevSwitchHeroes});
 
   @override
   void execute() {
@@ -199,10 +201,7 @@ class _Idle extends _SwitchingState {
 }
 
 class _Prepare extends _SwitchingState {
-  _Prepare(
-    super.switcher, {
-    super.prevSwitchHeroes,
-  });
+  _Prepare(super.switcher, {super.prevSwitchHeroes});
 
   @override
   void execute() =>
@@ -231,11 +230,7 @@ class _Prepare extends _SwitchingState {
 class _Execute extends _SwitchingState {
   final Set<_Hero> curHeroes;
 
-  _Execute(
-    super.switcher, {
-    super.prevSwitchHeroes,
-    required this.curHeroes,
-  });
+  _Execute(super.switcher, {super.prevSwitchHeroes, required this.curHeroes});
 
   @override
   void execute() => WidgetsBinding.instance.addPostFrameCallback(_switch);
@@ -253,10 +248,7 @@ class _Execute extends _SwitchingState {
     switcher.setChildState(() {
       switcher._childScreenshot = null;
       switcher._childOffstage = false;
-      switcher._switchingState = _Idle(
-        switcher,
-        prevSwitchHeroes: nextHeroes,
-      );
+      switcher._switchingState = _Idle(switcher, prevSwitchHeroes: nextHeroes);
     });
   }
 
@@ -265,7 +257,9 @@ class _Execute extends _SwitchingState {
 
     for (final x in nextHeroes) {
       final manifest = result.putIfAbsent(
-          x.tag, () => _FlightManifest(tag: x.tag, from: x, to: x));
+        x.tag,
+        () => _FlightManifest(tag: x.tag, from: x, to: x),
+      );
       manifest.to = x;
     }
 
@@ -276,7 +270,8 @@ class _Execute extends _SwitchingState {
       } else if (existingFlight != null) {
         manifest.from = existingFlight.manifest.from;
       } else {
-        manifest.from = curHeroes
+        manifest.from =
+            curHeroes
                 .where((x) => x.tag == manifest.tag)
                 .where((x) => x.onstage)
                 .where((x) => prevSwitchHeroes?.contains(x) ?? false)
@@ -304,8 +299,9 @@ class _Execute extends _SwitchingState {
   }
 
   void _dispatchFlights(Map<Object, _FlightManifest> flightManifestsByTag) {
-    final tags =
-        flightManifestsByTag.keys.followedBy(switcher.flightTags).toSet();
+    final tags = flightManifestsByTag.keys
+        .followedBy(switcher.flightTags)
+        .toSet();
 
     for (final tag in tags) {
       final flightManifest = flightManifestsByTag[tag];
@@ -319,10 +315,7 @@ class _Execute extends _SwitchingState {
       if (existingFlight != null) {
         existingFlight.update(flightManifest);
       } else {
-        _Flight.start(
-          switcher: switcher,
-          manifest: flightManifest,
-        );
+        _Flight.start(switcher: switcher, manifest: flightManifest);
       }
     }
   }
@@ -361,35 +354,33 @@ class HeroHere extends StatefulWidget {
   State<HeroHere> createState() => _HeroHereState();
 
   static AnimationController defaultFlightAnimationControllerFactory(
-          TickerProvider tickerProvider, Duration duration) =>
-      AnimationController(
-        vsync: tickerProvider,
-        duration: duration,
-      );
+    TickerProvider tickerProvider,
+    Duration duration,
+  ) => AnimationController(vsync: tickerProvider, duration: duration);
 
   static Animation<double> defaultFlightAnimationFactory(
-          AnimationController controller) =>
-      CurvedAnimation(
-        parent: controller,
-        curve: defaultFlightAnimationCurve,
-      );
+    AnimationController controller,
+  ) => CurvedAnimation(parent: controller, curve: defaultFlightAnimationCurve);
 
   static TickerFuture defaultForwardFlightAnimation(
-          AnimationController controller,
-          {double? from}) =>
-      controller.forward(from: from);
+    AnimationController controller, {
+    double? from,
+  }) => controller.forward(from: from);
 
   static TickerFuture defaultReverseFlightAnimation(
-          AnimationController controller,
-          {double? from}) =>
-      controller.reverse(from: from);
+    AnimationController controller, {
+    double? from,
+  }) => controller.reverse(from: from);
 
   static RectTween defaultFlightRectTweenFactory(Rect? begin, Rect? end) =>
       RectTween(begin: begin, end: end);
 
-  static Widget defaultFlightShuttleBuilder(BuildContext flightContext,
-          Animation<double> animation, HeroHere fromHero, HeroHere toHero) =>
-      toHero.child;
+  static Widget defaultFlightShuttleBuilder(
+    BuildContext flightContext,
+    Animation<double> animation,
+    HeroHere fromHero,
+    HeroHere toHero,
+  ) => toHero.child;
 }
 
 class _HeroHereState extends State<HeroHere> {
@@ -445,16 +436,13 @@ class _HeroHereState extends State<HeroHere> {
 
   @override
   Widget build(BuildContext context) => SizedBox(
-        width: offstage ? _placeholderRect?.width : null,
-        height: offstage ? _placeholderRect?.height : null,
-        child: Offstage(
-          offstage: offstage,
-          child: KeyedSubtree(
-            key: _childKey,
-            child: widget.child,
-          ),
-        ),
-      );
+    width: offstage ? _placeholderRect?.width : null,
+    height: offstage ? _placeholderRect?.height : null,
+    child: Offstage(
+      offstage: offstage,
+      child: KeyedSubtree(key: _childKey, child: widget.child),
+    ),
+  );
 
   @override
   bool operator ==(Object other) =>
@@ -491,10 +479,7 @@ class _HeroHereState extends State<HeroHere> {
 
 class _FlightWidget extends StatefulWidget {
   final _Flight flight;
-  const _FlightWidget({
-    super.key,
-    required this.flight,
-  });
+  const _FlightWidget({super.key, required this.flight});
 
   @override
   State<_FlightWidget> createState() => _FlightWidgetState();
@@ -526,22 +511,71 @@ class _FlightWidgetState extends State<_FlightWidget> {
       animation: flight.animation,
       builder: (context, child) {
         toRect = toHero?.computeGlobalRect() ?? toHero?.placeholderRect;
-        curRect =
-            toRect != null ? flight.evaluateRect(fromRect, toRect)! : curRect;
+        curRect = toRect != null
+            ? flight.evaluateRect(fromRect, toRect)!
+            : curRect;
 
-        return Transform.translate(
-          offset: curRect.topLeft,
-          child: SizedBox(
-            width: curRect.width,
-            height: curRect.height,
-            child: IgnorePointer(
-              child: child,
-            ),
-          ),
+        return _GlobalRect(
+          rect: curRect,
+          child: IgnorePointer(child: child),
         );
       },
       child: flight.buildShuttle(context),
     );
+  }
+}
+
+/// Sizes its child to [rect] and paints it there. The [rect] is global, so
+/// the flight lands on its heroes wherever the switcher's sky is placed.
+class _GlobalRect extends SingleChildRenderObjectWidget {
+  final Rect rect;
+
+  const _GlobalRect({required this.rect, super.child});
+
+  @override
+  _RenderGlobalRect createRenderObject(BuildContext context) =>
+      _RenderGlobalRect(rect);
+
+  @override
+  void updateRenderObject(
+    BuildContext context,
+    _RenderGlobalRect renderObject,
+  ) => renderObject.rect = rect;
+}
+
+class _RenderGlobalRect extends RenderProxyBox {
+  Rect _rect;
+
+  _RenderGlobalRect(this._rect);
+
+  set rect(Rect value) {
+    if (_rect == value) return;
+    if (_rect.size != value.size) {
+      markNeedsLayout();
+    } else {
+      markNeedsPaint();
+    }
+    _rect = value;
+  }
+
+  Offset get _childOffset => _rect.topLeft - localToGlobal(Offset.zero);
+
+  @override
+  void performLayout() {
+    child?.layout(BoxConstraints.tight(_rect.size));
+    size = constraints.smallest;
+  }
+
+  @override
+  void paint(PaintingContext context, Offset offset) {
+    if (child == null) return;
+    context.paintChild(child!, offset + _childOffset);
+  }
+
+  @override
+  void applyPaintTransform(RenderBox child, Matrix4 transform) {
+    final childOffset = _childOffset;
+    transform.translateByDouble(childOffset.dx, childOffset.dy, 0, 1);
   }
 }
 
@@ -557,30 +591,34 @@ class _Flight extends ChangeNotifier {
   _Hero? _nextHero;
   bool _reversed = false;
 
-  _Flight({
-    required this.switcher,
-    required _FlightManifest manifest,
-  })  : _manifest = manifest,
-        _rectTweenFactory = manifest.to.widget.rectTweenFactory ??
-            manifest.from.widget.rectTweenFactory ??
-            HeroHere.defaultFlightRectTweenFactory,
-        _shuttleBuilder = manifest.to.widget.flightShuttleBuilder ??
-            manifest.from.widget.flightShuttleBuilder ??
-            HeroHere.defaultFlightShuttleBuilder,
-        _forwardAnimation = manifest.to.widget.forwardFlightAnimation ??
-            manifest.from.widget.forwardFlightAnimation ??
-            HeroHere.defaultForwardFlightAnimation,
-        _reverseAnimation = manifest.to.widget.reverseFlightAnimation ??
-            manifest.from.widget.reverseFlightAnimation ??
-            HeroHere.defaultReverseFlightAnimation {
-    final animationDuration = _manifest.to.widget.flightAnimationDuration ??
+  _Flight({required this.switcher, required _FlightManifest manifest})
+    : _manifest = manifest,
+      _rectTweenFactory =
+          manifest.to.widget.rectTweenFactory ??
+          manifest.from.widget.rectTweenFactory ??
+          HeroHere.defaultFlightRectTweenFactory,
+      _shuttleBuilder =
+          manifest.to.widget.flightShuttleBuilder ??
+          manifest.from.widget.flightShuttleBuilder ??
+          HeroHere.defaultFlightShuttleBuilder,
+      _forwardAnimation =
+          manifest.to.widget.forwardFlightAnimation ??
+          manifest.from.widget.forwardFlightAnimation ??
+          HeroHere.defaultForwardFlightAnimation,
+      _reverseAnimation =
+          manifest.to.widget.reverseFlightAnimation ??
+          manifest.from.widget.reverseFlightAnimation ??
+          HeroHere.defaultReverseFlightAnimation {
+    final animationDuration =
+        _manifest.to.widget.flightAnimationDuration ??
         _manifest.from.widget.flightAnimationDuration ??
         HeroHere.defaultFlightAnimationDuration;
     final controllerFactory =
         _manifest.to.widget.flightAnimationControllerFactory ??
-            _manifest.from.widget.flightAnimationControllerFactory ??
-            HeroHere.defaultFlightAnimationControllerFactory;
-    final animationFactory = _manifest.to.widget.flightAnimationFactory ??
+        _manifest.from.widget.flightAnimationControllerFactory ??
+        HeroHere.defaultFlightAnimationControllerFactory;
+    final animationFactory =
+        _manifest.to.widget.flightAnimationFactory ??
         _manifest.from.widget.flightAnimationFactory ??
         HeroHere.defaultFlightAnimationFactory;
 
@@ -596,10 +634,7 @@ class _Flight extends ChangeNotifier {
     required _Switcher switcher,
     required _FlightManifest manifest,
   }) {
-    final flight = _Flight(
-      switcher: switcher,
-      manifest: manifest,
-    );
+    final flight = _Flight(switcher: switcher, manifest: manifest);
 
     switcher.setSkyState(() => switcher.addFlight(flight));
 
@@ -634,7 +669,11 @@ class _Flight extends ChangeNotifier {
   }
 
   Widget buildShuttle(BuildContext context) => _shuttleBuilder(
-      context, animation, manifest.from.widget, manifest.to.widget);
+    context,
+    animation,
+    manifest.from.widget,
+    manifest.to.widget,
+  );
 
   Rect? evaluateRect(Rect? begin, Rect? end) =>
       _rectTweenFactory(begin, end).evaluate(animation);
@@ -663,10 +702,7 @@ class _Flight extends ChangeNotifier {
     _nextHero = to;
   }
 
-  Future<_Flight> _forward({
-    double? from,
-    Completer<_Flight>? completer,
-  }) {
+  Future<_Flight> _forward({double? from, Completer<_Flight>? completer}) {
     completer ??= Completer();
     _reversed = false;
     _nextHero = null;
@@ -717,11 +753,7 @@ class _FlightManifest {
   _Hero from;
   _Hero to;
 
-  _FlightManifest({
-    required this.tag,
-    required this.from,
-    required this.to,
-  });
+  _FlightManifest({required this.tag, required this.from, required this.to});
 
   bool get isIdle => from == to;
 

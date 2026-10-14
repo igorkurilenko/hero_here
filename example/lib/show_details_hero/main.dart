@@ -20,14 +20,14 @@ import 'eight_thousander_details_hero.dart';
 import 'eight_thousander_preview_hero.dart';
 
 void main() => runApp(
-      MaterialApp(
-        title: 'HeroHere Show Details Example',
-        debugShowCheckedModeBanner: false,
-        theme: ThemeData(useMaterial3: true, brightness: Brightness.light),
-        darkTheme: ThemeData(useMaterial3: true, brightness: Brightness.dark),
-        home: const ShowDetailsExample(),
-      ),
-    );
+  MaterialApp(
+    title: 'HeroHere Show Details Example',
+    debugShowCheckedModeBanner: false,
+    theme: ThemeData(useMaterial3: true, brightness: Brightness.light),
+    darkTheme: ThemeData(useMaterial3: true, brightness: Brightness.dark),
+    home: const ShowDetailsExample(),
+  ),
+);
 
 class ShowDetailsExample extends StatefulWidget {
   const ShowDetailsExample({super.key});
@@ -46,75 +46,75 @@ class _ShowDetailsExampleState extends State<ShowDetailsExample> {
 
   @override
   Widget build(BuildContext context) => Scaffold(
-        extendBodyBehindAppBar: true,
-        extendBody: true,
-        appBar: _buildAppBar(),
-        body: _buildBody(),
-      );
+    extendBodyBehindAppBar: true,
+    extendBody: true,
+    appBar: _buildAppBar(),
+    body: _buildBody(),
+  );
 
   AppBar _buildAppBar() => AppBar(
-        forceMaterialTransparency: true,
-        leading: AnimatedSwitcher(
-          duration: HeroHere.defaultFlightAnimationDuration,
-          child: detailsVisible
-              ? Material(
-                  color: Colors.transparent,
-                  key: UniqueKey(),
-                  child: IconButton(
-                    icon: const Icon(Icons.chevron_left),
-                    onPressed: _isHeroSwitching ? null : _closeDetails,
-                  ),
-                )
-              : SizedBox(key: UniqueKey()),
-        ),
-      );
+    forceMaterialTransparency: true,
+    leading: AnimatedSwitcher(
+      duration: HeroHere.defaultFlightAnimationDuration,
+      child: detailsVisible
+          ? Material(
+              color: Colors.transparent,
+              key: UniqueKey(),
+              child: IconButton(
+                icon: const Icon(Icons.chevron_left),
+                onPressed: _isHeroSwitching ? null : _closeDetails,
+              ),
+            )
+          : SizedBox(key: UniqueKey()),
+    ),
+  );
 
   Widget _buildBody() => HeroHereSwitcher(
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Flexible(
-              child: ConstrainedBox(
-                constraints: kGridViewConstraints,
-                child: Stack(
-                  alignment: Alignment.topCenter,
-                  children: [
-                    AnimatedSlide(
-                      offset: _gridViewOffset,
+    child: Row(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        Flexible(
+          child: ConstrainedBox(
+            constraints: kGridViewConstraints,
+            child: Stack(
+              alignment: Alignment.topCenter,
+              children: [
+                AnimatedSlide(
+                  offset: _gridViewOffset,
+                  duration: HeroHere.defaultFlightAnimationDuration,
+                  curve: HeroHere.defaultFlightAnimationCurve,
+                  child: AnimatedScale(
+                    scale: _gridViewScale,
+                    duration: HeroHere.defaultFlightAnimationDuration,
+                    curve: HeroHere.defaultFlightAnimationCurve,
+                    child: AnimatedOpacity(
+                      opacity: _gridViewOpacity,
                       duration: HeroHere.defaultFlightAnimationDuration,
                       curve: HeroHere.defaultFlightAnimationCurve,
-                      child: AnimatedScale(
-                        scale: _gridViewScale,
-                        duration: HeroHere.defaultFlightAnimationDuration,
-                        curve: HeroHere.defaultFlightAnimationCurve,
-                        child: AnimatedOpacity(
-                          opacity: _gridViewOpacity,
-                          duration: HeroHere.defaultFlightAnimationDuration,
-                          curve: HeroHere.defaultFlightAnimationCurve,
-                          child: IgnorePointer(
-                            ignoring: _isHeroSwitching,
-                            child: ScrollConfiguration(
-                              behavior: kScrollBehavior,
-                              child: GridView.builder(
-                                clipBehavior: Clip.none,
-                                padding: const EdgeInsets.all(8),
-                                gridDelegate: kGridViewDelegate,
-                                itemCount: kEightThousanders.length,
-                                itemBuilder: _buildGridItem,
-                              ),
-                            ),
+                      child: IgnorePointer(
+                        ignoring: _isHeroSwitching,
+                        child: ScrollConfiguration(
+                          behavior: kScrollBehavior,
+                          child: GridView.builder(
+                            clipBehavior: Clip.none,
+                            padding: const EdgeInsets.all(8),
+                            gridDelegate: kGridViewDelegate,
+                            itemCount: kEightThousanders.length,
+                            itemBuilder: _buildGridItem,
                           ),
                         ),
                       ),
                     ),
-                    if (detailsVisible) _buildDetails(_showDetailsIndex!),
-                  ],
+                  ),
                 ),
-              ),
+                if (detailsVisible) _buildDetails(_showDetailsIndex!),
+              ],
             ),
-          ],
+          ),
         ),
-      );
+      ],
+    ),
+  );
 
   Widget _buildGridItem(BuildContext context, int index) {
     final eightThousander = kEightThousanders[index];
@@ -161,21 +161,21 @@ class _ShowDetailsExampleState extends State<ShowDetailsExample> {
   }
 
   void _showDetails(BuildContext context, int index) => setState(() {
-        final renderBox = context.findRenderObject() as RenderBox;
-        final itemPosition = renderBox.localToGlobal(Offset.zero);
-        final itemCenter = renderBox.size.center(itemPosition);
-        _gridViewOffset = _computeGridViewSlideOffset(index, itemCenter);
-        _showDetailsIndex = index;
-        _dragEndVelocityOnClose = null;
-        _isHeroSwitching = true;
-      });
+    final renderBox = context.findRenderObject() as RenderBox;
+    final itemPosition = renderBox.localToGlobal(Offset.zero);
+    final itemCenter = renderBox.size.center(itemPosition);
+    _gridViewOffset = _computeGridViewSlideOffset(index, itemCenter);
+    _showDetailsIndex = index;
+    _dragEndVelocityOnClose = null;
+    _isHeroSwitching = true;
+  });
 
   void _closeDetails([Velocity? dragEndVelocity]) => setState(() {
-        _gridViewOffset = Offset.zero;
-        _dragEndVelocityOnClose = dragEndVelocity;
-        _showDetailsIndex = null;
-        _isHeroSwitching = true;
-      });
+    _gridViewOffset = Offset.zero;
+    _dragEndVelocityOnClose = dragEndVelocity;
+    _showDetailsIndex = null;
+    _isHeroSwitching = true;
+  });
 
   double get _gridViewScale =>
       detailsVisible ? kGridViewScaleWhenDetailsOpen : 1.0;
@@ -204,9 +204,6 @@ class _ShowDetailsExampleState extends State<ShowDetailsExample> {
       e = Offset(x, y);
     }
 
-    return (e - a).scale(
-      1 / screenSize.width,
-      1 / screenSize.height,
-    );
+    return (e - a).scale(1 / screenSize.width, 1 / screenSize.height);
   }
 }

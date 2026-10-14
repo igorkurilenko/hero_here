@@ -19,14 +19,14 @@ import 'package:hero_here/hero_here.dart';
 import 'message.dart';
 
 void main() => runApp(
-      MaterialApp(
-        title: 'HeroHere Chat Message Example',
-        debugShowCheckedModeBanner: false,
-        theme: ThemeData(useMaterial3: true, brightness: Brightness.light),
-        darkTheme: ThemeData(useMaterial3: true, brightness: Brightness.dark),
-        home: const HeroHereExample(),
-      ),
-    );
+  MaterialApp(
+    title: 'HeroHere Chat Message Example',
+    debugShowCheckedModeBanner: false,
+    theme: ThemeData(useMaterial3: true, brightness: Brightness.light),
+    darkTheme: ThemeData(useMaterial3: true, brightness: Brightness.dark),
+    home: const HeroHereExample(),
+  ),
+);
 
 class HeroHereExample extends StatefulWidget {
   const HeroHereExample({super.key});
@@ -42,39 +42,37 @@ class _HeroHereExampleState extends State<HeroHereExample> {
 
   @override
   Widget build(BuildContext context) => HeroHereSwitcher(
-        child: Scaffold(
-          extendBody: true,
-          extendBodyBehindAppBar: true,
-          appBar: AppBar(forceMaterialTransparency: true),
-          body: ListView.builder(
-            controller: _scrollController,
-            itemCount: _messages.length,
-            itemBuilder: (context, index) => Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 32),
-              child: _messages.isNotEmpty
-                  ? _buildMessage(_messages[index])
-                  : const SizedBox(),
-            ),
-          ),
-          bottomNavigationBar: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 32),
-            child: _buildMessageInput(),
-          ),
+    child: Scaffold(
+      extendBody: true,
+      extendBodyBehindAppBar: true,
+      appBar: AppBar(forceMaterialTransparency: true),
+      body: ListView.builder(
+        controller: _scrollController,
+        itemCount: _messages.length,
+        itemBuilder: (context, index) => Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 32),
+          child: _messages.isNotEmpty
+              ? _buildMessage(_messages[index])
+              : const SizedBox(),
         ),
-      );
+      ),
+      bottomNavigationBar: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 32),
+        child: _buildMessageInput(),
+      ),
+    ),
+  );
 
   Widget _buildMessage(Message message) => HeroHere(
-        tag: '$message',
-        key: ValueKey('published-$message}'),
-        child: MessageWidget.readOnly(
-          text: message.textOrEmpty,
-          decoration: const InputDecoration(
-            border: OutlineInputBorder(
-              borderSide: BorderSide.none,
-            ),
-          ),
-        ),
-      );
+    tag: '$message',
+    key: ValueKey('published-$message}'),
+    child: MessageWidget.readOnly(
+      text: message.textOrEmpty,
+      decoration: const InputDecoration(
+        border: OutlineInputBorder(borderSide: BorderSide.none),
+      ),
+    ),
+  );
 
   Widget _buildMessageInput() {
     final message = Message();
@@ -96,9 +94,7 @@ class _HeroHereExampleState extends State<HeroHereExample> {
               hintText: 'Message',
               border: OutlineInputBorder(
                 borderSide: BorderSide.none,
-                borderRadius: BorderRadius.all(
-                  Radius.circular(32),
-                ),
+                borderRadius: BorderRadius.all(Radius.circular(32)),
               ),
             ),
           ),
@@ -123,10 +119,10 @@ class _HeroHereExampleState extends State<HeroHereExample> {
   }
 
   void _scrollToBottom() => _scrollController.animateTo(
-        _scrollController.position.maxScrollExtent,
-        duration: HeroHere.defaultFlightAnimationDuration,
-        curve: HeroHere.defaultFlightAnimationCurve,
-      );
+    _scrollController.position.maxScrollExtent,
+    duration: HeroHere.defaultFlightAnimationDuration,
+    curve: HeroHere.defaultFlightAnimationCurve,
+  );
 }
 
 extension _State on State {

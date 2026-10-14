@@ -47,69 +47,63 @@ class _EightThousanderPreviewHeroState
 
   String get tag => widget.tag;
 
-  TextStyle get titleStyle => Theme.of(context)
-      .textTheme
-      .titleSmall!
-      .copyWith(fontWeight: FontWeight.w900);
+  TextStyle get titleStyle =>
+      Theme.of(context).textTheme.titleSmall!
+          .copyWith(fontWeight: FontWeight.w900);
 
   @override
   Widget build(BuildContext context) => GestureDetector(
-        onTap: widget.onTap != null ? _onTap : null,
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Expanded(
-              child: _buildImageHero(),
-            ),
-            const SizedBox(height: 8),
-            _buildTitle(),
-            _buildFakeTitleHero(),
-            _buildFakeDescriptionHero(),
-          ],
-        ),
-      );
+    onTap: widget.onTap != null ? _onTap : null,
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Expanded(child: _buildImageHero()),
+        const SizedBox(height: 8),
+        _buildTitle(),
+        _buildFakeTitleHero(),
+        _buildFakeDescriptionHero(),
+      ],
+    ),
+  );
 
   HeroHere _buildImageHero() => HeroHere(
-        key: ValueKey('$kImageHeroTagPrefix$tag'),
-        tag: '$kImageHeroTagPrefix$tag',
-        flightAnimationControllerFactory:
-            widget.imageHeroFlightAnimationControllerFactory,
-        flightAnimationFactory: widget.imageHeroFlightAnimationFactory,
-        forwardFlightAnimation: widget.forwardImageHeroFlightAnimation,
-        rectTweenFactory: _createImageHeroRectTween,
-        flightShuttleBuilder: _buildImageHeroFlightShuttle,
-        child: ClipRRect(
-          clipBehavior: Clip.antiAlias,
-          borderRadius: BorderRadius.circular(kPreviewImageBorderRadius),
-          child: Image(
-            width: double.infinity,
-            fit: BoxFit.cover,
-            alignment: Alignment.topCenter,
-            image: AssetImage(widget.eightThousander.image),
-          ),
-        ),
-      );
+    key: ValueKey('$kImageHeroTagPrefix$tag'),
+    tag: '$kImageHeroTagPrefix$tag',
+    flightAnimationControllerFactory:
+        widget.imageHeroFlightAnimationControllerFactory,
+    flightAnimationFactory: widget.imageHeroFlightAnimationFactory,
+    forwardFlightAnimation: widget.forwardImageHeroFlightAnimation,
+    rectTweenFactory: _createImageHeroRectTween,
+    flightShuttleBuilder: _buildImageHeroFlightShuttle,
+    child: ClipRRect(
+      clipBehavior: Clip.antiAlias,
+      borderRadius: BorderRadius.circular(kPreviewImageBorderRadius),
+      child: Image(
+        width: double.infinity,
+        fit: BoxFit.cover,
+        alignment: Alignment.topCenter,
+        image: AssetImage(widget.eightThousander.image),
+      ),
+    ),
+  );
 
-  Text _buildTitle() => Text(
-        widget.eightThousander.name,
-        style: titleStyle,
-      );
+  Text _buildTitle() => Text(widget.eightThousander.name, style: titleStyle);
 
   HeroHere _buildFakeDescriptionHero() => HeroHere(
-        key: ValueKey('$kDescriptionHeroTagPrefix$tag'),
-        tag: '$kDescriptionHeroTagPrefix$tag',
-        rectTweenFactory: _createTitleOrDescriptionHeroRectTween,
-        flightShuttleBuilder: _buildTitleOrDescriptionHeroFlightShuttle,
-        child: const SizedBox(),
-      );
+    key: ValueKey('$kDescriptionHeroTagPrefix$tag'),
+    tag: '$kDescriptionHeroTagPrefix$tag',
+    rectTweenFactory: _createTitleOrDescriptionHeroRectTween,
+    flightShuttleBuilder: _buildTitleOrDescriptionHeroFlightShuttle,
+    child: const SizedBox(),
+  );
 
   HeroHere _buildFakeTitleHero() => HeroHere(
-        key: ValueKey('$kTitleHeroTagPrefix$tag'),
-        tag: '$kTitleHeroTagPrefix$tag',
-        rectTweenFactory: _createTitleOrDescriptionHeroRectTween,
-        flightShuttleBuilder: _buildTitleOrDescriptionHeroFlightShuttle,
-        child: const SizedBox(),
-      );
+    key: ValueKey('$kTitleHeroTagPrefix$tag'),
+    tag: '$kTitleHeroTagPrefix$tag',
+    rectTweenFactory: _createTitleOrDescriptionHeroRectTween,
+    flightShuttleBuilder: _buildTitleOrDescriptionHeroFlightShuttle,
+    child: const SizedBox(),
+  );
 
   Widget _buildImageHeroFlightShuttle(
     BuildContext flightContext,
@@ -136,10 +130,8 @@ class _EightThousanderPreviewHeroState
     );
   }
 
-  RectTween _createImageHeroRectTween(Rect? begin, Rect? end) => RectTween(
-        begin: begin,
-        end: _imagePosition! & end!.size,
-      );
+  RectTween _createImageHeroRectTween(Rect? begin, Rect? end) =>
+      RectTween(begin: begin, end: _imagePosition! & end!.size);
 
   RectTween _createTitleOrDescriptionHeroRectTween(Rect? begin, Rect? end) =>
       RectTween(begin: begin, end: begin);
@@ -149,11 +141,10 @@ class _EightThousanderPreviewHeroState
     Animation<double> animation,
     HeroHere fromHero,
     HeroHere toHero,
-  ) =>
-      FadeTransition(
-        opacity: ReverseAnimation(animation),
-        child: fromHero.child,
-      );
+  ) => FadeTransition(
+    opacity: ReverseAnimation(animation),
+    child: fromHero.child,
+  );
 
   void _onTap() {
     final renderBox = context.findRenderObject() as RenderBox;

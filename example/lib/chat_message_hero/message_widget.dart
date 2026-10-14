@@ -31,17 +31,17 @@ class MessageWidget extends StatelessWidget {
   }) : controller = controller ?? TextEditingController();
 
   MessageWidget.readOnly({super.key, required String text, this.decoration})
-      : controller = TextEditingController(text: text),
-        focusNode = null,
-        onSubmitted = null;
+    : controller = TextEditingController(text: text),
+      focusNode = null,
+      onSubmitted = null;
 
   @override
   Widget build(BuildContext context) => TextField(
-        readOnly: onSubmitted == null,
-        controller: controller,
-        focusNode: focusNode,
-        onSubmitted: onSubmitted,
-        decoration: decoration,
-        textInputAction: TextInputAction.done,
-      );
+    readOnly: onSubmitted == null,
+    controller: controller,
+    focusNode: focusNode,
+    onSubmitted: onSubmitted,
+    decoration: decoration,
+    textInputAction: TextInputAction.done,
+  );
 }

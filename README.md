@@ -27,7 +27,7 @@ Add the following line to your `pubspec.yaml` file:
 
 ```yaml
 dependencies:
-  hero_here: ^1.0.0
+  hero_here: ^1.1.0
 ```
 
 Then, run:
@@ -178,6 +178,10 @@ class _HeroHereExampleState extends State<HeroHereExample> {
 
 More advanced examples can be found in the `example` folder or by following [this link](https://github.com/igorkurilenko/hero_here/tree/main/example/lib).
 
+
+## Performance
+
+Every rebuild of `HeroHereSwitcher` runs a switch: it takes a snapshot of the current child and lays the new child out offstage for a frame to find its heroes. Keep frequently changing state, such as timers, streams or text being typed, below the switcher, so it rebuilds only when heroes may move.
 
 ## Support and Contact
 
