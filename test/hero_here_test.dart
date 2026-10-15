@@ -77,6 +77,76 @@ void main() {
     expect(find.byKey(const ValueKey('box2')), findsOneWidget);
   });
 
+  testWidgets('flies a hero back when its child changes back mid-flight', (
+    tester,
+  ) async {
+    final slot = ValueNotifier(0);
+    addTearDown(slot.dispose);
+
+    await tester.pumpWidget(_SlotSwitcher(slot: slot));
+    await tester.pumpAndSettle();
+
+    slot.value = 1;
+    await _pumpSwitch(tester);
+    await tester.pump(HeroHere.defaultFlightAnimationDuration ~/ 2);
+
+    slot.value = 0;
+    await _pumpSwitch(tester);
+
+    // The shuttle turns back from where it is, so it only ever moves left.
+    final shuttle = find.byKey(_shuttleKey);
+    final lefts = <double>[];
+    for (var frame = 0; frame < 40; frame++) {
+      if (tester.any(shuttle)) lefts.add(tester.getRect(shuttle).left);
+      await tester.pump(const Duration(milliseconds: 16));
+    }
+
+    expect(lefts, isNotEmpty);
+    for (var i = 1; i < lefts.length; i++) {
+      expect(lefts[i], lessThanOrEqualTo(lefts[i - 1]), reason: '$lefts');
+    }
+    expect(shuttle, findsNothing);
+    expect(find.byKey(const ValueKey('box0')), findsOneWidget);
+  });
+
+  testWidgets('stops a flight when its hero goes away mid-flight', (
+    tester,
+  ) async {
+    final slot = ValueNotifier(0);
+    addTearDown(slot.dispose);
+
+    await tester.pumpWidget(_SlotSwitcher(slot: slot));
+    await tester.pumpAndSettle();
+
+    slot.value = 1;
+    await _pumpSwitch(tester);
+    await tester.pump(HeroHere.defaultFlightAnimationDuration ~/ 2);
+
+    slot.value = _noSlot;
+    await _pumpSwitch(tester);
+
+    expect(find.byKey(_shuttleKey), findsNothing);
+  });
+
+  testWidgets('hides the earlier of new heroes that share a tag', (
+    tester,
+  ) async {
+    final split = ValueNotifier(false);
+    addTearDown(split.dispose);
+
+    await tester.pumpWidget(_SplitSwitcher(split: split));
+    await tester.pumpAndSettle();
+
+    split.value = true;
+    await tester.pumpAndSettle();
+
+    // The hero in the first slot flies to the last one, the hero in the
+    // middle one hides.
+    expect(find.byKey(const ValueKey('box0')), findsNothing);
+    expect(find.byKey(const ValueKey('box1')), findsNothing);
+    expect(find.byKey(const ValueKey('box2')), findsOneWidget);
+  });
+
   testWidgets('shows a hero whose child arrives during a switch', (
     tester,
   ) async {
@@ -356,7 +426,11 @@ const _slotRects = [
   Rect.fromLTWH(400, 100, 60, 60),
 ];
 
-/// Shows one hero in the slot of [_slotRects] that [slot] picks.
+/// A [_SlotSwitcher] slot that shows no hero.
+const _noSlot = -1;
+
+/// Shows one hero in the slot of [_slotRects] that [slot] picks, or none for
+/// [_noSlot].
 class _SlotSwitcher extends StatelessWidget {
   const _SlotSwitcher({
     required this.slot,
@@ -374,19 +448,53 @@ class _SlotSwitcher extends StatelessWidget {
         layoutBuilder: layoutBuilder,
         child: Stack(
           children: [
-            Positioned.fromRect(
-              rect: _slotRects[slot],
-              child: HeroHere(
-                key: ValueKey(slot),
-                tag: 'hero',
-                flightShuttleBuilder: (_, _, _, _) =>
-                    const SizedBox.expand(key: _shuttleKey),
-                child: ColoredBox(
-                  key: ValueKey('box$slot'),
-                  color: const Color(0xFF2196F3),
+            if (slot != _noSlot)
+              Positioned.fromRect(
+                rect: _slotRects[slot],
+                child: HeroHere(
+                  key: ValueKey(slot),
+                  tag: 'hero',
+                  flightShuttleBuilder: (_, _, _, _) =>
+                      const SizedBox.expand(key: _shuttleKey),
+                  child: ColoredBox(
+                    key: ValueKey('box$slot'),
+                    color: const Color(0xFF2196F3),
+                  ),
                 ),
               ),
-            ),
+          ],
+        ),
+      ),
+    ),
+  );
+}
+
+/// Shows a hero in the first slot of [_slotRects], or, when [split], heroes
+/// with the same tag in the other two.
+class _SplitSwitcher extends StatelessWidget {
+  const _SplitSwitcher({required this.split});
+
+  final ValueNotifier<bool> split;
+
+  @override
+  Widget build(BuildContext context) => MaterialApp(
+    home: ValueListenableBuilder(
+      valueListenable: split,
+      builder: (context, split, _) => HeroHereSwitcher(
+        child: Stack(
+          children: [
+            for (final slot in split ? [1, 2] : [0])
+              Positioned.fromRect(
+                rect: _slotRects[slot],
+                child: HeroHere(
+                  key: ValueKey(slot),
+                  tag: 'hero',
+                  child: ColoredBox(
+                    key: ValueKey('box$slot'),
+                    color: const Color(0xFF2196F3),
+                  ),
+                ),
+              ),
           ],
         ),
       ),

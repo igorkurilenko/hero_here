@@ -89,8 +89,6 @@ class _HeroHereSwitcherState extends State<HeroHereSwitcher>
 
   Iterable<_Flight> get flights => _flightsByTag.values;
 
-  Iterable<Object> get flightTags => _flightsByTag.keys;
-
   void addFlight(_Flight flight) => _flightsByTag[flight.tag] = flight;
 
   void removeFlight(_Flight flight) =>
@@ -286,13 +284,33 @@ class _Execute extends _SwitchingState {
 
   void _switch(_) {
     final nextHeroes = switcher.findHeroes();
-    final flightManifestsByTag = _getFlightManifests(nextHeroes);
+    final plan = _SwitchPlan(
+      curHeroes: curHeroes,
+      nextHeroes: nextHeroes,
+      prevSwitchHeroes: prevSwitchHeroes,
+      flying: {
+        for (final flight in switcher.flights) flight.tag: flight.manifest,
+      },
+    );
 
     notifyWillSwitch(nextHeroes);
 
-    _offstageRedundantNextHeroes(nextHeroes, flightManifestsByTag);
+    for (final hero in plan.hiddenHeroes) {
+      hero.offstage = true;
+    }
 
-    _dispatchFlights(flightManifestsByTag);
+    for (final tag in plan.stoppedTags) {
+      switcher.getFlight(tag)!.abort();
+    }
+
+    for (final manifest in plan.flights.values) {
+      final flight = switcher.getFlight(manifest.tag);
+      if (flight != null) {
+        flight.update(manifest);
+      } else {
+        _Flight.start(switcher: switcher, manifest: manifest);
+      }
+    }
 
     switcher.setChildState(() {
       switcher._childScreenshot?.image?.dispose();
@@ -301,24 +319,50 @@ class _Execute extends _SwitchingState {
       switcher._switchingState = _Idle(switcher, prevSwitchHeroes: nextHeroes);
     });
   }
+}
 
-  Map<Object, _FlightManifest> _getFlightManifests(Set<_Hero> nextHeroes) {
-    final result = <Object, _FlightManifest>{};
+/// What a switch does, worked out without changing any hero or flight.
+class _SwitchPlan {
+  /// The flight each tag needs to start or redirect, by tag.
+  final Map<Object, _FlightManifest> flights;
+
+  /// The tags whose flight under way stops.
+  final Set<Object> stoppedTags;
+
+  /// The next heroes that hide, since another hero with their tag shows.
+  final Set<_Hero> hiddenHeroes;
+
+  _SwitchPlan._(this.flights, this.stoppedTags, this.hiddenHeroes);
+
+  /// Plans the switch from [curHeroes] to [nextHeroes], given the heroes of
+  /// the last switch and the manifests of the flights [flying], by tag.
+  ///
+  /// Of the next heroes that share a tag, the last one is where its tag
+  /// flies to. It flies from where its flight under way is, or else from the
+  /// current hero with its tag that shows, preferring one of the last
+  /// switch.
+  factory _SwitchPlan({
+    required Set<_Hero> curHeroes,
+    required Set<_Hero> nextHeroes,
+    required Set<_Hero>? prevSwitchHeroes,
+    required Map<Object, _FlightManifest> flying,
+  }) {
+    final manifests = <Object, _FlightManifest>{};
 
     for (final x in nextHeroes) {
-      final manifest = result.putIfAbsent(
+      final manifest = manifests.putIfAbsent(
         x.tag,
         () => _FlightManifest(tag: x.tag, from: x, to: x),
       );
       manifest.to = x;
     }
 
-    for (final manifest in result.values) {
-      final existingFlight = switcher.getFlight(manifest.tag);
-      if (existingFlight?.manifest.from == manifest.to) {
-        manifest.from = existingFlight!.manifest.to;
-      } else if (existingFlight != null) {
-        manifest.from = existingFlight.manifest.from;
+    for (final manifest in manifests.values) {
+      final flight = flying[manifest.tag];
+      if (flight?.from == manifest.to) {
+        manifest.from = flight!.to;
+      } else if (flight != null) {
+        manifest.from = flight.from;
       } else {
         manifest.from =
             curHeroes
@@ -333,41 +377,23 @@ class _Execute extends _SwitchingState {
             manifest.from;
       }
     }
-    return result;
-  }
 
-  void _offstageRedundantNextHeroes(
-    Set<_Hero> nextHeroes,
-    Map<Object, _FlightManifest> flightManifestsByTag,
-  ) {
-    for (final hero in nextHeroes) {
-      final manifest = flightManifestsByTag[hero.tag];
-      if (manifest?.from != hero && manifest?.to != hero) {
-        hero.offstage = true;
-      }
-    }
-  }
-
-  void _dispatchFlights(Map<Object, _FlightManifest> flightManifestsByTag) {
-    final tags = flightManifestsByTag.keys
-        .followedBy(switcher.flightTags)
-        .toSet();
-
-    for (final tag in tags) {
-      final flightManifest = flightManifestsByTag[tag];
-      final existingFlight = switcher.getFlight(tag);
-
-      if (flightManifest == null || flightManifest.isIdle) {
-        existingFlight?.abort();
-        continue;
-      }
-
-      if (existingFlight != null) {
-        existingFlight.update(flightManifest);
-      } else {
-        _Flight.start(switcher: switcher, manifest: flightManifest);
-      }
-    }
+    return _SwitchPlan._(
+      {
+        for (final manifest in manifests.values)
+          if (!manifest.isIdle) manifest.tag: manifest,
+      },
+      {
+        for (final tag in flying.keys)
+          if (manifests[tag]?.isIdle ?? true) tag,
+      },
+      {
+        for (final hero in nextHeroes)
+          if (manifests[hero.tag]!.from != hero &&
+              manifests[hero.tag]!.to != hero)
+            hero,
+      },
+    );
   }
 }
 
