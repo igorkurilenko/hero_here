@@ -109,6 +109,30 @@ void main() {
     expect(find.byKey(const ValueKey('box0')), findsOneWidget);
   });
 
+  testWidgets('shuttles the new child of a hero it leaves that mounts anew', (
+    tester,
+  ) async {
+    final phase = ValueNotifier(0);
+    addTearDown(phase.dispose);
+
+    await tester.pumpWidget(_SourceSwitcher(phase: phase));
+    await tester.pumpAndSettle();
+
+    phase.value = 1;
+    await _pumpSwitch(tester);
+    await tester.pump(HeroHere.defaultFlightAnimationDuration ~/ 4);
+    // The shuttle shows the child of the hero the flight leaves.
+    expect(find.byKey(const ValueKey('a1')), findsOneWidget);
+
+    // That hero mounts anew with a new child, while another flight starts,
+    // which rebuilds the shuttle.
+    phase.value = 2;
+    await _pumpSwitch(tester);
+
+    expect(find.byKey(const ValueKey('a2')), findsOneWidget);
+    expect(find.byKey(const ValueKey('a1')), findsNothing);
+  });
+
   testWidgets('lands on the hero it flies to when that one mounts anew', (
     tester,
   ) async {
@@ -506,6 +530,58 @@ const _slotRects = [
   Rect.fromLTWH(200, 100, 80, 80),
   Rect.fromLTWH(400, 100, 60, 60),
 ];
+
+/// Phase 0 shows hero 'a' in the first slot of [_slotRects]. Phase 1 adds
+/// hero 'b' with the same tag after it, in the second, so 'a' flies to 'b'
+/// and stays, hidden. Phase 2 mounts 'a' anew with a new child, and moves a
+/// hero with another tag, which starts a second flight. The heroes tagged
+/// 'hero' shuttle the child of the hero their flight leaves.
+class _SourceSwitcher extends StatelessWidget {
+  const _SourceSwitcher({required this.phase});
+
+  final ValueNotifier<int> phase;
+
+  @override
+  Widget build(BuildContext context) => MaterialApp(
+    home: ValueListenableBuilder(
+      valueListenable: phase,
+      builder: (context, phase, _) {
+        Widget hero(String key, String box) => HeroHere(
+          key: ValueKey(key),
+          tag: 'hero',
+          flightShuttleBuilder: (_, _, fromHero, _) =>
+              SizedBox.expand(child: fromHero.child),
+          child: ColoredBox(key: ValueKey(box), color: const Color(0xFF2196F3)),
+        );
+
+        return HeroHereSwitcher(
+          child: Stack(
+            children: [
+              Positioned.fromRect(
+                rect: _slotRects[0],
+                child: phase < 2
+                    ? hero('a', 'a1')
+                    : KeyedSubtree(child: hero('a', 'a2')),
+              ),
+              if (phase > 0)
+                Positioned.fromRect(rect: _slotRects[1], child: hero('b', 'b')),
+              Positioned.fromRect(
+                rect: phase < 2
+                    ? _slotRects[2]
+                    : const Rect.fromLTWH(0, 300, 40, 40),
+                child: HeroHere(
+                  key: ValueKey(phase < 2 ? 'x' : 'y'),
+                  tag: 'other',
+                  child: const SizedBox.expand(),
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    ),
+  );
+}
 
 /// Shows a hero in the first slot of [_slotRects], or, when [moved], in the
 /// second. When [wrapped], the hero sits in one more widget, so changing
