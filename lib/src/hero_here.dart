@@ -79,34 +79,22 @@ class HeroHereSwitcher extends StatefulWidget {
 class _HeroHereSwitcherState extends State<HeroHereSwitcher>
     with TickerProviderStateMixin {
   final _childKey = GlobalKey();
-  final _flightsByTag = <Object, _Flight>{};
+  final flights = _FlightRegistry();
   late _SwitchingState _switchingState = _Mount(this);
   Widget? _child;
   StateSetter setChildState = (_) {};
-  StateSetter setSkyState = (_) {};
   RawImage? _childScreenshot;
   bool _childOffstage = false;
 
-  Iterable<_Flight> get flights => _flightsByTag.values;
-
-  void addFlight(_Flight flight) => _flightsByTag[flight.tag] = flight;
-
-  void removeFlight(_Flight flight) =>
-      _flightsByTag.remove(flight.tag)?.dispose();
-
   @override
   void dispose() {
-    for (final flight in flights) {
-      flight.dispose();
-    }
+    flights.dispose();
     // RawImage doesn't dispose its image.
     _childScreenshot?.image?.dispose();
     super.dispose();
   }
 
   Set<_Hero> findHeroes() => _childKey.currentContext?.findHeroes() ?? const {};
-
-  _Flight? getFlight(Object tag) => _flightsByTag[tag];
 
   bool hidesOnMount(_Hero hero) => switch (_switchingState) {
     final _Mount mount => mount.hiddenHeroes.contains(hero),
@@ -130,11 +118,9 @@ class _HeroHereSwitcherState extends State<HeroHereSwitcher>
         return _buildChild();
       },
     );
-    final sky = StatefulBuilder(
-      builder: (context, setState) {
-        setSkyState = setState;
-        return _buildSky();
-      },
+    final sky = ListenableBuilder(
+      listenable: flights,
+      builder: (context, _) => _buildSky(),
     );
 
     return widget.layoutBuilder(child, sky);
@@ -159,7 +145,7 @@ class _HeroHereSwitcherState extends State<HeroHereSwitcher>
   Widget _buildSky() => RepaintBoundary(
     child: Stack(
       children: [
-        ...flights.map(
+        ...flights.all.map(
           (flight) => _FlightWidget(key: ValueKey(flight.tag), flight: flight),
         ),
       ],
@@ -289,7 +275,7 @@ class _Execute extends _SwitchingState {
       nextHeroes: nextHeroes,
       prevSwitchHeroes: prevSwitchHeroes,
       flying: {
-        for (final flight in switcher.flights) flight.tag: flight.manifest,
+        for (final flight in switcher.flights.all) flight.tag: flight.manifest,
       },
     );
 
@@ -300,15 +286,19 @@ class _Execute extends _SwitchingState {
     }
 
     for (final tag in plan.stoppedTags) {
-      switcher.getFlight(tag)!.abort();
+      switcher.flights[tag]!.abort();
     }
 
     for (final manifest in plan.flights.values) {
-      final flight = switcher.getFlight(manifest.tag);
+      final flight = switcher.flights[manifest.tag];
       if (flight != null) {
         flight.update(manifest);
       } else {
-        _Flight.start(switcher: switcher, manifest: manifest);
+        _Flight.start(
+          vsync: switcher,
+          registry: switcher.flights,
+          manifest: manifest,
+        );
       }
     }
 
@@ -486,7 +476,7 @@ class _HeroHereState extends State<HeroHere> {
     super.initState();
 
     _switcher = context.findAncestorStateOfType<_Switcher>();
-    final existingFlight = _switcher?.getFlight(tag);
+    final existingFlight = _switcher?.flights[tag];
 
     if (existingFlight != null) {
       _initState(existingFlight);
@@ -761,7 +751,7 @@ class _RenderGlobalRect extends RenderProxyBox {
 }
 
 class _Flight extends ChangeNotifier {
-  final _Switcher switcher;
+  final _FlightRegistry _registry;
   _FlightManifest _manifest;
   final _FlightStyle _style;
   late final AnimationController _controller;
@@ -769,13 +759,16 @@ class _Flight extends ChangeNotifier {
   _Hero? _nextHero;
   bool _reversed = false;
 
-  _Flight({required this.switcher, required _FlightManifest manifest})
-    : _manifest = manifest,
-      _style = _FlightStyle.of(
-        from: manifest.from.widget,
-        to: manifest.to.widget,
-      ) {
-    _controller = _style.controllerFactory(switcher, _style.duration);
+  _Flight({
+    required TickerProvider vsync,
+    required this._registry,
+    required _FlightManifest manifest,
+  }) : _manifest = manifest,
+       _style = _FlightStyle.of(
+         from: manifest.from.widget,
+         to: manifest.to.widget,
+       ) {
+    _controller = _style.controllerFactory(vsync, _style.duration);
     animation = _style.animationFactory(_controller);
   }
 
@@ -784,16 +777,19 @@ class _Flight extends ChangeNotifier {
   _FlightManifest get manifest => _manifest;
 
   factory _Flight.start({
-    required _Switcher switcher,
+    required TickerProvider vsync,
+    required _FlightRegistry registry,
     required _FlightManifest manifest,
   }) {
-    final flight = _Flight(switcher: switcher, manifest: manifest);
+    final flight = _Flight(
+      vsync: vsync,
+      registry: registry,
+      manifest: manifest,
+    );
 
-    switcher.setSkyState(() => switcher.addFlight(flight));
+    registry.add(flight);
 
-    flight._forward().whenComplete(() {
-      switcher.setSkyState(() => switcher.removeFlight(flight));
-    });
+    flight._forward().whenComplete(() => registry.remove(flight));
 
     return flight;
   }
@@ -802,15 +798,11 @@ class _Flight extends ChangeNotifier {
     if (_shouldReverse(manifest)) {
       _manifest = manifest.reversed;
       notifyListeners();
-      _reverse().whenComplete(() {
-        switcher.setSkyState(() => switcher.removeFlight(this));
-      });
+      _reverse().whenComplete(() => _registry.remove(this));
     } else if (_shouldForward(manifest)) {
       _manifest = manifest;
       notifyListeners();
-      _forward().whenComplete(() {
-        switcher.setSkyState(() => switcher.removeFlight(this));
-      });
+      _forward().whenComplete(() => _registry.remove(this));
     } else {
       _registerNextFlight(manifest.to);
     }
@@ -818,7 +810,7 @@ class _Flight extends ChangeNotifier {
 
   void abort() {
     _controller.stop(canceled: true);
-    switcher.setSkyState(() => switcher.removeFlight(this));
+    _registry.remove(this);
   }
 
   Widget buildShuttle(BuildContext context) => _style.shuttleBuilder(
@@ -898,6 +890,35 @@ class _Flight extends ChangeNotifier {
     });
 
     return completer.future;
+  }
+}
+
+/// The flights under way, by tag. Tells its listeners, such as the sky, when
+/// a flight starts or ends.
+class _FlightRegistry extends ChangeNotifier {
+  final _flightsByTag = <Object, _Flight>{};
+
+  Iterable<_Flight> get all => _flightsByTag.values;
+
+  _Flight? operator [](Object tag) => _flightsByTag[tag];
+
+  void add(_Flight flight) {
+    _flightsByTag[flight.tag] = flight;
+    notifyListeners();
+  }
+
+  /// Ends the flight with [flight]'s tag and disposes it.
+  void remove(_Flight flight) {
+    _flightsByTag.remove(flight.tag)?.dispose();
+    notifyListeners();
+  }
+
+  @override
+  void dispose() {
+    for (final flight in all) {
+      flight.dispose();
+    }
+    super.dispose();
   }
 }
 

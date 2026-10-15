@@ -195,6 +195,23 @@ void main() {
     expect(liveImages(), 0);
   });
 
+  testWidgets('stops its flights when unmounted mid-flight', (tester) async {
+    final slot = ValueNotifier(0);
+    addTearDown(slot.dispose);
+
+    await tester.pumpWidget(_SlotSwitcher(slot: slot));
+    await tester.pumpAndSettle();
+
+    slot.value = 1;
+    await _pumpSwitch(tester);
+    await tester.pump(HeroHere.defaultFlightAnimationDuration ~/ 2);
+    expect(find.byKey(_shuttleKey), findsOneWidget);
+
+    // A flight left running would trip the ticker provider's dispose check.
+    await tester.pumpWidget(const SizedBox());
+    expect(tester.takeException(), isNull);
+  });
+
   testWidgets('lays out nothing outside the shuttle while it changes size', (
     tester,
   ) async {
@@ -345,10 +362,11 @@ void main() {
 
     final shuttle = find.byKey(_shuttleKey);
     late Rect shuttleRect;
-    while (tester.any(shuttle)) {
+    for (var frame = 0; frame < 40 && tester.any(shuttle); frame++) {
       shuttleRect = tester.getRect(shuttle);
       await tester.pump(const Duration(milliseconds: 16));
     }
+    expect(shuttle, findsNothing);
 
     final heroRect = tester.getRect(find.byKey(const ValueKey('box-true')));
     expect(heroRect.width, 100);
