@@ -42,6 +42,22 @@ void main() {
     });
   }
 
+  testWidgets('flies from where the hero it leaves is when that one stays', (
+    tester,
+  ) async {
+    final split = ValueNotifier(false);
+    addTearDown(split.dispose);
+
+    await tester.pumpWidget(_StaySwitcher(split: split));
+    await tester.pumpAndSettle();
+
+    split.value = true;
+    await _pumpSwitch(tester);
+
+    // Not from the first slot, where the hero was before the switch.
+    expect(tester.getRect(find.byKey(_shuttleKey)), _stayRect);
+  });
+
   testWidgets('flies a redirected hero on from where its shuttle is', (
     tester,
   ) async {
@@ -784,6 +800,46 @@ class _SplitSwitcher extends StatelessWidget {
           ],
         ),
       ),
+    ),
+  );
+}
+
+const _stayRect = Rect.fromLTWH(0, 300, 40, 40);
+
+/// Shows hero 'a' in the first slot of [_slotRects], or, when [split], moves
+/// it to [_stayRect] and adds hero 'b' with the same tag in the second slot,
+/// so 'a' flies to 'b' and stays, hidden.
+class _StaySwitcher extends StatelessWidget {
+  const _StaySwitcher({required this.split});
+
+  final ValueNotifier<bool> split;
+
+  @override
+  Widget build(BuildContext context) => MaterialApp(
+    home: ValueListenableBuilder(
+      valueListenable: split,
+      builder: (context, split, _) {
+        Widget hero(String key) => HeroHere(
+          key: ValueKey(key),
+          tag: 'hero',
+          flightShuttleBuilder: (_, _, _, _) =>
+              const SizedBox.expand(key: _shuttleKey),
+          child: const ColoredBox(color: Color(0xFF2196F3)),
+        );
+
+        return HeroHereSwitcher(
+          child: Stack(
+            children: [
+              Positioned.fromRect(
+                rect: split ? _stayRect : _slotRects[0],
+                child: hero('a'),
+              ),
+              if (split)
+                Positioned.fromRect(rect: _slotRects[1], child: hero('b')),
+            ],
+          ),
+        );
+      },
     ),
   );
 }
