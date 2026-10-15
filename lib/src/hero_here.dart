@@ -55,9 +55,10 @@ typedef HeroHereFlightShuttleBuilder = Widget Function(
 /// Every rebuild of the switcher runs a switch: it takes a snapshot of the
 /// current child, lays the new child out offstage for a frame to find its
 /// heroes, then flies each tag whose [HeroHere] changed. The new child shows
-/// two frames after the rebuild. Keep frequently changing state, such as
-/// timers, streams or text being typed, below the switcher, so it rebuilds
-/// only when heroes may move.
+/// two frames after the rebuild. The first child shows on the first frame,
+/// and nothing flies. Keep frequently changing state, such as timers, streams
+/// or text being typed, below the switcher, so it rebuilds only when heroes
+/// may move.
 class HeroHereSwitcher extends StatefulWidget {
   final Widget? child;
   final HeroHereSwitcherLayoutBuilder layoutBuilder;
@@ -79,7 +80,7 @@ class _HeroHereSwitcherState extends State<HeroHereSwitcher>
     with TickerProviderStateMixin {
   final _childKey = GlobalKey();
   final _flightsByTag = <Object, _Flight>{};
-  late _SwitchingState _switchingState = _Prepare(this);
+  late _SwitchingState _switchingState = _Mount(this);
   Widget? _child;
   StateSetter setChildState = (_) {};
   StateSetter setSkyState = (_) {};
@@ -191,6 +192,31 @@ abstract class _SwitchingState {
   }
 
   void execute();
+}
+
+/// Shows the first child as it is, with no flights. Of the heroes that share
+/// a tag, only the last one shows, as after a switch.
+class _Mount extends _SwitchingState {
+  _Mount(super.switcher);
+
+  @override
+  void execute() {
+    switcher._child = switcher.widget.child;
+    WidgetsBinding.instance.addPostFrameCallback(_mount);
+  }
+
+  void _mount(_) {
+    final heroes = switcher.findHeroes();
+    final lastHeroesByTag = {for (final hero in heroes) hero.tag: hero};
+
+    notifyWillSwitch(heroes);
+
+    for (final hero in heroes) {
+      if (lastHeroesByTag[hero.tag] != hero) hero.offstage = true;
+    }
+
+    switcher._switchingState = _Idle(switcher, prevSwitchHeroes: heroes);
+  }
 }
 
 class _Idle extends _SwitchingState {

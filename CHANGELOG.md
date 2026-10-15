@@ -1,3 +1,9 @@
+## Unreleased
+
+### Fixes
+
+* Show the switcher's first child on the first frame with no flights, instead of two frames late and with a flight between any of its heroes that share a tag.
+
 ## 1.1.3
 
 ### Performance
