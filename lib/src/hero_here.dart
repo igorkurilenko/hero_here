@@ -486,15 +486,11 @@ class _HeroHereState extends State<HeroHere> {
       : null;
 
   @override
-  Widget build(BuildContext context) => SizedBox(
-    width: offstage ? _placeholderRect?.width : null,
-    height: offstage ? _placeholderRect?.height : null,
-    child: Offstage(
-      offstage: offstage,
-      child: _Hide(
-        hides: _hides,
-        child: KeyedSubtree(key: _childKey, child: widget.child),
-      ),
+  Widget build(BuildContext context) => _HeroOffstage(
+    offstage: offstage,
+    child: _Hide(
+      hides: _hides,
+      child: KeyedSubtree(key: _childKey, child: widget.child),
     ),
   );
 
@@ -531,6 +527,57 @@ class _HeroHereState extends State<HeroHere> {
   void _setState(VoidCallback cb) {
     if (!mounted) return cb();
     setState(cb);
+  }
+}
+
+/// An [Offstage] that keeps its child's size while offstage. A hidden hero
+/// takes the space it would take showing, so a layout change, such as a
+/// window resize, moves and resizes it like a showing one, and a flight
+/// landing on it lands where it shows.
+class _HeroOffstage extends Offstage {
+  const _HeroOffstage({required super.offstage, super.child});
+
+  @override
+  RenderOffstage createRenderObject(BuildContext context) =>
+      _RenderHeroOffstage(offstage: offstage);
+}
+
+/// Lays out like a [RenderProxyBox] whether offstage or not.
+class _RenderHeroOffstage extends RenderOffstage {
+  _RenderHeroOffstage({super.offstage});
+
+  @override
+  bool get sizedByParent => false;
+
+  @override
+  double computeMinIntrinsicWidth(double height) =>
+      child?.getMinIntrinsicWidth(height) ?? 0;
+
+  @override
+  double computeMaxIntrinsicWidth(double height) =>
+      child?.getMaxIntrinsicWidth(height) ?? 0;
+
+  @override
+  double computeMinIntrinsicHeight(double width) =>
+      child?.getMinIntrinsicHeight(width) ?? 0;
+
+  @override
+  double computeMaxIntrinsicHeight(double width) =>
+      child?.getMaxIntrinsicHeight(width) ?? 0;
+
+  @override
+  Size computeDryLayout(covariant BoxConstraints constraints) =>
+      child?.getDryLayout(constraints) ?? constraints.smallest;
+
+  @override
+  void performLayout() {
+    final child = this.child;
+    if (child == null) {
+      size = constraints.smallest;
+      return;
+    }
+    child.layout(constraints, parentUsesSize: true);
+    size = child.size;
   }
 }
 

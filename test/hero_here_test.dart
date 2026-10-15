@@ -211,8 +211,12 @@ void main() {
 
     expect(find.byKey(const ValueKey('earlierBox')), findsNothing);
     expect(find.byKey(const ValueKey('lastBox')), findsOneWidget);
-    // The earlier hero keeps its space.
+    // The earlier hero keeps its space, also for intrinsic layouts.
     expect(tester.getTopLeft(find.byKey(_markerKey)).dx, 40);
+    final earlierHero = tester.renderObject<RenderBox>(
+      find.byKey(const ValueKey('earlier')),
+    );
+    expect(earlierHero.getMaxIntrinsicWidth(double.infinity), 40);
   });
 
   testWidgets('flies nothing on the first rebuild between heroes that share '
@@ -248,6 +252,42 @@ void main() {
       hit.path.map((entry) => entry.target),
       isNot(contains(tester.renderObject(earlierBox))),
     );
+  });
+
+  testWidgets('lands on a hidden hero that a resize changes the size of', (
+    tester,
+  ) async {
+    tester.view.devicePixelRatio = 1;
+    tester.view.physicalSize = const Size(800, 600);
+    addTearDown(tester.view.reset);
+    final moved = ValueNotifier(false);
+    addTearDown(moved.dispose);
+
+    await tester.pumpWidget(_QuarterWidthSwitcher(moved: moved));
+    await tester.pumpAndSettle();
+
+    moved.value = true;
+    await _pumpSwitch(tester);
+    await tester.pump(HeroHere.defaultFlightAnimationDuration ~/ 2);
+
+    // The hero the flight lands on is a quarter of the window wide.
+    tester.view.physicalSize = const Size(400, 600);
+
+    final shuttle = find.byKey(_shuttleKey);
+    late Rect shuttleRect;
+    while (tester.any(shuttle)) {
+      shuttleRect = tester.getRect(shuttle);
+      await tester.pump(const Duration(milliseconds: 16));
+    }
+
+    final heroRect = tester.getRect(find.byKey(const ValueKey('box-true')));
+    expect(heroRect.width, 100);
+    expect(
+      (shuttleRect.topLeft - heroRect.topLeft).distance,
+      lessThan(2),
+      reason: 'The shuttle landed at $shuttleRect, the hero is at $heroRect.',
+    );
+    expect(shuttleRect.width, closeTo(heroRect.width, 2));
   });
 }
 
@@ -364,6 +404,37 @@ class _TwinSwitcher extends StatelessWidget {
     flightShuttleBuilder: (_, _, _, _) =>
         const SizedBox.expand(key: _shuttleKey),
     child: child,
+  );
+}
+
+/// Shows a 40 px hero at the top left, or, when [moved], a hero a quarter of
+/// the window wide at the top right.
+class _QuarterWidthSwitcher extends StatelessWidget {
+  const _QuarterWidthSwitcher({required this.moved});
+
+  final ValueNotifier<bool> moved;
+
+  @override
+  Widget build(BuildContext context) => MaterialApp(
+    home: ValueListenableBuilder(
+      valueListenable: moved,
+      builder: (context, moved, _) => HeroHereSwitcher(
+        child: Align(
+          alignment: moved ? Alignment.topRight : Alignment.topLeft,
+          child: HeroHere(
+            key: ValueKey(moved),
+            tag: 'hero',
+            flightShuttleBuilder: (_, _, _, _) =>
+                const SizedBox.expand(key: _shuttleKey),
+            child: FractionallySizedBox(
+              key: ValueKey('box-$moved'),
+              widthFactor: moved ? 0.25 : null,
+              child: const SizedBox(width: 40, height: 40),
+            ),
+          ),
+        ),
+      ),
+    ),
   );
 }
 

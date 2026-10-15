@@ -1,3 +1,9 @@
+## 1.1.6
+
+### Fixes
+
+* Keep a hidden hero, such as the one a flight lands on, at the size it would show at, instead of the size it had when it hid, so after a window resize a flight lands on it without a jump.
+
 ## 1.1.5
 
 ### Example
