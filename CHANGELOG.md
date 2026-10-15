@@ -1,3 +1,9 @@
+## Unreleased
+
+### Example
+
+* Run one switch per flight in the show details example, instead of a second one that snapshots the whole page after each flight lands.
+
 ## 1.1.4
 
 ### Fixes

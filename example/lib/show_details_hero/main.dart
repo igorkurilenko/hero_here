@@ -40,9 +40,17 @@ class _ShowDetailsExampleState extends State<ShowDetailsExample> {
   int? _showDetailsIndex;
   Velocity? _dragEndVelocityOnClose;
   Offset _gridViewOffset = Offset.zero;
-  bool _isHeroSwitching = false;
+  // A notifier rather than state, so changing it doesn't rebuild the switcher,
+  // which would run a switch.
+  final _isHeroSwitching = ValueNotifier(false);
 
   bool get detailsVisible => _showDetailsIndex != null;
+
+  @override
+  void dispose() {
+    _isHeroSwitching.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) => Scaffold(
@@ -60,9 +68,12 @@ class _ShowDetailsExampleState extends State<ShowDetailsExample> {
           ? Material(
               color: Colors.transparent,
               key: UniqueKey(),
-              child: IconButton(
-                icon: const Icon(Icons.chevron_left),
-                onPressed: _isHeroSwitching ? null : _closeDetails,
+              child: ValueListenableBuilder(
+                valueListenable: _isHeroSwitching,
+                builder: (context, isHeroSwitching, _) => IconButton(
+                  icon: const Icon(Icons.chevron_left),
+                  onPressed: isHeroSwitching ? null : _closeDetails,
+                ),
               ),
             )
           : SizedBox(key: UniqueKey()),
@@ -91,8 +102,13 @@ class _ShowDetailsExampleState extends State<ShowDetailsExample> {
                       opacity: _gridViewOpacity,
                       duration: HeroHere.defaultFlightAnimationDuration,
                       curve: HeroHere.defaultFlightAnimationCurve,
-                      child: IgnorePointer(
-                        ignoring: _isHeroSwitching,
+                      child: ValueListenableBuilder(
+                        valueListenable: _isHeroSwitching,
+                        builder: (context, isHeroSwitching, child) =>
+                            IgnorePointer(
+                              ignoring: isHeroSwitching,
+                              child: child,
+                            ),
                         child: ScrollConfiguration(
                           behavior: kScrollBehavior,
                           child: GridView.builder(
@@ -129,9 +145,7 @@ class _ShowDetailsExampleState extends State<ShowDetailsExample> {
             : controller;
         animation.addStatusListener((status) {
           if (status == AnimationStatus.completed) {
-            WidgetsBinding.instance.addPostFrameCallback(
-              (_) => setState(() => _isHeroSwitching = false),
-            );
+            _isHeroSwitching.value = false;
           }
         });
         return animation;
@@ -167,14 +181,14 @@ class _ShowDetailsExampleState extends State<ShowDetailsExample> {
     _gridViewOffset = _computeGridViewSlideOffset(index, itemCenter);
     _showDetailsIndex = index;
     _dragEndVelocityOnClose = null;
-    _isHeroSwitching = true;
+    _isHeroSwitching.value = true;
   });
 
   void _closeDetails([Velocity? dragEndVelocity]) => setState(() {
     _gridViewOffset = Offset.zero;
     _dragEndVelocityOnClose = dragEndVelocity;
     _showDetailsIndex = null;
-    _isHeroSwitching = true;
+    _isHeroSwitching.value = true;
   });
 
   double get _gridViewScale =>
