@@ -1,5 +1,6 @@
 import 'dart:ui' as ui;
 
+import 'package:example/show_details_hero/eight_thousander_details_hero.dart';
 import 'package:example/show_details_hero/main.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -52,6 +53,71 @@ void main() {
     await tester.pump(HeroHere.defaultFlightAnimationDuration ~/ 2);
 
     expect(find.byIcon(Icons.chevron_left), findsOneWidget);
+  });
+
+  testWidgets('drags the details without rebuilding their text and image', (
+    tester,
+  ) async {
+    // Tall enough to build the title and the description.
+    tester.view.physicalSize = const Size(2400, 4800);
+    addTearDown(tester.view.resetPhysicalSize);
+
+    await tester.pumpWidget(const MaterialApp(home: ShowDetailsExample()));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('K2'));
+    await tester.pumpAndSettle();
+
+    final imageWidth = tester.getSize(find.byType(AspectRatio)).width;
+    final gesture = await tester.startGesture(
+      tester.getCenter(find.byType(AspectRatio)),
+    );
+    await gesture.moveBy(const Offset(0, 20)); // Past the touch slop.
+    await tester.pump();
+
+    // Pull the details down past their top, slowly enough not to close.
+    var rebuilds = 0;
+    debugOnRebuildDirtyWidget = (element, _) {
+      if (element.widget is Text || element.widget is Image) rebuilds++;
+    };
+    for (var i = 0; i < 10; i++) {
+      await gesture.moveBy(const Offset(0, 2));
+      await tester.pump(const Duration(milliseconds: 16));
+    }
+    debugOnRebuildDirtyWidget = null;
+
+    expect(rebuilds, 0);
+    // The drag still shrinks the image and fades the text.
+    expect(
+      tester.getSize(find.byType(AspectRatio)).width,
+      lessThan(imageWidth),
+    );
+    final opacities = find.descendant(
+      of: find.byType(ListView),
+      matching: find.byType(Opacity),
+    );
+    expect(opacities, findsNWidgets(2));
+    for (final opacity in tester.widgetList<Opacity>(opacities)) {
+      expect(opacity.opacity, lessThan(1));
+    }
+
+    await gesture.up();
+    await tester.pumpAndSettle();
+  }, variant: TargetPlatformVariant.only(TargetPlatform.iOS));
+
+  testWidgets('closes the details when flung down', (tester) async {
+    // Tall enough to build the title and the description, so they fly too.
+    tester.view.physicalSize = const Size(2400, 4800);
+    addTearDown(tester.view.resetPhysicalSize);
+
+    await tester.pumpWidget(const MaterialApp(home: ShowDetailsExample()));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('K2'));
+    await tester.pumpAndSettle();
+
+    await tester.fling(find.byType(AspectRatio), const Offset(0, 200), 1000);
+    await tester.pumpAndSettle();
+
+    expect(find.byType(EightThousanderDetailsHero), findsNothing);
   });
 }
 

@@ -41,8 +41,9 @@ class EightThousanderDetailsHero extends StatefulWidget {
 class _EightThousanderDetailsHeroState
     extends State<EightThousanderDetailsHero> {
   final _scrollController = ScrollController();
+  // A notifier rather than state, so a drag rebuilds only what it changes.
+  final _factorToClose = ValueNotifier(0.0);
   VelocityTracker? _imageDragVelocityTracker;
-  double _factorToClose = 0;
 
   String get tag => widget.tag;
 
@@ -52,12 +53,9 @@ class _EightThousanderDetailsHeroState
 
   Size get screenSize => MediaQuery.sizeOf(context);
 
-  double get factorToClose => _factorToClose;
+  double get factorToClose => _factorToClose.value;
 
-  set factorToClose(double value) {
-    if (_factorToClose == value) return;
-    setState(() => _factorToClose = value);
-  }
+  set factorToClose(double value) => _factorToClose.value = value;
 
   Velocity? get imageDragVelocity => _imageDragVelocityTracker?.getVelocity();
 
@@ -82,6 +80,7 @@ class _EightThousanderDetailsHeroState
   @override
   void dispose() {
     _scrollController.dispose();
+    _factorToClose.dispose();
     super.dispose();
   }
 
@@ -98,69 +97,89 @@ class _EightThousanderDetailsHeroState
           height: imageSize.height,
           child: Align(
             alignment: Alignment.center,
-            child: SizedBox(
-              width: imageSize.width * imageScale,
-              child: Listener(
-                onPointerDown: _handleImagePointerDown,
-                onPointerMove: _handleImagePointerMove,
-                onPointerUp: _handleImagePointerUp,
-                child: AspectRatio(
-                  aspectRatio: 1 / kGoldenRatio,
-                  child: ClipRRect(
-                    borderRadius: imageBorderRadius,
-                    child: _buildImageHero(),
+            child: _buildOnDrag(
+              Image(
+                fit: BoxFit.cover,
+                alignment: Alignment.topCenter,
+                image: AssetImage(widget.eightThousander.image),
+              ),
+              (image) => SizedBox(
+                width: imageSize.width * imageScale,
+                child: Listener(
+                  onPointerDown: _handleImagePointerDown,
+                  onPointerMove: _handleImagePointerMove,
+                  onPointerUp: _handleImagePointerUp,
+                  child: AspectRatio(
+                    aspectRatio: 1 / kGoldenRatio,
+                    child: ClipRRect(
+                      borderRadius: imageBorderRadius,
+                      child: _buildImageHero(image),
+                    ),
                   ),
                 ),
               ),
             ),
           ),
         ),
-        Padding(padding: const EdgeInsets.all(16.0), child: _buildTitleHero()),
+        Padding(
+          padding: const EdgeInsets.all(16.0),
+          child: _buildOnDrag(
+            Text(widget.eightThousander.name, style: titleStyle),
+            _buildTitleHero,
+          ),
+        ),
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 16),
-          child: _buildDescriptionHero(),
+          child: _buildOnDrag(
+            Text(
+              widget.eightThousander.description,
+              softWrap: true,
+              maxLines: null,
+            ),
+            _buildDescriptionHero,
+          ),
         ),
         const SizedBox(height: 32),
       ],
     ),
   );
-  HeroHere _buildImageHero() => HeroHere(
+
+  /// Builds [builder] again whenever a drag changes [factorToClose], passing
+  /// it the same [child] each time.
+  ///
+  /// Heroes go inside [builder], not inside [child]: a flight builds its
+  /// shuttle from a hero's child after the details are gone, so that child
+  /// mustn't listen to this state's notifier.
+  Widget _buildOnDrag(Widget child, Widget Function(Widget child) builder) =>
+      ValueListenableBuilder(
+        valueListenable: _factorToClose,
+        builder: (context, _, child) => builder(child!),
+        child: child,
+      );
+
+  HeroHere _buildImageHero(Widget image) => HeroHere(
     key: ValueKey('$kDetailsHeroKeyPrefix$kImageHeroTagPrefix$tag'),
     tag: '$kImageHeroTagPrefix$tag',
     payload: imageBorderRadius,
     flightShuttleBuilder: _buildImageHeroFlightShuttle,
     rectTweenFactory: _createImageHeroRectTween,
-    child: Image(
-      fit: BoxFit.cover,
-      alignment: Alignment.topCenter,
-      image: AssetImage(widget.eightThousander.image),
-    ),
+    child: image,
   );
 
-  HeroHere _buildTitleHero() => HeroHere(
+  HeroHere _buildTitleHero(Widget title) => HeroHere(
     key: ValueKey('$kDetailsHeroKeyPrefix$kTitleHeroTagPrefix$tag'),
     tag: '$kTitleHeroTagPrefix$tag',
     rectTweenFactory: _createTitleOrDescriptionHeroRectTween,
     flightShuttleBuilder: _buildTitleOrDescriptionHeroFlightShuttle,
-    child: Opacity(
-      opacity: titleOrDescriptionOpacity,
-      child: Text(widget.eightThousander.name, style: titleStyle),
-    ),
+    child: Opacity(opacity: titleOrDescriptionOpacity, child: title),
   );
 
-  HeroHere _buildDescriptionHero() => HeroHere(
+  HeroHere _buildDescriptionHero(Widget description) => HeroHere(
     key: ValueKey('$kDetailsHeroKeyPrefix$kDescriptionHeroTagPrefix$tag'),
     tag: '$kDescriptionHeroTagPrefix$tag',
     rectTweenFactory: _createTitleOrDescriptionHeroRectTween,
     flightShuttleBuilder: _buildTitleOrDescriptionHeroFlightShuttle,
-    child: Opacity(
-      opacity: titleOrDescriptionOpacity,
-      child: Text(
-        widget.eightThousander.description,
-        softWrap: true,
-        maxLines: null,
-      ),
-    ),
+    child: Opacity(opacity: titleOrDescriptionOpacity, child: description),
   );
 
   Widget _buildImageHeroFlightShuttle(
