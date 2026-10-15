@@ -1,4 +1,4 @@
-## Unreleased
+## 1.1.9
 
 ### Fixes
 
