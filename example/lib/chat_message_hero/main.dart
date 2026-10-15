@@ -54,9 +54,7 @@ class _HeroHereExampleState extends State<HeroHereExample> {
         itemCount: _messages.length,
         itemBuilder: (context, index) => Padding(
           padding: const EdgeInsets.symmetric(horizontal: 32),
-          child: _messages.isNotEmpty
-              ? _buildMessage(_messages[index])
-              : const SizedBox(),
+          child: _buildMessage(_messages[index]),
         ),
       ),
       bottomNavigationBar: Padding(
@@ -68,7 +66,7 @@ class _HeroHereExampleState extends State<HeroHereExample> {
 
   Widget _buildMessage(Message message) => HeroHere(
     tag: '$message',
-    key: ValueKey('published-$message}'),
+    key: ValueKey('published-$message'),
     child: MessageWidget.readOnly(
       text: message.textOrEmpty,
       decoration: const InputDecoration(
