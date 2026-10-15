@@ -27,7 +27,7 @@ Add the following line to your `pubspec.yaml` file:
 
 ```yaml
 dependencies:
-  hero_here: ^1.1.2
+  hero_here: ^1.1.3
 ```
 
 Then, run:
