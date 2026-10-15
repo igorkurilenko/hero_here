@@ -1,3 +1,9 @@
+## Unreleased
+
+### Performance
+
+* Lay out only the shuttle on each frame of a flight between heroes of different sizes, instead of the whole screen.
+
 ## 1.1.1
 
 ### Fixes

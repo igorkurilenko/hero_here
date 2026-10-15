@@ -577,10 +577,18 @@ class _RenderGlobalRect extends RenderProxyBox {
 
   Offset get _childOffset => _rect.topLeft - localToGlobal(Offset.zero);
 
+  // Sizing by the constraints alone makes this a relayout boundary, so a
+  // shuttle that changes size doesn't lay out the screen on every frame.
+  @override
+  bool get sizedByParent => true;
+
+  @override
+  Size computeDryLayout(covariant BoxConstraints constraints) =>
+      constraints.smallest;
+
   @override
   void performLayout() {
     child?.layout(BoxConstraints.tight(_rect.size));
-    size = constraints.smallest;
   }
 
   @override
