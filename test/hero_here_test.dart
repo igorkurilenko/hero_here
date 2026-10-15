@@ -379,6 +379,28 @@ void main() {
     expect(find.byKey(const ValueKey('box2')), findsOneWidget);
   });
 
+  testWidgets('flies nothing between new heroes that bring a new tag', (
+    tester,
+  ) async {
+    final twice = ValueNotifier(false);
+    addTearDown(twice.dispose);
+
+    await tester.pumpWidget(_NewTagSwitcher(twice: twice));
+    await tester.pumpAndSettle();
+
+    twice.value = true;
+    await _pumpSwitch(tester);
+
+    // As on mount, the last of them shows at once and the earlier one hides.
+    final shuttle = find.byKey(_shuttleKey);
+    for (var frame = 0; frame < 30; frame++) {
+      expect(shuttle, findsNothing);
+      expect(find.byKey(const ValueKey('box0')), findsNothing);
+      expect(find.byKey(const ValueKey('box2')), findsOneWidget);
+      await tester.pump(const Duration(milliseconds: 16));
+    }
+  });
+
   testWidgets('shows a hero whose child arrives during a switch', (
     tester,
   ) async {
@@ -450,6 +472,39 @@ void main() {
       expect(snapshots(), 3);
     });
   }
+
+  testWidgets('runs no switch on a window resize when sizes are read below '
+      'it', (tester) async {
+    tester.view.devicePixelRatio = 1;
+    tester.view.physicalSize = const Size(800, 600);
+    addTearDown(tester.view.reset);
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: HeroHereSwitcher(
+          child: LayoutBuilder(
+            builder: (context, constraints) => Align(
+              alignment: Alignment.topLeft,
+              child: HeroHere(
+                key: const ValueKey('hero'),
+                tag: 'hero',
+                child: SizedBox(width: constraints.maxWidth / 2, height: 40),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    final snapshots = _countNewImages();
+    for (final width in [700.0, 600.0, 500.0]) {
+      tester.view.physicalSize = Size(width, 600);
+      await tester.pumpAndSettle();
+    }
+
+    expect(snapshots(), 0);
+  });
 
   testWidgets('stops its flights when unmounted mid-flight', (tester) async {
     final slot = ValueNotifier(0);
@@ -1070,6 +1125,43 @@ class _StaySwitcher extends StatelessWidget {
           ),
         );
       },
+    ),
+  );
+}
+
+/// Shows no hero, or, when [twice], heroes with the same tag in the first and
+/// the third slot of [_slotRects].
+class _NewTagSwitcher extends StatelessWidget {
+  const _NewTagSwitcher({required this.twice});
+
+  final ValueNotifier<bool> twice;
+
+  @override
+  Widget build(BuildContext context) => MaterialApp(
+    home: ValueListenableBuilder(
+      valueListenable: twice,
+      builder: (context, twice, _) => HeroHereSwitcher(
+        child: Stack(
+          children: [
+            const SizedBox.expand(),
+            if (twice)
+              for (final slot in [0, 2])
+                Positioned.fromRect(
+                  rect: _slotRects[slot],
+                  child: HeroHere(
+                    key: ValueKey(slot),
+                    tag: 'hero',
+                    flightShuttleBuilder: (_, _, _, _) =>
+                        const SizedBox.expand(key: _shuttleKey),
+                    child: ColoredBox(
+                      key: ValueKey('box$slot'),
+                      color: const Color(0xFF2196F3),
+                    ),
+                  ),
+                ),
+          ],
+        ),
+      ),
     ),
   );
 }

@@ -27,7 +27,7 @@ Add the following line to your `pubspec.yaml` file:
 
 ```yaml
 dependencies:
-  hero_here: ^1.2.0
+  hero_here: ^1.2.1
 ```
 
 Then, run:
@@ -182,6 +182,8 @@ More advanced examples can be found in the `example` folder or by following [thi
 ## Performance
 
 Every rebuild of `HeroHereSwitcher` runs a switch: it takes a snapshot of the current child and lays the new child out offstage for a frame to find its heroes. Keep frequently changing state, such as timers, streams or text being typed, below the switcher, so it rebuilds only when heroes may move.
+
+The same goes for sizes. A `LayoutBuilder` or a `MediaQuery.sizeOf` read above the switcher rebuilds it on each frame of a window resize, and each of those switches shows a snapshot of the old layout for a frame. Read sizes below the switcher instead, such as with a `LayoutBuilder` in its child.
 
 ## Support and Contact
 

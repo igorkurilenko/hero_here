@@ -93,6 +93,12 @@ typedef RectTweenFactory = HeroHereFlightRectTweenFactory;
 /// and nothing flies. Keep frequently changing state, such as timers, streams
 /// or text being typed, below the switcher, so it rebuilds only when heroes
 /// may move.
+///
+/// The same goes for sizes. A [LayoutBuilder] or a `MediaQuery.sizeOf` read
+/// above the switcher rebuilds it on each frame of a window resize, and each
+/// of those switches shows a snapshot of the old layout for a frame. Read
+/// sizes below the switcher instead, such as with a [LayoutBuilder] in its
+/// child.
 class HeroHereSwitcher extends StatefulWidget {
   final Widget? child;
   final HeroHereSwitcherLayoutBuilder layoutBuilder;
@@ -390,7 +396,8 @@ class _SwitchPlan {
   /// Of the next heroes that share a tag, the last one is where its tag
   /// flies to. It flies from where its flight under way is, or else from the
   /// current hero with its tag that shows, preferring one of the last
-  /// switch.
+  /// switch. With neither, nothing flies: the last one shows at once, as on
+  /// mount.
   factory _SwitchPlan({
     required Set<_Hero> curHeroes,
     required Set<_Hero> nextHeroes,
@@ -424,7 +431,7 @@ class _SwitchPlan {
                 .where((x) => x.tag == manifest.tag)
                 .where((x) => x.onstage)
                 .firstOrNull ??
-            manifest.from;
+            manifest.to;
       }
     }
 

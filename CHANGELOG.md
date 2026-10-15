@@ -1,3 +1,17 @@
+## 1.2.1
+
+### Fixes
+
+* Fly nothing when a switch brings two heroes with a tag that no hero showed before, instead of flying from the earlier of them to the later one. As on mount, the later one shows at once and the earlier one hides.
+
+### Docs
+
+* Say in `HeroHereSwitcher`'s docs and the README to read sizes below the switcher, since a `LayoutBuilder` or a `MediaQuery.sizeOf` read above it runs a switch on each frame of a window resize.
+
+### Example
+
+* Run no switch on each window resize in the show details example once its details have opened, by reading the page's size rather than the window's.
+
 ## 1.2.0
 
 ### Deprecations
