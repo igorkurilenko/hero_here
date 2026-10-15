@@ -195,6 +195,30 @@ void main() {
     expect(liveImages(), 0);
   });
 
+  for (final (child, sameChild) in [
+    ('a new child', false),
+    ('the same child', true),
+  ]) {
+    testWidgets('runs a switch on every rebuild, with $child', (tester) async {
+      final rebuilds = ValueNotifier(0);
+      addTearDown(rebuilds.dispose);
+
+      await tester.pumpWidget(
+        _RebuildSwitcher(rebuilds: rebuilds, sameChild: sameChild),
+      );
+      await tester.pumpAndSettle();
+
+      // Each switch takes one snapshot of the child.
+      final snapshots = _countNewImages();
+      for (var rebuild = 0; rebuild < 3; rebuild++) {
+        rebuilds.value++;
+        await tester.pumpAndSettle();
+      }
+
+      expect(snapshots(), 3);
+    });
+  }
+
   testWidgets('stops its flights when unmounted mid-flight', (tester) async {
     final slot = ValueNotifier(0);
     addTearDown(slot.dispose);
@@ -411,6 +435,19 @@ void main() {
   }
 }
 
+/// Counts the `ui.Image`s created from now until the end of the test, leaving
+/// out clones of them.
+int Function() _countNewImages() {
+  final images = <ui.Image>[];
+  final onCreate = ui.Image.onCreate;
+  ui.Image.onCreate = (image) {
+    if (!images.any(image.isCloneOf)) images.add(image);
+    onCreate?.call(image);
+  };
+  addTearDown(() => ui.Image.onCreate = onCreate);
+  return () => images.length;
+}
+
 /// Counts the `ui.Image` handles created and not yet disposed from now until
 /// the end of the test.
 int Function() _trackLiveImages() {
@@ -443,6 +480,27 @@ const _slotRects = [
   Rect.fromLTWH(200, 100, 80, 80),
   Rect.fromLTWH(400, 100, 60, 60),
 ];
+
+/// Rebuilds a switcher on each change of [rebuilds], with a new child each
+/// time, or with the same `const` child when [sameChild].
+class _RebuildSwitcher extends StatelessWidget {
+  const _RebuildSwitcher({required this.rebuilds, required this.sameChild});
+
+  final ValueNotifier<int> rebuilds;
+  final bool sameChild;
+
+  @override
+  Widget build(BuildContext context) => MaterialApp(
+    home: ValueListenableBuilder(
+      valueListenable: rebuilds,
+      builder: (context, rebuild, _) => HeroHereSwitcher(
+        child: sameChild
+            ? const SizedBox.square(dimension: 40)
+            : SizedBox.square(key: ValueKey(rebuild), dimension: 40),
+      ),
+    ),
+  );
+}
 
 /// A [_SlotSwitcher] slot that shows no hero.
 const _noSlot = -1;
