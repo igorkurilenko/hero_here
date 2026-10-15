@@ -14,34 +14,56 @@
 
 import 'package:flutter/material.dart';
 
-class MessageWidget extends StatelessWidget {
-  final TextEditingController controller;
+class MessageWidget extends StatefulWidget {
+  final String? text;
   final FocusNode? focusNode;
   final ValueChanged<String>? onSubmitted;
   final InputDecoration? decoration;
 
   bool get readOnly => onSubmitted == null;
 
-  MessageWidget.input({
+  const MessageWidget.input({
     super.key,
     required ValueChanged<String> this.onSubmitted,
-    TextEditingController? controller,
     this.focusNode,
     this.decoration,
-  }) : controller = controller ?? TextEditingController();
+  }) : text = null;
 
-  MessageWidget.readOnly({super.key, required String text, this.decoration})
-    : controller = TextEditingController(text: text),
-      focusNode = null,
-      onSubmitted = null;
+  const MessageWidget.readOnly({
+    super.key,
+    required String this.text,
+    this.decoration,
+  }) : focusNode = null,
+       onSubmitted = null;
+
+  @override
+  State<MessageWidget> createState() => _MessageWidgetState();
+}
+
+class _MessageWidgetState extends State<MessageWidget> {
+  // Owned by the state, so a rebuild keeps what is typed.
+  late final _controller = TextEditingController(text: widget.text);
+
+  @override
+  void didUpdateWidget(MessageWidget oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    final text = widget.text;
+    if (text != null && text != _controller.text) _controller.text = text;
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) => TextField(
-    readOnly: onSubmitted == null,
-    controller: controller,
-    focusNode: focusNode,
-    onSubmitted: onSubmitted,
-    decoration: decoration,
+    readOnly: widget.readOnly,
+    controller: _controller,
+    focusNode: widget.focusNode,
+    onSubmitted: widget.onSubmitted,
+    decoration: widget.decoration,
     textInputAction: TextInputAction.done,
   );
 }
