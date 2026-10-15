@@ -41,6 +41,7 @@ class HeroHereExample extends StatefulWidget {
 
 class _HeroHereExampleState extends State<HeroHereExample> {
   HeroType _curHeroType = HeroType.red;
+  HeroHereFlightRedirect _redirect = HeroHereFlightRedirect.chain;
   bool _paused = true;
   Timer? _timer;
 
@@ -85,6 +86,7 @@ class _HeroHereExampleState extends State<HeroHereExample> {
                       tag: kHeroTag,
                       flightAnimationDuration: kHeroFlightAnimationDuration,
                       flightShuttleBuilder: _flightShuttleBuilder,
+                      flightRedirect: _redirect,
                       child: Container(color: Colors.red),
                     )
                   : null,
@@ -98,6 +100,7 @@ class _HeroHereExampleState extends State<HeroHereExample> {
                       tag: kHeroTag,
                       flightAnimationDuration: kHeroFlightAnimationDuration,
                       flightShuttleBuilder: _flightShuttleBuilder,
+                      flightRedirect: _redirect,
                       child: Container(color: Colors.green),
                     )
                   : null,
@@ -111,6 +114,7 @@ class _HeroHereExampleState extends State<HeroHereExample> {
                       tag: kHeroTag,
                       flightAnimationDuration: kHeroFlightAnimationDuration,
                       flightShuttleBuilder: _flightShuttleBuilder,
+                      flightRedirect: _redirect,
                       child: Container(color: Colors.blue),
                     )
                   : null,
@@ -129,6 +133,26 @@ class _HeroHereExampleState extends State<HeroHereExample> {
               IconButton(
                 onPressed: () => paused = !paused,
                 icon: Icon(_paused ? Icons.play_arrow : Icons.pause),
+              ),
+            ],
+          ),
+          Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              // What a flight does when the hero changes mid-flight: land on
+              // each hero in turn, or divert straight to the new one.
+              IconButton(
+                tooltip: 'Redirects: ${_redirect.name}',
+                onPressed: () => setState(
+                  () => _redirect = _redirect == HeroHereFlightRedirect.chain
+                      ? HeroHereFlightRedirect.divert
+                      : HeroHereFlightRedirect.chain,
+                ),
+                icon: Icon(
+                  _redirect == HeroHereFlightRedirect.chain
+                      ? Icons.linear_scale
+                      : Icons.call_made,
+                ),
               ),
             ],
           ),
