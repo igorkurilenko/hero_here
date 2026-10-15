@@ -1,6 +1,7 @@
 import 'dart:ui' as ui;
 
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:hero_here/hero_here.dart';
 
@@ -123,6 +124,36 @@ void main() {
 
     expect(liveImages(), 0);
   });
+
+  testWidgets('lays out nothing outside the shuttle while it changes size', (
+    tester,
+  ) async {
+    var skyLayouts = 0;
+    final slot = ValueNotifier(0);
+    addTearDown(slot.dispose);
+
+    await tester.pumpWidget(
+      _SlotSwitcher(
+        slot: slot,
+        layoutBuilder: (child, sky) => Stack(
+          children: [
+            child,
+            _LayoutCounter(onLayout: () => skyLayouts++, child: sky),
+          ],
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    slot.value = 1; // The shuttle grows from 40 to 80 pixels.
+    await _pumpSwitch(tester);
+    skyLayouts = 0;
+    for (var frame = 0; frame < 10; frame++) {
+      await tester.pump(const Duration(milliseconds: 16));
+    }
+
+    expect(skyLayouts, 0);
+  });
 }
 
 /// Counts the `ui.Image` handles created and not yet disposed from now until
@@ -160,15 +191,20 @@ const _slotRects = [
 
 /// Shows one hero in the slot of [_slotRects] that [slot] picks.
 class _SlotSwitcher extends StatelessWidget {
-  const _SlotSwitcher({required this.slot});
+  const _SlotSwitcher({
+    required this.slot,
+    this.layoutBuilder = HeroHereSwitcher.defaultLayoutBuilder,
+  });
 
   final ValueNotifier<int> slot;
+  final HeroHereSwitcherLayoutBuilder layoutBuilder;
 
   @override
   Widget build(BuildContext context) => MaterialApp(
     home: ValueListenableBuilder(
       valueListenable: slot,
       builder: (context, slot, _) => HeroHereSwitcher(
+        layoutBuilder: layoutBuilder,
         child: Stack(
           children: [
             Positioned.fromRect(
@@ -238,3 +274,26 @@ Matcher _rectMoreOrLessEquals(Rect expected) => predicate<Rect>(
       (rect.height - expected.height).abs() < 0.01,
   'a rect close to $expected',
 );
+
+/// Calls [onLayout] each time it lays out its child.
+class _LayoutCounter extends SingleChildRenderObjectWidget {
+  const _LayoutCounter({required this.onLayout, super.child});
+
+  final VoidCallback onLayout;
+
+  @override
+  RenderObject createRenderObject(BuildContext context) =>
+      _RenderLayoutCounter(onLayout);
+}
+
+class _RenderLayoutCounter extends RenderProxyBox {
+  _RenderLayoutCounter(this.onLayout);
+
+  final VoidCallback onLayout;
+
+  @override
+  void performLayout() {
+    onLayout();
+    super.performLayout();
+  }
+}
