@@ -64,10 +64,12 @@ class _ShowDetailsExampleState extends State<ShowDetailsExample> {
     forceMaterialTransparency: true,
     leading: AnimatedSwitcher(
       duration: HeroHere.defaultFlightAnimationDuration,
+      // Distinct keys let one child fade out while the other fades in. Keys
+      // that stay the same across builds keep a rebuild from fading at all.
       child: detailsVisible
           ? Material(
+              key: const ValueKey('back'),
               color: Colors.transparent,
-              key: UniqueKey(),
               child: ValueListenableBuilder(
                 valueListenable: _isHeroSwitching,
                 builder: (context, isHeroSwitching, _) => IconButton(
@@ -76,7 +78,7 @@ class _ShowDetailsExampleState extends State<ShowDetailsExample> {
                 ),
               ),
             )
-          : SizedBox(key: UniqueKey()),
+          : const SizedBox(key: ValueKey('no back')),
     ),
   );
 
