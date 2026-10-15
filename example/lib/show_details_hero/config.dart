@@ -12,6 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+import 'dart:math';
+
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 
@@ -20,6 +22,13 @@ import 'eight_thousander.dart';
 const kGoldenRatio = 1.618;
 
 const kGridViewConstraints = BoxConstraints(maxWidth: 560);
+
+/// Padding that centers a column no wider than [kGridViewConstraints] in a
+/// scroll view [width] wide. The scroll view can then span the window, which
+/// puts its scrollbar at the window's edge.
+EdgeInsets centerColumnPadding(double width) => EdgeInsets.symmetric(
+  horizontal: max(0, (width - kGridViewConstraints.maxWidth) / 2),
+);
 const kGridViewScaleWhenDetailsOpen = 1.2;
 const kGridViewOpacityOnOpen = 0.1;
 const kGridViewDelegate = SliverGridDelegateWithFixedCrossAxisCount(

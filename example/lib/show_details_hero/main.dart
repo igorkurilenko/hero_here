@@ -40,9 +40,17 @@ class _ShowDetailsExampleState extends State<ShowDetailsExample> {
   int? _showDetailsIndex;
   Velocity? _dragEndVelocityOnClose;
   Offset _gridViewOffset = Offset.zero;
-  bool _isHeroSwitching = false;
+  // A notifier rather than state, so changing it doesn't rebuild the switcher,
+  // which would run a switch.
+  final _isHeroSwitching = ValueNotifier(false);
 
   bool get detailsVisible => _showDetailsIndex != null;
+
+  @override
+  void dispose() {
+    _isHeroSwitching.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) => Scaffold(
@@ -56,62 +64,65 @@ class _ShowDetailsExampleState extends State<ShowDetailsExample> {
     forceMaterialTransparency: true,
     leading: AnimatedSwitcher(
       duration: HeroHere.defaultFlightAnimationDuration,
+      // Distinct keys let one child fade out while the other fades in. Keys
+      // that stay the same across builds keep a rebuild from fading at all.
       child: detailsVisible
           ? Material(
+              key: const ValueKey('back'),
               color: Colors.transparent,
-              key: UniqueKey(),
-              child: IconButton(
-                icon: const Icon(Icons.chevron_left),
-                onPressed: _isHeroSwitching ? null : _closeDetails,
+              child: ValueListenableBuilder(
+                valueListenable: _isHeroSwitching,
+                builder: (context, isHeroSwitching, _) => IconButton(
+                  icon: const Icon(Icons.chevron_left),
+                  onPressed: isHeroSwitching ? null : _closeDetails,
+                ),
               ),
             )
-          : SizedBox(key: UniqueKey()),
+          : const SizedBox(key: ValueKey('no back')),
     ),
   );
 
   Widget _buildBody() => HeroHereSwitcher(
-    child: Row(
-      mainAxisAlignment: MainAxisAlignment.center,
+    child: Stack(
+      alignment: Alignment.topCenter,
       children: [
-        Flexible(
-          child: ConstrainedBox(
-            constraints: kGridViewConstraints,
-            child: Stack(
-              alignment: Alignment.topCenter,
-              children: [
-                AnimatedSlide(
-                  offset: _gridViewOffset,
-                  duration: HeroHere.defaultFlightAnimationDuration,
-                  curve: HeroHere.defaultFlightAnimationCurve,
-                  child: AnimatedScale(
-                    scale: _gridViewScale,
-                    duration: HeroHere.defaultFlightAnimationDuration,
-                    curve: HeroHere.defaultFlightAnimationCurve,
-                    child: AnimatedOpacity(
-                      opacity: _gridViewOpacity,
-                      duration: HeroHere.defaultFlightAnimationDuration,
-                      curve: HeroHere.defaultFlightAnimationCurve,
-                      child: IgnorePointer(
-                        ignoring: _isHeroSwitching,
-                        child: ScrollConfiguration(
-                          behavior: kScrollBehavior,
-                          child: GridView.builder(
-                            clipBehavior: Clip.none,
-                            padding: const EdgeInsets.all(8),
-                            gridDelegate: kGridViewDelegate,
-                            itemCount: kEightThousanders.length,
-                            itemBuilder: _buildGridItem,
-                          ),
-                        ),
-                      ),
+        AnimatedSlide(
+          offset: _gridViewOffset,
+          duration: HeroHere.defaultFlightAnimationDuration,
+          curve: HeroHere.defaultFlightAnimationCurve,
+          child: AnimatedScale(
+            scale: _gridViewScale,
+            duration: HeroHere.defaultFlightAnimationDuration,
+            curve: HeroHere.defaultFlightAnimationCurve,
+            child: AnimatedOpacity(
+              opacity: _gridViewOpacity,
+              duration: HeroHere.defaultFlightAnimationDuration,
+              curve: HeroHere.defaultFlightAnimationCurve,
+              child: ValueListenableBuilder(
+                valueListenable: _isHeroSwitching,
+                builder: (context, isHeroSwitching, child) =>
+                    IgnorePointer(ignoring: isHeroSwitching, child: child),
+                child: ScrollConfiguration(
+                  behavior: kScrollBehavior,
+                  // Measures the width below the switcher, so resizing the
+                  // window doesn't rebuild the page and run a switch.
+                  child: LayoutBuilder(
+                    builder: (context, constraints) => GridView.builder(
+                      clipBehavior: Clip.none,
+                      padding:
+                          centerColumnPadding(constraints.maxWidth) +
+                          const EdgeInsets.all(8),
+                      gridDelegate: kGridViewDelegate,
+                      itemCount: kEightThousanders.length,
+                      itemBuilder: _buildGridItem,
                     ),
                   ),
                 ),
-                if (detailsVisible) _buildDetails(_showDetailsIndex!),
-              ],
+              ),
             ),
           ),
         ),
+        if (detailsVisible) _buildDetails(_showDetailsIndex!),
       ],
     ),
   );
@@ -129,9 +140,7 @@ class _ShowDetailsExampleState extends State<ShowDetailsExample> {
             : controller;
         animation.addStatusListener((status) {
           if (status == AnimationStatus.completed) {
-            WidgetsBinding.instance.addPostFrameCallback(
-              (_) => setState(() => _isHeroSwitching = false),
-            );
+            _isHeroSwitching.value = false;
           }
         });
         return animation;
@@ -167,14 +176,14 @@ class _ShowDetailsExampleState extends State<ShowDetailsExample> {
     _gridViewOffset = _computeGridViewSlideOffset(index, itemCenter);
     _showDetailsIndex = index;
     _dragEndVelocityOnClose = null;
-    _isHeroSwitching = true;
+    _isHeroSwitching.value = true;
   });
 
   void _closeDetails([Velocity? dragEndVelocity]) => setState(() {
     _gridViewOffset = Offset.zero;
     _dragEndVelocityOnClose = dragEndVelocity;
     _showDetailsIndex = null;
-    _isHeroSwitching = true;
+    _isHeroSwitching.value = true;
   });
 
   double get _gridViewScale =>

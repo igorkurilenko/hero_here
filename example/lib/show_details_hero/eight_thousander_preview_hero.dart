@@ -43,8 +43,6 @@ class EightThousanderPreviewHero extends StatefulWidget {
 
 class _EightThousanderPreviewHeroState
     extends State<EightThousanderPreviewHero> {
-  Offset? _imagePosition;
-
   String get tag => widget.tag;
 
   TextStyle get titleStyle =>
@@ -73,7 +71,6 @@ class _EightThousanderPreviewHeroState
         widget.imageHeroFlightAnimationControllerFactory,
     flightAnimationFactory: widget.imageHeroFlightAnimationFactory,
     forwardFlightAnimation: widget.forwardImageHeroFlightAnimation,
-    rectTweenFactory: _createImageHeroRectTween,
     flightShuttleBuilder: _buildImageHeroFlightShuttle,
     child: ClipRRect(
       clipBehavior: Clip.antiAlias,
@@ -130,9 +127,6 @@ class _EightThousanderPreviewHeroState
     );
   }
 
-  RectTween _createImageHeroRectTween(Rect? begin, Rect? end) =>
-      RectTween(begin: begin, end: _imagePosition! & end!.size);
-
   RectTween _createTitleOrDescriptionHeroRectTween(Rect? begin, Rect? end) =>
       RectTween(begin: begin, end: begin);
 
@@ -146,9 +140,5 @@ class _EightThousanderPreviewHeroState
     child: fromHero.child,
   );
 
-  void _onTap() {
-    final renderBox = context.findRenderObject() as RenderBox;
-    _imagePosition = renderBox.localToGlobal(Offset.zero);
-    widget.onTap?.call(context);
-  }
+  void _onTap() => widget.onTap?.call(context);
 }
