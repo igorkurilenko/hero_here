@@ -80,7 +80,7 @@ class _HeroHereSwitcherState extends State<HeroHereSwitcher>
     with TickerProviderStateMixin {
   final _childKey = GlobalKey();
   final flights = _FlightRegistry();
-  late _SwitchingState _switchingState = _Mount(this);
+  late _SwitchingState _switchingState;
   Widget? _child;
   StateSetter setChildState = (_) {};
   RawImage? _childScreenshot;
@@ -110,8 +110,22 @@ class _HeroHereSwitcherState extends State<HeroHereSwitcher>
         : null;
   }
 
+  /// Moves to [state], the one way the switcher changes state.
+  void enter(_SwitchingState state) {
+    _switchingState = state;
+    state.enter();
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    enter(_Mount(this));
+  }
+
   @override
   Widget build(BuildContext context) {
+    _switchingState.onBuild();
+
     final child = StatefulBuilder(
       builder: (context, setState) {
         setChildState = setState;
@@ -126,19 +140,15 @@ class _HeroHereSwitcherState extends State<HeroHereSwitcher>
     return widget.layoutBuilder(child, sky);
   }
 
-  Widget _buildChild() {
-    _switchingState.execute();
-
-    return Stack(
-      children: [
-        Offstage(
-          offstage: _childOffstage,
-          child: RepaintBoundary(key: _childKey, child: _child),
-        ),
-        ?_childScreenshot,
-      ],
-    );
-  }
+  Widget _buildChild() => Stack(
+    children: [
+      Offstage(
+        offstage: _childOffstage,
+        child: RepaintBoundary(key: _childKey, child: _child),
+      ),
+      ?_childScreenshot,
+    ],
+  );
 
   // Flights repaint on every frame. The boundary keeps those repaints off the
   // rest of the screen, whatever the layout builder puts around the sky.
@@ -168,19 +178,34 @@ class _HeroHereSwitcherState extends State<HeroHereSwitcher>
   }
 }
 
+/// A phase of the switcher's life. The switcher [enter]s a state once, then
+/// tells it about each of its builds; a state moves the switcher on by
+/// entering the next one. Every build of the switcher runs a switch: from
+/// [_Idle] it enters [_Prepare], and a build during a switch is taken up by
+/// that switch, or by the next one if its child arrived too late.
 abstract class _SwitchingState {
   final _Switcher switcher;
   final Set<_Hero>? prevSwitchHeroes;
 
   _SwitchingState(this.switcher, {this.prevSwitchHeroes});
 
+  /// Called once, when the switcher enters this state.
+  void enter() {}
+
+  /// Called on each build of the switcher, which may bring a new child.
+  void onBuild() {}
+
+  /// Runs [work] after this frame, if the switcher is still mounted by then.
+  void afterFrame(VoidCallback work) =>
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (switcher.mounted) work();
+      });
+
   void notifyWillSwitch(Iterable<_Hero> heroes) {
     for (final hero in heroes) {
       hero.willSwitch();
     }
   }
-
-  void execute();
 }
 
 /// Shows the first child as it is, with no flights. Of the heroes that share
@@ -194,12 +219,12 @@ class _Mount extends _SwitchingState {
   _Mount(super.switcher);
 
   @override
-  void execute() {
-    switcher._child = switcher.widget.child;
-    WidgetsBinding.instance.addPostFrameCallback(_mount);
-  }
+  void enter() => afterFrame(_mount);
 
-  void _mount(_) {
+  @override
+  void onBuild() => switcher._child = switcher.widget.child;
+
+  void _mount() {
     final heroes = switcher.findHeroes();
 
     notifyWillSwitch(heroes);
@@ -208,7 +233,7 @@ class _Mount extends _SwitchingState {
       hero.offstage = true;
     }
 
-    switcher._switchingState = _Idle(switcher, prevSwitchHeroes: heroes);
+    switcher.enter(_Idle(switcher, prevSwitchHeroes: heroes));
   }
 
   Set<_Hero> _findHiddenHeroes(Set<_Hero> heroes) {
@@ -221,26 +246,19 @@ class _Idle extends _SwitchingState {
   _Idle(super.switcher, {super.prevSwitchHeroes});
 
   @override
-  void execute() {
-    switcher._switchingState = _Prepare(
-      switcher,
-      prevSwitchHeroes: prevSwitchHeroes,
-    );
-    // A child that arrived during the last switch needs a switch of its own.
-    if (!identical(switcher._child, switcher.widget.child)) {
-      switcher._switchingState.execute();
-    }
-  }
+  void onBuild() =>
+      switcher.enter(_Prepare(switcher, prevSwitchHeroes: prevSwitchHeroes));
 }
 
+/// Snapshots the current child and lays the new one out offstage. Builds
+/// while it waits need nothing: it takes the newest child.
 class _Prepare extends _SwitchingState {
   _Prepare(super.switcher, {super.prevSwitchHeroes});
 
   @override
-  void execute() =>
-      WidgetsBinding.instance.addPostFrameCallback(_prepareSwitch);
+  void enter() => afterFrame(_prepareSwitch);
 
-  void _prepareSwitch(_) {
+  void _prepareSwitch() {
     final curHeroes = switcher.findHeroes();
 
     notifyWillSwitch(curHeroes);
@@ -251,24 +269,28 @@ class _Prepare extends _SwitchingState {
       );
       switcher._child = switcher.widget.child;
       switcher._childOffstage = true;
-      switcher._switchingState = _Execute(
-        switcher,
-        prevSwitchHeroes: prevSwitchHeroes,
-        curHeroes: curHeroes,
+      switcher.enter(
+        _Execute(
+          switcher,
+          prevSwitchHeroes: prevSwitchHeroes,
+          curHeroes: curHeroes,
+        ),
       );
     });
   }
 }
 
+/// Flies the heroes and shows the new child. A child that arrives while it
+/// waits gets a switch of its own after this one.
 class _Execute extends _SwitchingState {
   final Set<_Hero> curHeroes;
 
   _Execute(super.switcher, {super.prevSwitchHeroes, required this.curHeroes});
 
   @override
-  void execute() => WidgetsBinding.instance.addPostFrameCallback(_switch);
+  void enter() => afterFrame(_switch);
 
-  void _switch(_) {
+  void _switch() {
     final nextHeroes = switcher.findHeroes();
     final plan = _SwitchPlan(
       curHeroes: curHeroes,
@@ -306,7 +328,11 @@ class _Execute extends _SwitchingState {
       switcher._childScreenshot?.image?.dispose();
       switcher._childScreenshot = null;
       switcher._childOffstage = false;
-      switcher._switchingState = _Idle(switcher, prevSwitchHeroes: nextHeroes);
+      switcher.enter(
+        identical(switcher._child, switcher.widget.child)
+            ? _Idle(switcher, prevSwitchHeroes: nextHeroes)
+            : _Prepare(switcher, prevSwitchHeroes: nextHeroes),
+      );
     });
   }
 }
