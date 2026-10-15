@@ -379,6 +379,28 @@ void main() {
     expect(find.byKey(const ValueKey('box2')), findsOneWidget);
   });
 
+  testWidgets('flies nothing between new heroes that bring a new tag', (
+    tester,
+  ) async {
+    final twice = ValueNotifier(false);
+    addTearDown(twice.dispose);
+
+    await tester.pumpWidget(_NewTagSwitcher(twice: twice));
+    await tester.pumpAndSettle();
+
+    twice.value = true;
+    await _pumpSwitch(tester);
+
+    // As on mount, the last of them shows at once and the earlier one hides.
+    final shuttle = find.byKey(_shuttleKey);
+    for (var frame = 0; frame < 30; frame++) {
+      expect(shuttle, findsNothing);
+      expect(find.byKey(const ValueKey('box0')), findsNothing);
+      expect(find.byKey(const ValueKey('box2')), findsOneWidget);
+      await tester.pump(const Duration(milliseconds: 16));
+    }
+  });
+
   testWidgets('shows a hero whose child arrives during a switch', (
     tester,
   ) async {
@@ -1103,6 +1125,43 @@ class _StaySwitcher extends StatelessWidget {
           ),
         );
       },
+    ),
+  );
+}
+
+/// Shows no hero, or, when [twice], heroes with the same tag in the first and
+/// the third slot of [_slotRects].
+class _NewTagSwitcher extends StatelessWidget {
+  const _NewTagSwitcher({required this.twice});
+
+  final ValueNotifier<bool> twice;
+
+  @override
+  Widget build(BuildContext context) => MaterialApp(
+    home: ValueListenableBuilder(
+      valueListenable: twice,
+      builder: (context, twice, _) => HeroHereSwitcher(
+        child: Stack(
+          children: [
+            const SizedBox.expand(),
+            if (twice)
+              for (final slot in [0, 2])
+                Positioned.fromRect(
+                  rect: _slotRects[slot],
+                  child: HeroHere(
+                    key: ValueKey(slot),
+                    tag: 'hero',
+                    flightShuttleBuilder: (_, _, _, _) =>
+                        const SizedBox.expand(key: _shuttleKey),
+                    child: ColoredBox(
+                      key: ValueKey('box$slot'),
+                      color: const Color(0xFF2196F3),
+                    ),
+                  ),
+                ),
+          ],
+        ),
+      ),
     ),
   );
 }

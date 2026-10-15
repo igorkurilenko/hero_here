@@ -396,7 +396,8 @@ class _SwitchPlan {
   /// Of the next heroes that share a tag, the last one is where its tag
   /// flies to. It flies from where its flight under way is, or else from the
   /// current hero with its tag that shows, preferring one of the last
-  /// switch.
+  /// switch. With neither, nothing flies: the last one shows at once, as on
+  /// mount.
   factory _SwitchPlan({
     required Set<_Hero> curHeroes,
     required Set<_Hero> nextHeroes,
@@ -430,7 +431,7 @@ class _SwitchPlan {
                 .where((x) => x.tag == manifest.tag)
                 .where((x) => x.onstage)
                 .firstOrNull ??
-            manifest.from;
+            manifest.to;
       }
     }
 
