@@ -489,6 +489,7 @@ class _FlightWidgetState extends State<_FlightWidget> {
   Rect? fromRect;
   Rect? toRect;
   Rect curRect = Rect.zero;
+  _Hero? _legFromHero;
 
   _Flight get flight => widget.flight;
 
@@ -499,7 +500,17 @@ class _FlightWidgetState extends State<_FlightWidget> {
   @override
   void initState() {
     super.initState();
-    flight.addListener(() => setState(() {}));
+    _legFromHero = fromHero;
+    flight.addListener(
+      () => setState(() {
+        // A new leg starts from the hero the last one landed on, so it
+        // starts where the shuttle is.
+        if (fromHero != _legFromHero) {
+          _legFromHero = fromHero;
+          fromRect = curRect;
+        }
+      }),
+    );
   }
 
   @override

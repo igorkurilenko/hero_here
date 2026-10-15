@@ -1,3 +1,9 @@
+## Unreleased
+
+### Fixes
+
+* Fly a hero on from where its shuttle is when the child changes again mid-flight, instead of jumping back to where the flight started.
+
 ## 1.1.0
 
 ### Fixes

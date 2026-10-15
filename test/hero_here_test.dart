@@ -38,6 +38,87 @@ void main() {
       expect(find.byKey(_shuttleKey), findsNothing);
     });
   }
+
+  testWidgets('flies a redirected hero on from where its shuttle is', (
+    tester,
+  ) async {
+    final slot = ValueNotifier(0);
+    addTearDown(slot.dispose);
+
+    await tester.pumpWidget(_SlotSwitcher(slot: slot));
+    await tester.pumpAndSettle();
+
+    slot.value = 1;
+    await _pumpSwitch(tester);
+    await tester.pump(HeroHere.defaultFlightAnimationDuration ~/ 2);
+
+    // Redirect the flight to the third slot while it is between the first
+    // two.
+    slot.value = 2;
+    await _pumpSwitch(tester);
+
+    // Record the shuttle's left edge on each frame of the rest of the flight.
+    final shuttle = find.byKey(_shuttleKey);
+    final lefts = <double>[];
+    for (var frame = 0; frame < 40; frame++) {
+      if (tester.any(shuttle)) lefts.add(tester.getRect(shuttle).left);
+      await tester.pump(const Duration(milliseconds: 16));
+    }
+
+    // The slots run left to right, so the shuttle only ever moves right: it
+    // lands on the second slot, then flies on from there to the third.
+    for (var i = 1; i < lefts.length; i++) {
+      expect(lefts[i], greaterThanOrEqualTo(lefts[i - 1]), reason: '$lefts');
+    }
+    expect(shuttle, findsNothing);
+    expect(find.byKey(const ValueKey('box2')), findsOneWidget);
+  });
+}
+
+/// Snapshots the old child, lays the new one out offstage, starts the flight.
+Future<void> _pumpSwitch(WidgetTester tester) async {
+  await tester.pump();
+  await tester.pump();
+  await tester.pump();
+}
+
+const _slotRects = [
+  Rect.fromLTWH(0, 100, 40, 40),
+  Rect.fromLTWH(200, 100, 80, 80),
+  Rect.fromLTWH(400, 100, 60, 60),
+];
+
+/// Shows one hero in the slot of [_slotRects] that [slot] picks.
+class _SlotSwitcher extends StatelessWidget {
+  const _SlotSwitcher({required this.slot});
+
+  final ValueNotifier<int> slot;
+
+  @override
+  Widget build(BuildContext context) => MaterialApp(
+    home: ValueListenableBuilder(
+      valueListenable: slot,
+      builder: (context, slot, _) => HeroHereSwitcher(
+        child: Stack(
+          children: [
+            Positioned.fromRect(
+              rect: _slotRects[slot],
+              child: HeroHere(
+                key: ValueKey(slot),
+                tag: 'hero',
+                flightShuttleBuilder: (_, _, _, _) =>
+                    const SizedBox.expand(key: _shuttleKey),
+                child: ColoredBox(
+                  key: ValueKey('box$slot'),
+                  color: const Color(0xFF2196F3),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    ),
+  );
 }
 
 class _OffsetSwitcher extends StatelessWidget {
