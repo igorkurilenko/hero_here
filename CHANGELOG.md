@@ -1,3 +1,9 @@
+## Unreleased
+
+### Deprecations
+
+* Name the flight option types after the package, like `HeroHereFlightShuttleBuilder`: `HeroHereFlightAnimationControllerFactory`, `HeroHereFlightAnimationFactory`, `HeroHereFlightAnimationStarter` and `HeroHereFlightRectTweenFactory`. The old names, `AnimationControllerFactory`, `AnimationFactory`, `StartAnimationCaller` and `RectTweenFactory`, still work but are deprecated, and will be removed in 2.0.0.
+
 ## 1.1.10
 
 ### Fixes

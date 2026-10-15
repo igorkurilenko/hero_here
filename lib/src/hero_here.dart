@@ -25,21 +25,33 @@ typedef HeroHereSwitcherLayoutBuilder = Widget Function(
   Widget sky,
 );
 
-typedef AnimationControllerFactory = AnimationController Function(
+/// Makes the controller that drives a flight, from the flight's duration.
+typedef HeroHereFlightAnimationControllerFactory = AnimationController Function(
   TickerProvider tickerProvider,
   Duration duration,
 );
 
-typedef AnimationFactory<T> = Animation<T> Function(
+/// Makes the animation a flight runs on from its controller, such as a
+/// [CurvedAnimation].
+typedef HeroHereFlightAnimationFactory = Animation<double> Function(
   AnimationController controller,
 );
 
-typedef StartAnimationCaller = TickerFuture Function(
+/// Starts a flight's controller forward or in reverse, [from] a value if
+/// given, and returns its ticker's future.
+typedef HeroHereFlightAnimationStarter = TickerFuture Function(
   AnimationController controller, {
   double? from,
 });
 
-typedef RectTweenFactory = RectTween Function(Rect? begin, Rect? end);
+/// Makes the tween of the rect a flight's shuttle takes, from where its leg
+/// [begin]s to where the hero it lands on is, its [end]. It's called on every
+/// frame of the flight with where that hero is on that frame, so the shuttle
+/// follows the hero when it moves.
+typedef HeroHereFlightRectTweenFactory = RectTween Function(
+  Rect? begin,
+  Rect? end,
+);
 
 typedef HeroHereFlightShuttleBuilder = Widget Function(
   BuildContext flightContext,
@@ -47,6 +59,29 @@ typedef HeroHereFlightShuttleBuilder = Widget Function(
   HeroHere fromHero,
   HeroHere toHero,
 );
+
+@Deprecated(
+  'Use HeroHereFlightAnimationControllerFactory. '
+  'This name will be removed in 2.0.0.',
+)
+typedef AnimationControllerFactory = HeroHereFlightAnimationControllerFactory;
+
+@Deprecated(
+  'Use HeroHereFlightAnimationFactory. This name will be removed in 2.0.0.',
+)
+typedef AnimationFactory<T> = Animation<T> Function(
+  AnimationController controller,
+);
+
+@Deprecated(
+  'Use HeroHereFlightAnimationStarter. This name will be removed in 2.0.0.',
+)
+typedef StartAnimationCaller = HeroHereFlightAnimationStarter;
+
+@Deprecated(
+  'Use HeroHereFlightRectTweenFactory. This name will be removed in 2.0.0.',
+)
+typedef RectTweenFactory = HeroHereFlightRectTweenFactory;
 
 /// Flies [HeroHere] widgets between their places in [child] when [child]
 /// changes.
@@ -419,12 +454,13 @@ class HeroHere extends StatefulWidget {
   final Object tag;
   final Widget child;
   final Duration? flightAnimationDuration;
-  final AnimationControllerFactory? flightAnimationControllerFactory;
-  final AnimationFactory<double>? flightAnimationFactory;
-  final StartAnimationCaller? forwardFlightAnimation;
-  final StartAnimationCaller? reverseFlightAnimation;
+  final HeroHereFlightAnimationControllerFactory?
+  flightAnimationControllerFactory;
+  final HeroHereFlightAnimationFactory? flightAnimationFactory;
+  final HeroHereFlightAnimationStarter? forwardFlightAnimation;
+  final HeroHereFlightAnimationStarter? reverseFlightAnimation;
   final HeroHereFlightShuttleBuilder? flightShuttleBuilder;
-  final RectTweenFactory? rectTweenFactory;
+  final HeroHereFlightRectTweenFactory? rectTweenFactory;
   final Object? payload;
 
   const HeroHere({
@@ -952,12 +988,12 @@ class _FlightRegistry extends ChangeNotifier {
 /// default.
 class _FlightStyle {
   final Duration duration;
-  final AnimationControllerFactory controllerFactory;
-  final AnimationFactory<double> animationFactory;
-  final StartAnimationCaller forwardAnimation;
-  final StartAnimationCaller reverseAnimation;
+  final HeroHereFlightAnimationControllerFactory controllerFactory;
+  final HeroHereFlightAnimationFactory animationFactory;
+  final HeroHereFlightAnimationStarter forwardAnimation;
+  final HeroHereFlightAnimationStarter reverseAnimation;
   final HeroHereFlightShuttleBuilder shuttleBuilder;
-  final RectTweenFactory rectTweenFactory;
+  final HeroHereFlightRectTweenFactory rectTweenFactory;
 
   const _FlightStyle._({
     required this.duration,
