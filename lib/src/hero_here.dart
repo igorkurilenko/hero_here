@@ -737,48 +737,20 @@ class _RenderGlobalRect extends RenderProxyBox {
 class _Flight extends ChangeNotifier {
   final _Switcher switcher;
   _FlightManifest _manifest;
+  final _FlightStyle _style;
   late final AnimationController _controller;
   late final Animation<double> animation;
-  final RectTweenFactory _rectTweenFactory;
-  final HeroHereFlightShuttleBuilder _shuttleBuilder;
-  final StartAnimationCaller _forwardAnimation;
-  final StartAnimationCaller _reverseAnimation;
   _Hero? _nextHero;
   bool _reversed = false;
 
   _Flight({required this.switcher, required _FlightManifest manifest})
     : _manifest = manifest,
-      _rectTweenFactory =
-          manifest.to.widget.rectTweenFactory ??
-          manifest.from.widget.rectTweenFactory ??
-          HeroHere.defaultFlightRectTweenFactory,
-      _shuttleBuilder =
-          manifest.to.widget.flightShuttleBuilder ??
-          manifest.from.widget.flightShuttleBuilder ??
-          HeroHere.defaultFlightShuttleBuilder,
-      _forwardAnimation =
-          manifest.to.widget.forwardFlightAnimation ??
-          manifest.from.widget.forwardFlightAnimation ??
-          HeroHere.defaultForwardFlightAnimation,
-      _reverseAnimation =
-          manifest.to.widget.reverseFlightAnimation ??
-          manifest.from.widget.reverseFlightAnimation ??
-          HeroHere.defaultReverseFlightAnimation {
-    final animationDuration =
-        _manifest.to.widget.flightAnimationDuration ??
-        _manifest.from.widget.flightAnimationDuration ??
-        HeroHere.defaultFlightAnimationDuration;
-    final controllerFactory =
-        _manifest.to.widget.flightAnimationControllerFactory ??
-        _manifest.from.widget.flightAnimationControllerFactory ??
-        HeroHere.defaultFlightAnimationControllerFactory;
-    final animationFactory =
-        _manifest.to.widget.flightAnimationFactory ??
-        _manifest.from.widget.flightAnimationFactory ??
-        HeroHere.defaultFlightAnimationFactory;
-
-    _controller = controllerFactory(switcher, animationDuration);
-    animation = animationFactory(_controller);
+      _style = _FlightStyle.of(
+        from: manifest.from.widget,
+        to: manifest.to.widget,
+      ) {
+    _controller = _style.controllerFactory(switcher, _style.duration);
+    animation = _style.animationFactory(_controller);
   }
 
   Object get tag => manifest.tag;
@@ -823,7 +795,7 @@ class _Flight extends ChangeNotifier {
     switcher.setSkyState(() => switcher.removeFlight(this));
   }
 
-  Widget buildShuttle(BuildContext context) => _shuttleBuilder(
+  Widget buildShuttle(BuildContext context) => _style.shuttleBuilder(
     context,
     animation,
     manifest.from.widget,
@@ -831,7 +803,7 @@ class _Flight extends ChangeNotifier {
   );
 
   Rect? evaluateRect(Rect? begin, Rect? end) =>
-      _rectTweenFactory(begin, end).evaluate(animation);
+      _style.rectTweenFactory(begin, end).evaluate(animation);
 
   @override
   void dispose() {
@@ -864,7 +836,7 @@ class _Flight extends ChangeNotifier {
     _manifest.from.offstage = true;
     _manifest.to.offstage = true;
 
-    _forwardAnimation(_controller, from: from).whenComplete(() {
+    _style.forwardAnimation(_controller, from: from).whenComplete(() {
       if (_controller.status == AnimationStatus.reverse) return;
 
       if (_nextHero != null) {
@@ -886,7 +858,7 @@ class _Flight extends ChangeNotifier {
     _reversed = true;
     _nextHero = null;
 
-    _reverseAnimation(_controller).whenComplete(() {
+    _style.reverseAnimation(_controller).whenComplete(() {
       if (_controller.status == AnimationStatus.forward) return;
 
       if (_nextHero != null) {
@@ -900,6 +872,65 @@ class _Flight extends ChangeNotifier {
     });
 
     return completer.future;
+  }
+}
+
+/// How a flight animates and looks. Each option comes from the hero the
+/// flight lands on, else from the hero it leaves, else from [HeroHere]'s
+/// default.
+class _FlightStyle {
+  final Duration duration;
+  final AnimationControllerFactory controllerFactory;
+  final AnimationFactory<double> animationFactory;
+  final StartAnimationCaller forwardAnimation;
+  final StartAnimationCaller reverseAnimation;
+  final HeroHereFlightShuttleBuilder shuttleBuilder;
+  final RectTweenFactory rectTweenFactory;
+
+  const _FlightStyle._({
+    required this.duration,
+    required this.controllerFactory,
+    required this.animationFactory,
+    required this.forwardAnimation,
+    required this.reverseAnimation,
+    required this.shuttleBuilder,
+    required this.rectTweenFactory,
+  });
+
+  factory _FlightStyle.of({required HeroHere from, required HeroHere to}) {
+    T pick<T>(T? Function(HeroHere hero) option, T fallback) =>
+        option(to) ?? option(from) ?? fallback;
+
+    return _FlightStyle._(
+      duration: pick(
+        (x) => x.flightAnimationDuration,
+        HeroHere.defaultFlightAnimationDuration,
+      ),
+      controllerFactory: pick(
+        (x) => x.flightAnimationControllerFactory,
+        HeroHere.defaultFlightAnimationControllerFactory,
+      ),
+      animationFactory: pick(
+        (x) => x.flightAnimationFactory,
+        HeroHere.defaultFlightAnimationFactory,
+      ),
+      forwardAnimation: pick(
+        (x) => x.forwardFlightAnimation,
+        HeroHere.defaultForwardFlightAnimation,
+      ),
+      reverseAnimation: pick(
+        (x) => x.reverseFlightAnimation,
+        HeroHere.defaultReverseFlightAnimation,
+      ),
+      shuttleBuilder: pick(
+        (x) => x.flightShuttleBuilder,
+        HeroHere.defaultFlightShuttleBuilder,
+      ),
+      rectTweenFactory: pick(
+        (x) => x.rectTweenFactory,
+        HeroHere.defaultFlightRectTweenFactory,
+      ),
+    );
   }
 }
 

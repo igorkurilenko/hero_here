@@ -289,6 +289,38 @@ void main() {
     );
     expect(shuttleRect.width, closeTo(heroRect.width, 2));
   });
+
+  const left = ValueKey('left'), right = ValueKey('right');
+  for (final (leftShuttle, rightShuttle, shuttle, from) in [
+    (left, right, right, 'the hero it lands on'),
+    (left, null, left, 'the hero it leaves when the other has none'),
+    (
+      null,
+      null,
+      const ValueKey('box-true'),
+      'the default when neither has one',
+    ),
+  ]) {
+    testWidgets('takes a flight option from $from', (tester) async {
+      final moved = ValueNotifier(false);
+      addTearDown(moved.dispose);
+
+      await tester.pumpWidget(
+        _ShuttleSwitcher(
+          moved: moved,
+          leftShuttle: leftShuttle,
+          rightShuttle: rightShuttle,
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      moved.value = true;
+      await _pumpSwitch(tester);
+
+      // The default shuttle is the child of the hero the flight lands on.
+      expect(find.byKey(shuttle), findsOneWidget);
+    });
+  }
 }
 
 /// Counts the `ui.Image` handles created and not yet disposed from now until
@@ -404,6 +436,46 @@ class _TwinSwitcher extends StatelessWidget {
     flightShuttleBuilder: (_, _, _, _) =>
         const SizedBox.expand(key: _shuttleKey),
     child: child,
+  );
+}
+
+/// Shows a hero on the left, or, when [moved], on the right. Each hero builds
+/// its flights' shuttle as an empty box with the given key, if one is given.
+class _ShuttleSwitcher extends StatelessWidget {
+  const _ShuttleSwitcher({
+    required this.moved,
+    this.leftShuttle,
+    this.rightShuttle,
+  });
+
+  final ValueNotifier<bool> moved;
+  final Key? leftShuttle;
+  final Key? rightShuttle;
+
+  @override
+  Widget build(BuildContext context) => MaterialApp(
+    home: ValueListenableBuilder(
+      valueListenable: moved,
+      builder: (context, moved, _) {
+        final shuttle = moved ? rightShuttle : leftShuttle;
+        return HeroHereSwitcher(
+          child: Align(
+            alignment: moved ? Alignment.centerRight : Alignment.centerLeft,
+            child: HeroHere(
+              key: ValueKey(moved),
+              tag: 'hero',
+              flightShuttleBuilder: shuttle == null
+                  ? null
+                  : (_, _, _, _) => SizedBox.expand(key: shuttle),
+              child: SizedBox.square(
+                key: ValueKey('box-$moved'),
+                dimension: 40,
+              ),
+            ),
+          ),
+        );
+      },
+    ),
   );
 }
 
