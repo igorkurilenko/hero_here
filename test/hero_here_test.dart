@@ -203,8 +203,6 @@ void main() {
     final rebuilds = ValueNotifier(0);
     addTearDown(rebuilds.dispose);
 
-    // The switcher finds its heroes after the first frame, so the earlier
-    // hero still shows on it.
     await tester.pumpWidget(_TwinSwitcher(rebuilds: rebuilds));
     for (var frame = 0; frame < 30; frame++) {
       await tester.pump(const Duration(milliseconds: 16));
@@ -231,6 +229,25 @@ void main() {
 
     await tester.pumpAndSettle();
     expect(find.byKey(const ValueKey('earlierBox')), findsNothing);
+  });
+
+  testWidgets('hides the earlier of heroes that share a tag from the first '
+      'frame', (tester) async {
+    var earlierPaints = 0;
+    final rebuilds = ValueNotifier(0);
+    addTearDown(rebuilds.dispose);
+
+    await tester.pumpWidget(
+      _TwinSwitcher(rebuilds: rebuilds, onEarlierPaint: () => earlierPaints++),
+    );
+
+    final earlierBox = find.byKey(const ValueKey('earlierBox'));
+    final hit = tester.hitTestOnBinding(tester.getCenter(earlierBox));
+    expect(earlierPaints, 0);
+    expect(
+      hit.path.map((entry) => entry.target),
+      isNot(contains(tester.renderObject(earlierBox))),
+    );
   });
 }
 
@@ -310,9 +327,10 @@ const _markerKey = ValueKey('marker');
 /// Shows two heroes that share a tag in a row, with a marker between them.
 /// Each change of [rebuilds] rebuilds the switcher with the same child.
 class _TwinSwitcher extends StatelessWidget {
-  const _TwinSwitcher({required this.rebuilds});
+  const _TwinSwitcher({required this.rebuilds, this.onEarlierPaint});
 
   final ValueNotifier<int> rebuilds;
+  final VoidCallback? onEarlierPaint;
 
   @override
   Widget build(BuildContext context) => MaterialApp(
@@ -321,21 +339,31 @@ class _TwinSwitcher extends StatelessWidget {
       builder: (context, _, _) => HeroHereSwitcher(
         child: Row(
           children: [
-            _buildHero('earlier', 40),
+            _buildHero(
+              'earlier',
+              CustomPaint(
+                key: const ValueKey('earlierBox'),
+                size: const Size.square(40),
+                painter: _PaintCounter(() => onEarlierPaint?.call()),
+              ),
+            ),
             const SizedBox(key: _markerKey, width: 10, height: 10),
-            _buildHero('last', 80),
+            _buildHero(
+              'last',
+              const SizedBox.square(key: ValueKey('lastBox'), dimension: 80),
+            ),
           ],
         ),
       ),
     ),
   );
 
-  Widget _buildHero(String name, double size) => HeroHere(
+  Widget _buildHero(String name, Widget child) => HeroHere(
     key: ValueKey(name),
     tag: 'hero',
     flightShuttleBuilder: (_, _, _, _) =>
         const SizedBox.expand(key: _shuttleKey),
-    child: SizedBox.square(key: ValueKey('${name}Box'), dimension: size),
+    child: child,
   );
 }
 

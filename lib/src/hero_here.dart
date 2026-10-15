@@ -110,6 +110,11 @@ class _HeroHereSwitcherState extends State<HeroHereSwitcher>
 
   _Flight? getFlight(Object tag) => _flightsByTag[tag];
 
+  bool hidesOnMount(_Hero hero) => switch (_switchingState) {
+    final _Mount mount => mount.hiddenHeroes.contains(hero),
+    _ => false,
+  };
+
   RawImage? takeChildScreenshot({double pixelRatio = 1.0}) {
     final renderRepaintBoundary = _childKey.currentContext
         ?.findRenderRepaintBoundary();
@@ -197,6 +202,11 @@ abstract class _SwitchingState {
 /// Shows the first child as it is, with no flights. Of the heroes that share
 /// a tag, only the last one shows, as after a switch.
 class _Mount extends _SwitchingState {
+  /// The heroes that a later hero with their tag hides. They are found when
+  /// the first hero paints, once the whole child is built and laid out, so
+  /// they hide from the first frame.
+  late final Set<_Hero> hiddenHeroes = _findHiddenHeroes(switcher.findHeroes());
+
   _Mount(super.switcher);
 
   @override
@@ -207,15 +217,19 @@ class _Mount extends _SwitchingState {
 
   void _mount(_) {
     final heroes = switcher.findHeroes();
-    final lastHeroesByTag = {for (final hero in heroes) hero.tag: hero};
 
     notifyWillSwitch(heroes);
 
-    for (final hero in heroes) {
-      if (lastHeroesByTag[hero.tag] != hero) hero.offstage = true;
+    for (final hero in hiddenHeroes) {
+      hero.offstage = true;
     }
 
     switcher._switchingState = _Idle(switcher, prevSwitchHeroes: heroes);
+  }
+
+  Set<_Hero> _findHiddenHeroes(Set<_Hero> heroes) {
+    final lastHeroesByTag = {for (final hero in heroes) hero.tag: hero};
+    return heroes.where((hero) => lastHeroesByTag[hero.tag] != hero).toSet();
   }
 }
 
@@ -421,6 +435,7 @@ class HeroHere extends StatefulWidget {
 
 class _HeroHereState extends State<HeroHere> {
   final _childKey = GlobalKey();
+  _Switcher? _switcher;
   bool _offstage = false;
   Rect? _placeholderRect;
   bool _active = true;
@@ -444,8 +459,8 @@ class _HeroHereState extends State<HeroHere> {
   void initState() {
     super.initState();
 
-    final switcher = context.findAncestorStateOfType<_Switcher>();
-    final existingFlight = switcher?.getFlight(tag);
+    _switcher = context.findAncestorStateOfType<_Switcher>();
+    final existingFlight = _switcher?.getFlight(tag);
 
     if (existingFlight != null) {
       _initState(existingFlight);
@@ -476,9 +491,15 @@ class _HeroHereState extends State<HeroHere> {
     height: offstage ? _placeholderRect?.height : null,
     child: Offstage(
       offstage: offstage,
-      child: KeyedSubtree(key: _childKey, child: widget.child),
+      child: _Hide(
+        hides: _hides,
+        child: KeyedSubtree(key: _childKey, child: widget.child),
+      ),
     ),
   );
+
+  // A hero set offstage hides at once, not from its next build.
+  bool _hides() => offstage || (_switcher?.hidesOnMount(this) ?? false);
 
   @override
   bool operator ==(Object other) =>
@@ -511,6 +532,38 @@ class _HeroHereState extends State<HeroHere> {
     if (!mounted) return cb();
     setState(cb);
   }
+}
+
+/// Doesn't paint or hit test its child while [hides] returns true, but keeps
+/// its size. Unlike [Offstage], it asks on every paint and hit test, so it
+/// can hide a child before the child's next build.
+class _Hide extends SingleChildRenderObjectWidget {
+  final bool Function() hides;
+
+  const _Hide({required this.hides, super.child});
+
+  @override
+  _RenderHide createRenderObject(BuildContext context) => _RenderHide(hides);
+
+  @override
+  void updateRenderObject(BuildContext context, _RenderHide renderObject) =>
+      renderObject.hides = hides;
+}
+
+class _RenderHide extends RenderProxyBox {
+  bool Function() hides;
+
+  _RenderHide(this.hides);
+
+  @override
+  void paint(PaintingContext context, Offset offset) {
+    if (hides()) return;
+    super.paint(context, offset);
+  }
+
+  @override
+  bool hitTest(BoxHitTestResult result, {required Offset position}) =>
+      !hides() && super.hitTest(result, position: position);
 }
 
 class _FlightWidget extends StatefulWidget {
