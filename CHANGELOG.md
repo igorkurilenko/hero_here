@@ -1,3 +1,9 @@
+## Unreleased
+
+### Fixes
+
+* Show a hero that a flight goes on to next when it mounts anew, without a switch, before the flight gets to it, instead of keeping it hidden after the flight lands.
+
 ## 1.1.7
 
 ### Example

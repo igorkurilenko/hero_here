@@ -133,6 +133,32 @@ void main() {
     expect(find.byKey(const ValueKey('a1')), findsNothing);
   });
 
+  testWidgets('lands on a next hero that mounts anew without a switch', (
+    tester,
+  ) async {
+    final slot = ValueNotifier(0), wrapped = ValueNotifier(false);
+    addTearDown(slot.dispose);
+    addTearDown(wrapped.dispose);
+
+    await tester.pumpWidget(_ChainSwitcher(slot: slot, wrapped: wrapped));
+    await tester.pumpAndSettle();
+
+    slot.value = 1;
+    await _pumpSwitch(tester);
+    await tester.pump(HeroHere.defaultFlightAnimationDuration ~/ 4);
+
+    // The flight goes on to the third slot once it lands on the second.
+    slot.value = 2;
+    await _pumpSwitch(tester);
+
+    // The hero in the third slot mounts anew, without rebuilding the switcher.
+    wrapped.value = true;
+    await tester.pumpAndSettle();
+
+    expect(find.byKey(_shuttleKey), findsNothing);
+    expect(find.byKey(const ValueKey('box2')), findsOneWidget);
+  });
+
   testWidgets('lands on the hero it flies to when that one mounts anew', (
     tester,
   ) async {
@@ -579,6 +605,49 @@ class _SourceSwitcher extends StatelessWidget {
           ),
         );
       },
+    ),
+  );
+}
+
+/// Shows one hero in the slot of [_slotRects] that [slot] picks. When
+/// [wrapped], the hero sits in one more widget, which a builder inside the
+/// switcher's child adds, so changing [wrapped] mounts the hero anew without
+/// rebuilding the switcher.
+class _ChainSwitcher extends StatelessWidget {
+  const _ChainSwitcher({required this.slot, required this.wrapped});
+
+  final ValueNotifier<int> slot;
+  final ValueNotifier<bool> wrapped;
+
+  @override
+  Widget build(BuildContext context) => MaterialApp(
+    home: ValueListenableBuilder(
+      valueListenable: slot,
+      builder: (context, slot, _) => HeroHereSwitcher(
+        child: Stack(
+          children: [
+            Positioned.fromRect(
+              rect: _slotRects[slot],
+              child: ValueListenableBuilder(
+                valueListenable: wrapped,
+                builder: (context, wrapped, _) {
+                  final hero = HeroHere(
+                    key: ValueKey(slot),
+                    tag: 'hero',
+                    flightShuttleBuilder: (_, _, _, _) =>
+                        const SizedBox.expand(key: _shuttleKey),
+                    child: ColoredBox(
+                      key: ValueKey('box$slot'),
+                      color: const Color(0xFF2196F3),
+                    ),
+                  );
+                  return wrapped ? KeyedSubtree(child: hero) : hero;
+                },
+              ),
+            ),
+          ],
+        ),
+      ),
     ),
   );
 }

@@ -828,7 +828,8 @@ class _Flight extends ChangeNotifier {
   }
 
   /// Gives [hero] the part in this flight of the hero it mounts anew, the
-  /// one with its key, if any, and returns that hero.
+  /// one with its key, if any, and returns that hero: the hero the flight
+  /// leaves, lands on, or lands on next.
   ///
   /// Listeners need no notice: the new hero equals the old one, so the
   /// flight's leg doesn't change.
@@ -841,6 +842,11 @@ class _Flight extends ChangeNotifier {
     if (hero == _manifest.to) {
       final replaced = _manifest.to;
       _manifest.to = hero;
+      return replaced;
+    }
+    if (hero == _nextHero) {
+      final replaced = _nextHero;
+      _nextHero = hero;
       return replaced;
     }
     return null;
