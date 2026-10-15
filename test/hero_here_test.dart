@@ -168,6 +168,40 @@ void main() {
     expect(find.byKey(const ValueKey('box0')), findsOneWidget);
   });
 
+  testWidgets('flies back, then on to where its child changes next', (
+    tester,
+  ) async {
+    final slot = ValueNotifier(0);
+    addTearDown(slot.dispose);
+
+    await tester.pumpWidget(_SlotSwitcher(slot: slot));
+    await tester.pumpAndSettle();
+
+    slot.value = 1;
+    await _pumpSwitch(tester);
+    await tester.pump(HeroHere.defaultFlightAnimationDuration ~/ 2);
+
+    slot.value = 0;
+    await _pumpSwitch(tester);
+
+    // Send the hero to the third slot while it flies back to the first.
+    slot.value = 2;
+    await _pumpSwitch(tester);
+
+    final shuttle = find.byKey(_shuttleKey);
+    final lefts = <double>[];
+    for (var frame = 0; frame < 60 && tester.any(shuttle); frame++) {
+      lefts.add(tester.getRect(shuttle).left);
+      await tester.pump(const Duration(milliseconds: 16));
+    }
+
+    // It lands back on the first slot before it flies on.
+    expect(lefts.reduce((a, b) => a < b ? a : b), _slotRects[0].left);
+    expect(lefts.last, greaterThan(_slotRects[1].left));
+    expect(shuttle, findsNothing);
+    expect(find.byKey(const ValueKey('box2')), findsOneWidget);
+  });
+
   testWidgets('shuttles the new child of a hero it leaves that mounts anew', (
     tester,
   ) async {
