@@ -345,10 +345,11 @@ void main() {
 
     final shuttle = find.byKey(_shuttleKey);
     late Rect shuttleRect;
-    while (tester.any(shuttle)) {
+    for (var frame = 0; frame < 40 && tester.any(shuttle); frame++) {
       shuttleRect = tester.getRect(shuttle);
       await tester.pump(const Duration(milliseconds: 16));
     }
+    expect(shuttle, findsNothing);
 
     final heroRect = tester.getRect(find.byKey(const ValueKey('box-true')));
     expect(heroRect.width, 100);
