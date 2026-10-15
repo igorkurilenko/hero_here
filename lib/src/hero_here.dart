@@ -643,63 +643,23 @@ class _RenderHide extends RenderProxyBox {
       !hides() && super.hitTest(result, position: position);
 }
 
-class _FlightWidget extends StatefulWidget {
+class _FlightWidget extends StatelessWidget {
   final _Flight flight;
   const _FlightWidget({super.key, required this.flight});
 
+  // A new leg flies between other heroes, so it builds its shuttle anew.
   @override
-  State<_FlightWidget> createState() => _FlightWidgetState();
-}
-
-class _FlightWidgetState extends State<_FlightWidget> {
-  Rect? fromRect;
-  Rect? toRect;
-  Rect curRect = Rect.zero;
-  _Hero? _legFromHero;
-
-  _Flight get flight => widget.flight;
-
-  _Hero? get toHero => widget.flight.manifest.to;
-
-  _Hero? get fromHero => widget.flight.manifest.from;
-
-  @override
-  void initState() {
-    super.initState();
-    _legFromHero = fromHero;
-    flight.addListener(
-      () => setState(() {
-        // A new leg starts from the hero the last one landed on, so it
-        // starts where the shuttle is.
-        if (fromHero != _legFromHero) {
-          _legFromHero = fromHero;
-          fromRect = curRect;
-        }
-      }),
-    );
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    fromRect =
-        fromRect ?? fromHero?.computeGlobalRect() ?? fromHero?.placeholderRect;
-
-    return AnimatedBuilder(
+  Widget build(BuildContext context) => ListenableBuilder(
+    listenable: flight,
+    builder: (context, _) => AnimatedBuilder(
       animation: flight.animation,
-      builder: (context, child) {
-        toRect = toHero?.computeGlobalRect() ?? toHero?.placeholderRect;
-        curRect = toRect != null
-            ? flight.evaluateRect(fromRect, toRect)!
-            : curRect;
-
-        return _GlobalRect(
-          rect: curRect,
-          child: IgnorePointer(child: child),
-        );
-      },
+      builder: (context, child) => _GlobalRect(
+        rect: flight.evaluateRect(),
+        child: IgnorePointer(child: child),
+      ),
       child: flight.buildShuttle(context),
-    );
-  }
+    ),
+  );
 }
 
 /// Sizes its child to [rect] and paints it there. The [rect] is global, so
@@ -772,6 +732,8 @@ class _Flight extends ChangeNotifier {
   late final Animation<double> animation;
   _Hero? _nextHero;
   bool _reversed = false;
+  Rect? _legBegin;
+  Rect? _rect;
 
   _Flight({
     required TickerProvider vsync,
@@ -859,8 +821,19 @@ class _Flight extends ChangeNotifier {
     manifest.to.widget,
   );
 
-  Rect? evaluateRect(Rect? begin, Rect? end) =>
-      _style.rectTweenFactory(begin, end).evaluate(animation);
+  /// Works out where the shuttle is on this frame: on its way from where its
+  /// leg began to where the hero it flies to is. While that hero is nowhere,
+  /// the shuttle stays where it was.
+  Rect evaluateRect() {
+    _legBegin ??=
+        _manifest.from.computeGlobalRect() ?? _manifest.from.placeholderRect;
+    final end =
+        _manifest.to.computeGlobalRect() ?? _manifest.to.placeholderRect;
+    if (end != null) {
+      _rect = _style.rectTweenFactory(_legBegin, end).evaluate(animation)!;
+    }
+    return _rect ?? Rect.zero;
+  }
 
   @override
   void dispose() {
@@ -897,6 +870,8 @@ class _Flight extends ChangeNotifier {
       if (_controller.status == AnimationStatus.reverse) return;
 
       if (_nextHero != null) {
+        // The next leg starts where the shuttle is.
+        _legBegin = _rect;
         _manifest.from = _manifest.to;
         _manifest.to = _nextHero!;
         notifyListeners();
