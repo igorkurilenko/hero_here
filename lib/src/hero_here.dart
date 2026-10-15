@@ -502,10 +502,14 @@ class _HeroHereState extends State<HeroHere> {
     super.initState();
 
     _switcher = context.findAncestorStateOfType<_Switcher>();
-    final existingFlight = _switcher?.flights[tag];
 
-    if (existingFlight != null) {
-      _initState(existingFlight);
+    // A hero mounted while its tag flies hides until a flight lands on it.
+    // If it mounts anew a hero of the flight, it takes over that hero's part
+    // and placeholder.
+    final flight = _switcher?.flights[tag];
+    if (flight != null) {
+      _placeholderRect = flight.adopt(this)?.placeholderRect;
+      _offstage = true;
     }
   }
 
@@ -549,22 +553,6 @@ class _HeroHereState extends State<HeroHere> {
   @override
   String toString({DiagnosticLevel minLevel = DiagnosticLevel.info}) =>
       "_Hero(tag: '$tag', key: $key, offstage: $offstage)";
-
-  void _initState(_Flight existingFlight) {
-    if (key == existingFlight.manifest.from.key) {
-      _placeholderRect = existingFlight.manifest.from.placeholderRect;
-      // TODO: should notify existing flight listeners?
-      existingFlight.manifest.from = this;
-    }
-
-    if (key == existingFlight.manifest.to.key) {
-      _placeholderRect = existingFlight.manifest.to.placeholderRect;
-      // TODO: should notify existing flight listeners?
-      existingFlight.manifest.to = this;
-    }
-
-    _offstage = true;
-  }
 
   void _setState(VoidCallback cb) {
     if (!mounted) return cb();
@@ -837,6 +825,31 @@ class _Flight extends ChangeNotifier {
   void abort() {
     _controller.stop(canceled: true);
     _registry.remove(this);
+  }
+
+  /// Gives [hero] the part in this flight of the hero it mounts anew, the
+  /// one with its key, if any, and returns that hero: the hero the flight
+  /// leaves, lands on, or lands on next.
+  ///
+  /// Listeners need no notice: the new hero equals the old one, so the
+  /// flight's leg doesn't change.
+  _Hero? adopt(_Hero hero) {
+    if (hero == _manifest.from) {
+      final replaced = _manifest.from;
+      _manifest.from = hero;
+      return replaced;
+    }
+    if (hero == _manifest.to) {
+      final replaced = _manifest.to;
+      _manifest.to = hero;
+      return replaced;
+    }
+    if (hero == _nextHero) {
+      final replaced = _nextHero;
+      _nextHero = hero;
+      return replaced;
+    }
+    return null;
   }
 
   Widget buildShuttle(BuildContext context) => _style.shuttleBuilder(

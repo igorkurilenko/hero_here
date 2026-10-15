@@ -109,6 +109,82 @@ void main() {
     expect(find.byKey(const ValueKey('box0')), findsOneWidget);
   });
 
+  testWidgets('shuttles the new child of a hero it leaves that mounts anew', (
+    tester,
+  ) async {
+    final phase = ValueNotifier(0);
+    addTearDown(phase.dispose);
+
+    await tester.pumpWidget(_SourceSwitcher(phase: phase));
+    await tester.pumpAndSettle();
+
+    phase.value = 1;
+    await _pumpSwitch(tester);
+    await tester.pump(HeroHere.defaultFlightAnimationDuration ~/ 4);
+    // The shuttle shows the child of the hero the flight leaves.
+    expect(find.byKey(const ValueKey('a1')), findsOneWidget);
+
+    // That hero mounts anew with a new child, while another flight starts,
+    // which rebuilds the shuttle.
+    phase.value = 2;
+    await _pumpSwitch(tester);
+
+    expect(find.byKey(const ValueKey('a2')), findsOneWidget);
+    expect(find.byKey(const ValueKey('a1')), findsNothing);
+  });
+
+  testWidgets('lands on a next hero that mounts anew without a switch', (
+    tester,
+  ) async {
+    final slot = ValueNotifier(0), wrapped = ValueNotifier(false);
+    addTearDown(slot.dispose);
+    addTearDown(wrapped.dispose);
+
+    await tester.pumpWidget(_ChainSwitcher(slot: slot, wrapped: wrapped));
+    await tester.pumpAndSettle();
+
+    slot.value = 1;
+    await _pumpSwitch(tester);
+    await tester.pump(HeroHere.defaultFlightAnimationDuration ~/ 4);
+
+    // The flight goes on to the third slot once it lands on the second.
+    slot.value = 2;
+    await _pumpSwitch(tester);
+
+    // The hero in the third slot mounts anew, without rebuilding the switcher.
+    wrapped.value = true;
+    await tester.pumpAndSettle();
+
+    expect(find.byKey(_shuttleKey), findsNothing);
+    expect(find.byKey(const ValueKey('box2')), findsOneWidget);
+  });
+
+  testWidgets('lands on the hero it flies to when that one mounts anew', (
+    tester,
+  ) async {
+    final moved = ValueNotifier(false), wrapped = ValueNotifier(false);
+    addTearDown(moved.dispose);
+    addTearDown(wrapped.dispose);
+
+    await tester.pumpWidget(_RemountSwitcher(moved: moved, wrapped: wrapped));
+    await tester.pumpAndSettle();
+
+    moved.value = true;
+    await _pumpSwitch(tester);
+    await tester.pump(HeroHere.defaultFlightAnimationDuration ~/ 2);
+
+    // Mount the hero the flight lands on anew, mid-flight. It hides until
+    // the flight lands on it.
+    wrapped.value = true;
+    await _pumpSwitch(tester);
+    expect(find.byKey(_shuttleKey), findsOneWidget);
+    expect(find.byKey(const ValueKey('box1')), findsNothing);
+
+    await tester.pumpAndSettle();
+    expect(find.byKey(_shuttleKey), findsNothing);
+    expect(find.byKey(const ValueKey('box1')), findsOneWidget);
+  });
+
   testWidgets('stops a flight when its hero goes away mid-flight', (
     tester,
   ) async {
@@ -480,6 +556,140 @@ const _slotRects = [
   Rect.fromLTWH(200, 100, 80, 80),
   Rect.fromLTWH(400, 100, 60, 60),
 ];
+
+/// Phase 0 shows hero 'a' in the first slot of [_slotRects]. Phase 1 adds
+/// hero 'b' with the same tag after it, in the second, so 'a' flies to 'b'
+/// and stays, hidden. Phase 2 mounts 'a' anew with a new child, and moves a
+/// hero with another tag, which starts a second flight. The heroes tagged
+/// 'hero' shuttle the child of the hero their flight leaves.
+class _SourceSwitcher extends StatelessWidget {
+  const _SourceSwitcher({required this.phase});
+
+  final ValueNotifier<int> phase;
+
+  @override
+  Widget build(BuildContext context) => MaterialApp(
+    home: ValueListenableBuilder(
+      valueListenable: phase,
+      builder: (context, phase, _) {
+        Widget hero(String key, String box) => HeroHere(
+          key: ValueKey(key),
+          tag: 'hero',
+          flightShuttleBuilder: (_, _, fromHero, _) =>
+              SizedBox.expand(child: fromHero.child),
+          child: ColoredBox(key: ValueKey(box), color: const Color(0xFF2196F3)),
+        );
+
+        return HeroHereSwitcher(
+          child: Stack(
+            children: [
+              Positioned.fromRect(
+                rect: _slotRects[0],
+                child: phase < 2
+                    ? hero('a', 'a1')
+                    : KeyedSubtree(child: hero('a', 'a2')),
+              ),
+              if (phase > 0)
+                Positioned.fromRect(rect: _slotRects[1], child: hero('b', 'b')),
+              Positioned.fromRect(
+                rect: phase < 2
+                    ? _slotRects[2]
+                    : const Rect.fromLTWH(0, 300, 40, 40),
+                child: HeroHere(
+                  key: ValueKey(phase < 2 ? 'x' : 'y'),
+                  tag: 'other',
+                  child: const SizedBox.expand(),
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    ),
+  );
+}
+
+/// Shows one hero in the slot of [_slotRects] that [slot] picks. When
+/// [wrapped], the hero sits in one more widget, which a builder inside the
+/// switcher's child adds, so changing [wrapped] mounts the hero anew without
+/// rebuilding the switcher.
+class _ChainSwitcher extends StatelessWidget {
+  const _ChainSwitcher({required this.slot, required this.wrapped});
+
+  final ValueNotifier<int> slot;
+  final ValueNotifier<bool> wrapped;
+
+  @override
+  Widget build(BuildContext context) => MaterialApp(
+    home: ValueListenableBuilder(
+      valueListenable: slot,
+      builder: (context, slot, _) => HeroHereSwitcher(
+        child: Stack(
+          children: [
+            Positioned.fromRect(
+              rect: _slotRects[slot],
+              child: ValueListenableBuilder(
+                valueListenable: wrapped,
+                builder: (context, wrapped, _) {
+                  final hero = HeroHere(
+                    key: ValueKey(slot),
+                    tag: 'hero',
+                    flightShuttleBuilder: (_, _, _, _) =>
+                        const SizedBox.expand(key: _shuttleKey),
+                    child: ColoredBox(
+                      key: ValueKey('box$slot'),
+                      color: const Color(0xFF2196F3),
+                    ),
+                  );
+                  return wrapped ? KeyedSubtree(child: hero) : hero;
+                },
+              ),
+            ),
+          ],
+        ),
+      ),
+    ),
+  );
+}
+
+/// Shows a hero in the first slot of [_slotRects], or, when [moved], in the
+/// second. When [wrapped], the hero sits in one more widget, so changing
+/// [wrapped] mounts it anew.
+class _RemountSwitcher extends StatelessWidget {
+  const _RemountSwitcher({required this.moved, required this.wrapped});
+
+  final ValueNotifier<bool> moved;
+  final ValueNotifier<bool> wrapped;
+
+  @override
+  Widget build(BuildContext context) => MaterialApp(
+    home: ListenableBuilder(
+      listenable: Listenable.merge([moved, wrapped]),
+      builder: (context, _) {
+        final slot = moved.value ? 1 : 0;
+        Widget hero = HeroHere(
+          key: ValueKey(slot),
+          tag: 'hero',
+          flightShuttleBuilder: (_, _, _, _) =>
+              const SizedBox.expand(key: _shuttleKey),
+          child: ColoredBox(
+            key: ValueKey('box$slot'),
+            color: const Color(0xFF2196F3),
+          ),
+        );
+        if (wrapped.value) hero = KeyedSubtree(child: hero);
+
+        return HeroHereSwitcher(
+          child: Stack(
+            children: [
+              Positioned.fromRect(rect: _slotRects[slot], child: hero),
+            ],
+          ),
+        );
+      },
+    ),
+  );
+}
 
 /// Rebuilds a switcher on each change of [rebuilds], with a new child each
 /// time, or with the same `const` child when [sameChild].
