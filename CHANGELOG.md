@@ -1,3 +1,9 @@
+## 1.1.9
+
+### Fixes
+
+* Fly on without an error when the switcher's sky mounts anew mid-flight, such as when a layout builder wraps it in another widget, instead of calling `setState()` on the flight's widget that went away when the flight goes on to its next hero.
+
 ## 1.1.8
 
 ### Fixes
