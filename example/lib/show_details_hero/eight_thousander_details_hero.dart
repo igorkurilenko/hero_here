@@ -90,7 +90,7 @@ class _EightThousanderDetailsHeroState
     child: ListView(
       controller: _scrollController,
       physics: const AlwaysScrollableScrollPhysics(),
-      padding: EdgeInsets.zero,
+      padding: centerColumnPadding(screenSize.width),
       children: [
         SizedBox(
           width: imageSize.width,

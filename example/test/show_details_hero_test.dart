@@ -160,6 +160,28 @@ void main() {
       reason: 'The shuttle landed at $shuttleRect, the cell is at $cellRect.',
     );
   });
+
+  testWidgets('shows the scrollbars at the window edge', (tester) async {
+    await tester.pumpWidget(const MaterialApp(home: ShowDetailsExample()));
+    await tester.pumpAndSettle();
+
+    Rect scrollbarOf(Type scrollView) => tester.getRect(
+      find.descendant(
+        of: find.byType(scrollView),
+        matching: find.byType(Scrollbar),
+      ),
+    );
+    expect(scrollbarOf(GridView).right, 800);
+    // The grid stays in the middle column.
+    expect(tester.getRect(find.text('Mount Everest')).left, 128);
+
+    await tester.tap(find.text('K2'));
+    await tester.pumpAndSettle();
+
+    expect(scrollbarOf(ListView).right, 800);
+    // So do the details.
+    expect(tester.getRect(find.byType(AspectRatio)).left, 120);
+  }, variant: TargetPlatformVariant.only(TargetPlatform.macOS));
 }
 
 /// Counts the `ui.Image`s created from now until the end of the test, leaving

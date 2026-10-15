@@ -83,53 +83,46 @@ class _ShowDetailsExampleState extends State<ShowDetailsExample> {
   );
 
   Widget _buildBody() => HeroHereSwitcher(
-    child: Row(
-      mainAxisAlignment: MainAxisAlignment.center,
+    child: Stack(
+      alignment: Alignment.topCenter,
       children: [
-        Flexible(
-          child: ConstrainedBox(
-            constraints: kGridViewConstraints,
-            child: Stack(
-              alignment: Alignment.topCenter,
-              children: [
-                AnimatedSlide(
-                  offset: _gridViewOffset,
-                  duration: HeroHere.defaultFlightAnimationDuration,
-                  curve: HeroHere.defaultFlightAnimationCurve,
-                  child: AnimatedScale(
-                    scale: _gridViewScale,
-                    duration: HeroHere.defaultFlightAnimationDuration,
-                    curve: HeroHere.defaultFlightAnimationCurve,
-                    child: AnimatedOpacity(
-                      opacity: _gridViewOpacity,
-                      duration: HeroHere.defaultFlightAnimationDuration,
-                      curve: HeroHere.defaultFlightAnimationCurve,
-                      child: ValueListenableBuilder(
-                        valueListenable: _isHeroSwitching,
-                        builder: (context, isHeroSwitching, child) =>
-                            IgnorePointer(
-                              ignoring: isHeroSwitching,
-                              child: child,
-                            ),
-                        child: ScrollConfiguration(
-                          behavior: kScrollBehavior,
-                          child: GridView.builder(
-                            clipBehavior: Clip.none,
-                            padding: const EdgeInsets.all(8),
-                            gridDelegate: kGridViewDelegate,
-                            itemCount: kEightThousanders.length,
-                            itemBuilder: _buildGridItem,
-                          ),
-                        ),
-                      ),
+        AnimatedSlide(
+          offset: _gridViewOffset,
+          duration: HeroHere.defaultFlightAnimationDuration,
+          curve: HeroHere.defaultFlightAnimationCurve,
+          child: AnimatedScale(
+            scale: _gridViewScale,
+            duration: HeroHere.defaultFlightAnimationDuration,
+            curve: HeroHere.defaultFlightAnimationCurve,
+            child: AnimatedOpacity(
+              opacity: _gridViewOpacity,
+              duration: HeroHere.defaultFlightAnimationDuration,
+              curve: HeroHere.defaultFlightAnimationCurve,
+              child: ValueListenableBuilder(
+                valueListenable: _isHeroSwitching,
+                builder: (context, isHeroSwitching, child) =>
+                    IgnorePointer(ignoring: isHeroSwitching, child: child),
+                child: ScrollConfiguration(
+                  behavior: kScrollBehavior,
+                  // Measures the width below the switcher, so resizing the
+                  // window doesn't rebuild the page and run a switch.
+                  child: LayoutBuilder(
+                    builder: (context, constraints) => GridView.builder(
+                      clipBehavior: Clip.none,
+                      padding:
+                          centerColumnPadding(constraints.maxWidth) +
+                          const EdgeInsets.all(8),
+                      gridDelegate: kGridViewDelegate,
+                      itemCount: kEightThousanders.length,
+                      itemBuilder: _buildGridItem,
                     ),
                   ),
                 ),
-                if (detailsVisible) _buildDetails(_showDetailsIndex!),
-              ],
+              ),
             ),
           ),
         ),
+        if (detailsVisible) _buildDetails(_showDetailsIndex!),
       ],
     ),
   );
