@@ -192,7 +192,10 @@ class _ShowDetailsExampleState extends State<ShowDetailsExample> {
   double get _gridViewOpacity => detailsVisible ? kGridViewOpacityOnOpen : 1.0;
 
   Offset _computeGridViewSlideOffset(int index, Offset begin) {
-    final screenSize = MediaQuery.sizeOf(context);
+    // The page's size rather than MediaQuery's, which would make the page
+    // depend on the window's size, so each resize would rebuild it and run a
+    // switch.
+    final screenSize = context.size!;
     final a = begin;
     final b = Offset(screenSize.width / 2, screenSize.height / 2);
     final xOffset = b.dx - a.dx;
