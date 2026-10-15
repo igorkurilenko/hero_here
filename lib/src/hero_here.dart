@@ -12,7 +12,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-import 'dart:async';
 import 'dart:collection';
 
 import 'package:flutter/material.dart';
@@ -764,8 +763,7 @@ class _Flight extends ChangeNotifier {
     );
 
     registry.add(flight);
-
-    flight._forward().whenComplete(() => registry.remove(flight));
+    flight._forward();
 
     return flight;
   }
@@ -774,11 +772,11 @@ class _Flight extends ChangeNotifier {
     if (_shouldReverse(manifest)) {
       _manifest = manifest.reversed;
       notifyListeners();
-      _reverse().whenComplete(() => _registry.remove(this));
+      _reverse();
     } else if (_shouldForward(manifest)) {
       _manifest = manifest;
       notifyListeners();
-      _forward().whenComplete(() => _registry.remove(this));
+      _forward();
     } else {
       _registerNextFlight(manifest.to);
     }
@@ -786,7 +784,7 @@ class _Flight extends ChangeNotifier {
 
   void abort() {
     _controller.stop(canceled: true);
-    _registry.remove(this);
+    _end();
   }
 
   /// Gives [hero] the part in this flight of the hero it mounts anew, the
@@ -859,8 +857,7 @@ class _Flight extends ChangeNotifier {
     _nextHero = to;
   }
 
-  Future<_Flight> _forward({double? from, Completer<_Flight>? completer}) {
-    completer ??= Completer();
+  void _forward({double? from}) {
     _reversed = false;
     _nextHero = null;
     _manifest.from.offstage = true;
@@ -875,18 +872,14 @@ class _Flight extends ChangeNotifier {
         _manifest.from = _manifest.to;
         _manifest.to = _nextHero!;
         notifyListeners();
-        _forward(from: 0, completer: completer);
+        _forward(from: 0);
       } else {
-        _manifest.to.offstage = false;
-        completer!.complete(this);
+        _end(landedOn: _manifest.to);
       }
     });
-
-    return completer.future;
   }
 
-  Future<_Flight> _reverse() {
-    final completer = Completer<_Flight>();
+  void _reverse() {
     _reversed = true;
     _nextHero = null;
 
@@ -896,14 +889,18 @@ class _Flight extends ChangeNotifier {
       if (_nextHero != null) {
         _manifest.to = _nextHero!;
         notifyListeners();
-        _forward(from: 0, completer: completer);
+        _forward(from: 0);
       } else {
-        _manifest.from.offstage = false;
-        completer.complete(this);
+        _end(landedOn: _manifest.from);
       }
     });
+  }
 
-    return completer.future;
+  /// Ends this flight: shows the hero it [landedOn], if any, and leaves the
+  /// registry, which disposes it.
+  void _end({_Hero? landedOn}) {
+    landedOn?.offstage = false;
+    _registry.remove(this);
   }
 }
 
