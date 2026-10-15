@@ -634,6 +634,43 @@ void main() {
     expect(shuttleRect.width, closeTo(heroRect.width, 2));
   });
 
+  test('takes flight options typed with the old or the new names', () {
+    // ignore: deprecated_member_use_from_same_package
+    const AnimationControllerFactory oldControllerFactory =
+        HeroHere.defaultFlightAnimationControllerFactory;
+    // ignore: deprecated_member_use_from_same_package
+    const AnimationFactory<double> oldAnimationFactory =
+        HeroHere.defaultFlightAnimationFactory;
+    // ignore: deprecated_member_use_from_same_package
+    const StartAnimationCaller oldStarter =
+        HeroHere.defaultForwardFlightAnimation;
+    // ignore: deprecated_member_use_from_same_package
+    const RectTweenFactory oldRectTweenFactory =
+        HeroHere.defaultFlightRectTweenFactory;
+
+    const HeroHereFlightAnimationControllerFactory controllerFactory =
+        oldControllerFactory;
+    const HeroHereFlightAnimationFactory animationFactory = oldAnimationFactory;
+    const HeroHereFlightAnimationStarter starter = oldStarter;
+    const HeroHereFlightRectTweenFactory rectTweenFactory = oldRectTweenFactory;
+
+    const hero = HeroHere(
+      key: ValueKey('hero'),
+      tag: 'hero',
+      flightAnimationControllerFactory: oldControllerFactory,
+      flightAnimationFactory: oldAnimationFactory,
+      forwardFlightAnimation: oldStarter,
+      reverseFlightAnimation: starter,
+      rectTweenFactory: oldRectTweenFactory,
+      child: SizedBox(),
+    );
+
+    expect(hero.flightAnimationControllerFactory, same(controllerFactory));
+    expect(hero.flightAnimationFactory, same(animationFactory));
+    expect(hero.forwardFlightAnimation, same(starter));
+    expect(hero.rectTweenFactory, same(rectTweenFactory));
+  });
+
   const left = ValueKey('left'), right = ValueKey('right');
   for (final (leftShuttle, rightShuttle, shuttle, from) in [
     (left, right, right, 'the hero it lands on'),

@@ -22,9 +22,10 @@ class EightThousanderPreviewHero extends StatefulWidget {
   final String tag;
   final EightThousander eightThousander;
   final ValueChanged<BuildContext>? onTap;
-  final AnimationControllerFactory? imageHeroFlightAnimationControllerFactory;
-  final AnimationFactory<double>? imageHeroFlightAnimationFactory;
-  final StartAnimationCaller? forwardImageHeroFlightAnimation;
+  final HeroHereFlightAnimationControllerFactory?
+  imageHeroFlightAnimationControllerFactory;
+  final HeroHereFlightAnimationFactory? imageHeroFlightAnimationFactory;
+  final HeroHereFlightAnimationStarter? forwardImageHeroFlightAnimation;
 
   const EightThousanderPreviewHero({
     super.key,
