@@ -1,3 +1,9 @@
+## Unreleased
+
+### Features
+
+* Add `HeroHere.flightRedirect`, which says what a flight does when the hero it flies to changes mid-flight. `HeroHereFlightRedirect.chain`, the default, lands on that hero, then flies on to the new one, as before. `HeroHereFlightRedirect.divert` flies from where the shuttle is straight to the new hero, over the flight's whole duration. Until a flight diverts, sending it back to the hero it left turns it back, as with `chain`.
+
 ## 1.2.1
 
 ### Fixes

@@ -136,34 +136,128 @@ void main() {
     expect(find.byKey(const ValueKey('box2')), findsOneWidget);
   });
 
-  testWidgets('flies a hero back when its child changes back mid-flight', (
+  for (final redirect in HeroHereFlightRedirect.values) {
+    testWidgets('flies a hero back when its child changes back mid-flight '
+        '($redirect)', (tester) async {
+      final slot = ValueNotifier(0);
+      addTearDown(slot.dispose);
+
+      await tester.pumpWidget(_SlotSwitcher(slot: slot, redirect: redirect));
+      await tester.pumpAndSettle();
+
+      slot.value = 1;
+      await _pumpSwitch(tester);
+      await tester.pump(HeroHere.defaultFlightAnimationDuration ~/ 2);
+
+      slot.value = 0;
+      await _pumpSwitch(tester);
+
+      // A switch while it turns back, with the same child, changes nothing.
+      tester.element(find.byType(HeroHereSwitcher)).markNeedsBuild();
+      await _pumpSwitch(tester);
+
+      // The shuttle turns back from where it is, so it only ever moves left.
+      final shuttle = find.byKey(_shuttleKey);
+      final lefts = <double>[];
+      for (var frame = 0; frame < 40; frame++) {
+        if (tester.any(shuttle)) lefts.add(tester.getRect(shuttle).left);
+        await tester.pump(const Duration(milliseconds: 16));
+      }
+
+      expect(lefts, isNotEmpty);
+      for (var i = 1; i < lefts.length; i++) {
+        expect(lefts[i], lessThanOrEqualTo(lefts[i - 1]), reason: '$lefts');
+      }
+      // It takes as long as it flew, not a whole flight.
+      expect(
+        lefts.length * 16,
+        lessThan(
+          HeroHere.defaultFlightAnimationDuration.inMilliseconds * 3 / 4,
+        ),
+      );
+      expect(shuttle, findsNothing);
+      expect(find.byKey(const ValueKey('box0')), findsOneWidget);
+    });
+  }
+
+  testWidgets('diverts a redirected hero straight from where its shuttle is', (
     tester,
   ) async {
     final slot = ValueNotifier(0);
     addTearDown(slot.dispose);
 
-    await tester.pumpWidget(_SlotSwitcher(slot: slot));
+    await tester.pumpWidget(
+      _SlotSwitcher(slot: slot, redirect: HeroHereFlightRedirect.divert),
+    );
     await tester.pumpAndSettle();
 
+    slot.value = 2;
+    await _pumpSwitch(tester);
+    await tester.pump(HeroHere.defaultFlightAnimationDuration ~/ 4);
+
+    // Redirect the flight to the middle slot while it is near the first.
+    final shuttle = find.byKey(_shuttleKey);
+    final leftAtDivert = tester.getRect(shuttle).left;
+    slot.value = 1;
+    await _pumpSwitch(tester);
+
+    final lefts = <double>[];
+    for (var frame = 0; frame < 40 && tester.any(shuttle); frame++) {
+      lefts.add(tester.getRect(shuttle).left);
+      await tester.pump(const Duration(milliseconds: 16));
+    }
+
+    // It goes on from where it was, never toward the third slot, and takes
+    // the full duration to get to the middle one.
+    expect(lefts.first, closeTo(leftAtDivert, 1));
+    for (var i = 1; i < lefts.length; i++) {
+      expect(lefts[i], greaterThanOrEqualTo(lefts[i - 1]), reason: '$lefts');
+    }
+    expect(lefts.last, closeTo(_slotRects[1].left, 1));
+    expect(
+      lefts.length * 16,
+      greaterThanOrEqualTo(
+        HeroHere.defaultFlightAnimationDuration.inMilliseconds,
+      ),
+    );
+    expect(shuttle, findsNothing);
+    expect(find.byKey(const ValueKey('box1')), findsOneWidget);
+  });
+
+  testWidgets('flies a diverted hero back straight from where its shuttle is', (
+    tester,
+  ) async {
+    final slot = ValueNotifier(0);
+    addTearDown(slot.dispose);
+
+    await tester.pumpWidget(
+      _SlotSwitcher(slot: slot, redirect: HeroHereFlightRedirect.divert),
+    );
+    await tester.pumpAndSettle();
+
+    slot.value = 2;
+    await _pumpSwitch(tester);
+    await tester.pump(HeroHere.defaultFlightAnimationDuration ~/ 4);
     slot.value = 1;
     await _pumpSwitch(tester);
     await tester.pump(HeroHere.defaultFlightAnimationDuration ~/ 2);
 
+    // Back to the first slot: the diverted leg didn't start there, so the
+    // shuttle can't get there by turning back.
     slot.value = 0;
     await _pumpSwitch(tester);
 
-    // The shuttle turns back from where it is, so it only ever moves left.
     final shuttle = find.byKey(_shuttleKey);
     final lefts = <double>[];
-    for (var frame = 0; frame < 40; frame++) {
-      if (tester.any(shuttle)) lefts.add(tester.getRect(shuttle).left);
+    for (var frame = 0; frame < 40 && tester.any(shuttle); frame++) {
+      lefts.add(tester.getRect(shuttle).left);
       await tester.pump(const Duration(milliseconds: 16));
     }
 
-    expect(lefts, isNotEmpty);
     for (var i = 1; i < lefts.length; i++) {
       expect(lefts[i], lessThanOrEqualTo(lefts[i - 1]), reason: '$lefts');
     }
+    expect(lefts.last, closeTo(_slotRects[0].left, 1));
     expect(shuttle, findsNothing);
     expect(find.byKey(const ValueKey('box0')), findsOneWidget);
   });
@@ -1022,10 +1116,12 @@ class _SlotSwitcher extends StatelessWidget {
   const _SlotSwitcher({
     required this.slot,
     this.layoutBuilder = HeroHereSwitcher.defaultLayoutBuilder,
+    this.redirect,
   });
 
   final ValueNotifier<int> slot;
   final HeroHereSwitcherLayoutBuilder layoutBuilder;
+  final HeroHereFlightRedirect? redirect;
 
   @override
   Widget build(BuildContext context) => MaterialApp(
@@ -1041,6 +1137,7 @@ class _SlotSwitcher extends StatelessWidget {
                 child: HeroHere(
                   key: ValueKey(slot),
                   tag: 'hero',
+                  flightRedirect: redirect,
                   flightShuttleBuilder: (_, _, _, _) =>
                       const SizedBox.expand(key: _shuttleKey),
                   child: ColoredBox(

@@ -60,6 +60,19 @@ typedef HeroHereFlightShuttleBuilder = Widget Function(
   HeroHere toHero,
 );
 
+/// What a flight does when the hero it flies to changes while it flies, such
+/// as when the switcher's child changes again mid-flight.
+enum HeroHereFlightRedirect {
+  /// Lands on the hero it flies to, then flies on to the new one.
+  chain,
+
+  /// Flies from where the shuttle is straight to the new hero, over the
+  /// flight's whole duration. The shuttle's `fromHero` stays the hero the
+  /// flight left. Until a flight diverts, sending it back to that hero turns
+  /// it back, as with [chain].
+  divert,
+}
+
 @Deprecated(
   'Use HeroHereFlightAnimationControllerFactory. '
   'This name will be removed in 2.0.0.',
@@ -457,6 +470,7 @@ class _SwitchPlan {
 class HeroHere extends StatefulWidget {
   static const defaultFlightAnimationCurve = Curves.easeInOut;
   static const defaultFlightAnimationDuration = Duration(milliseconds: 300);
+  static const defaultFlightRedirect = HeroHereFlightRedirect.chain;
 
   final Object tag;
   final Widget child;
@@ -468,6 +482,12 @@ class HeroHere extends StatefulWidget {
   final HeroHereFlightAnimationStarter? reverseFlightAnimation;
   final HeroHereFlightShuttleBuilder? flightShuttleBuilder;
   final HeroHereFlightRectTweenFactory? rectTweenFactory;
+
+  /// What a flight does when the hero it flies to changes mid-flight, or
+  /// [defaultFlightRedirect] when neither the hero it lands on nor the one it
+  /// leaves says. Like the other flight options, it's taken when the flight
+  /// starts.
+  final HeroHereFlightRedirect? flightRedirect;
   final Object? payload;
 
   const HeroHere({
@@ -481,6 +501,7 @@ class HeroHere extends StatefulWidget {
     this.reverseFlightAnimation,
     this.flightShuttleBuilder,
     this.rectTweenFactory,
+    this.flightRedirect,
     this.payload,
   });
 
@@ -777,6 +798,10 @@ class _Flight extends ChangeNotifier {
   Rect? _legBegin;
   Rect? _rect;
 
+  /// Whether this flight has diverted, so its leg started where the shuttle
+  /// was rather than at the hero it left, and it can't turn back to that one.
+  bool _diverted = false;
+
   /// The heroes with no part in this flight that mounted while it flew, with
   /// no switch since. They hide until it ends.
   final _latecomers = <_Hero>{};
@@ -827,8 +852,12 @@ class _Flight extends ChangeNotifier {
       _manifest = manifest;
       notifyListeners();
       _forward();
+    } else if (manifest.to == _target) {
+      _nextHero = null;
+    } else if (_style.redirect == HeroHereFlightRedirect.divert) {
+      _divert(manifest.to);
     } else {
-      _registerNextFlight(manifest.to);
+      _nextHero = manifest.to;
     }
   }
 
@@ -893,22 +922,22 @@ class _Flight extends ChangeNotifier {
     super.dispose();
   }
 
+  /// The hero the shuttle is on its way to.
+  _Hero get _target => _reversed ? _manifest.from : _manifest.to;
+
   bool _shouldReverse(_FlightManifest manifest) =>
-      !_reversed && (_manifest.from == manifest.to);
+      !_reversed && !_diverted && (_manifest.from == manifest.to);
 
   bool _shouldForward(_FlightManifest manifest) =>
       _reversed && (_manifest.to == manifest.to);
 
-  void _registerNextFlight(_Hero? to) {
-    if (!_reversed && _manifest.to == to) {
-      _nextHero = null;
-      return;
-    }
-    if (_reversed && _manifest.from == to) {
-      _nextHero = null;
-      return;
-    }
-    _nextHero = to;
+  /// Flies on to [hero] straight from where the shuttle is.
+  void _divert(_Hero hero) {
+    _diverted = true;
+    _legBegin = _rect;
+    _manifest.to = hero;
+    notifyListeners();
+    _forward(from: 0);
   }
 
   void _forward({double? from}) {
@@ -1001,6 +1030,7 @@ class _FlightStyle {
   final HeroHereFlightAnimationStarter reverseAnimation;
   final HeroHereFlightShuttleBuilder shuttleBuilder;
   final HeroHereFlightRectTweenFactory rectTweenFactory;
+  final HeroHereFlightRedirect redirect;
 
   const _FlightStyle._({
     required this.duration,
@@ -1010,6 +1040,7 @@ class _FlightStyle {
     required this.reverseAnimation,
     required this.shuttleBuilder,
     required this.rectTweenFactory,
+    required this.redirect,
   });
 
   factory _FlightStyle.of({required HeroHere from, required HeroHere to}) {
@@ -1045,6 +1076,7 @@ class _FlightStyle {
         (x) => x.rectTweenFactory,
         HeroHere.defaultFlightRectTweenFactory,
       ),
+      redirect: pick((x) => x.flightRedirect, HeroHere.defaultFlightRedirect),
     );
   }
 }
