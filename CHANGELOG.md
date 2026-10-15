@@ -1,3 +1,9 @@
+## Unreleased
+
+### Example
+
+* Keep what is typed in the chat example's input when the page rebuilds, such as on a theme change, instead of losing it, and dispose the text controllers.
+
 ## 1.1.6
 
 ### Fixes

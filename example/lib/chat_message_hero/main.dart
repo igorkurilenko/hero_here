@@ -37,6 +37,9 @@ class HeroHereExample extends StatefulWidget {
 
 class _HeroHereExampleState extends State<HeroHereExample> {
   final _messages = <Message>[];
+  // The message being typed. Sending it starts a new one, so the input's
+  // hero hands its tag to the sent message, which flies into the list.
+  var _draft = Message();
   final _scrollController = ScrollController();
   final _focusNode = FocusNode();
 
@@ -74,42 +77,39 @@ class _HeroHereExampleState extends State<HeroHereExample> {
     ),
   );
 
-  Widget _buildMessageInput() {
-    final message = Message();
-
-    return Container(
-      decoration: BoxDecoration(
-        color: Theme.of(context).colorScheme.surfaceContainer,
-        borderRadius: BorderRadius.circular(32),
-      ),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 16),
-        child: HeroHere(
-          tag: '$message',
-          key: ValueKey('$message'),
-          child: MessageWidget.input(
-            focusNode: _focusNode,
-            onSubmitted: (text) => _onMessageSubmitted(message..text = text),
-            decoration: const InputDecoration(
-              hintText: 'Message',
-              border: OutlineInputBorder(
-                borderSide: BorderSide.none,
-                borderRadius: BorderRadius.all(Radius.circular(32)),
-              ),
+  Widget _buildMessageInput() => Container(
+    decoration: BoxDecoration(
+      color: Theme.of(context).colorScheme.surfaceContainer,
+      borderRadius: BorderRadius.circular(32),
+    ),
+    child: Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16),
+      child: HeroHere(
+        tag: '$_draft',
+        key: ValueKey('$_draft'),
+        child: MessageWidget.input(
+          focusNode: _focusNode,
+          onSubmitted: _onMessageSubmitted,
+          decoration: const InputDecoration(
+            hintText: 'Message',
+            border: OutlineInputBorder(
+              borderSide: BorderSide.none,
+              borderRadius: BorderRadius.all(Radius.circular(32)),
             ),
           ),
         ),
       ),
-    );
-  }
+    ),
+  );
 
-  void _onMessageSubmitted(Message message) {
-    if (message.isEmpty) return;
+  void _onMessageSubmitted(String text) {
+    if (text.isEmpty) return;
 
     _focusNode.unfocus();
 
     setState(() {
-      _messages.add(message);
+      _messages.add(_draft..text = text);
+      _draft = Message();
     });
 
     afterBuild(() {
