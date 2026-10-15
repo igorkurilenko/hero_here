@@ -154,6 +154,39 @@ void main() {
 
     expect(skyLayouts, 0);
   });
+
+  testWidgets('repaints nothing outside the sky during a flight', (
+    tester,
+  ) async {
+    var siblingPaints = 0;
+    final slot = ValueNotifier(0);
+    addTearDown(slot.dispose);
+
+    await tester.pumpWidget(
+      _SlotSwitcher(
+        slot: slot,
+        layoutBuilder: (child, sky) => Stack(
+          children: [
+            child,
+            Positioned.fill(
+              child: CustomPaint(painter: _PaintCounter(() => siblingPaints++)),
+            ),
+            sky,
+          ],
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    slot.value = 1;
+    await _pumpSwitch(tester);
+    siblingPaints = 0;
+    for (var frame = 0; frame < 10; frame++) {
+      await tester.pump(const Duration(milliseconds: 16));
+    }
+
+    expect(siblingPaints, 0);
+  });
 }
 
 /// Counts the `ui.Image` handles created and not yet disposed from now until
@@ -296,4 +329,17 @@ class _RenderLayoutCounter extends RenderProxyBox {
     onLayout();
     super.performLayout();
   }
+}
+
+/// Calls [onPaint] each time it paints.
+class _PaintCounter extends CustomPainter {
+  _PaintCounter(this.onPaint);
+
+  final VoidCallback onPaint;
+
+  @override
+  void paint(Canvas canvas, Size size) => onPaint();
+
+  @override
+  bool shouldRepaint(_PaintCounter oldDelegate) => false;
 }

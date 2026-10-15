@@ -1,3 +1,9 @@
+## Unreleased
+
+### Performance
+
+* Repaint only the flights on each frame of a flight, instead of the whole screen.
+
 ## 1.1.2
 
 ### Performance

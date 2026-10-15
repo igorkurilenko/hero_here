@@ -150,12 +150,16 @@ class _HeroHereSwitcherState extends State<HeroHereSwitcher>
     );
   }
 
-  Widget _buildSky() => Stack(
-    children: [
-      ...flights.map(
-        (flight) => _FlightWidget(key: ValueKey(flight.tag), flight: flight),
-      ),
-    ],
+  // Flights repaint on every frame. The boundary keeps those repaints off the
+  // rest of the screen, whatever the layout builder puts around the sky.
+  Widget _buildSky() => RepaintBoundary(
+    child: Stack(
+      children: [
+        ...flights.map(
+          (flight) => _FlightWidget(key: ValueKey(flight.tag), flight: flight),
+        ),
+      ],
+    ),
   );
 
   RawImage? _takeScreenshot(
