@@ -93,6 +93,12 @@ typedef RectTweenFactory = HeroHereFlightRectTweenFactory;
 /// and nothing flies. Keep frequently changing state, such as timers, streams
 /// or text being typed, below the switcher, so it rebuilds only when heroes
 /// may move.
+///
+/// The same goes for sizes. A [LayoutBuilder] or a `MediaQuery.sizeOf` read
+/// above the switcher rebuilds it on each frame of a window resize, and each
+/// of those switches shows a snapshot of the old layout for a frame. Read
+/// sizes below the switcher instead, such as with a [LayoutBuilder] in its
+/// child.
 class HeroHereSwitcher extends StatefulWidget {
   final Widget? child;
   final HeroHereSwitcherLayoutBuilder layoutBuilder;

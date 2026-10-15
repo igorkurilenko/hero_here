@@ -451,6 +451,39 @@ void main() {
     });
   }
 
+  testWidgets('runs no switch on a window resize when sizes are read below '
+      'it', (tester) async {
+    tester.view.devicePixelRatio = 1;
+    tester.view.physicalSize = const Size(800, 600);
+    addTearDown(tester.view.reset);
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: HeroHereSwitcher(
+          child: LayoutBuilder(
+            builder: (context, constraints) => Align(
+              alignment: Alignment.topLeft,
+              child: HeroHere(
+                key: const ValueKey('hero'),
+                tag: 'hero',
+                child: SizedBox(width: constraints.maxWidth / 2, height: 40),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    final snapshots = _countNewImages();
+    for (final width in [700.0, 600.0, 500.0]) {
+      tester.view.physicalSize = Size(width, 600);
+      await tester.pumpAndSettle();
+    }
+
+    expect(snapshots(), 0);
+  });
+
   testWidgets('stops its flights when unmounted mid-flight', (tester) async {
     final slot = ValueNotifier(0);
     addTearDown(slot.dispose);
