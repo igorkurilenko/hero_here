@@ -168,6 +168,40 @@ void main() {
     expect(find.byKey(const ValueKey('box0')), findsOneWidget);
   });
 
+  testWidgets('flies back, then on to where its child changes next', (
+    tester,
+  ) async {
+    final slot = ValueNotifier(0);
+    addTearDown(slot.dispose);
+
+    await tester.pumpWidget(_SlotSwitcher(slot: slot));
+    await tester.pumpAndSettle();
+
+    slot.value = 1;
+    await _pumpSwitch(tester);
+    await tester.pump(HeroHere.defaultFlightAnimationDuration ~/ 2);
+
+    slot.value = 0;
+    await _pumpSwitch(tester);
+
+    // Send the hero to the third slot while it flies back to the first.
+    slot.value = 2;
+    await _pumpSwitch(tester);
+
+    final shuttle = find.byKey(_shuttleKey);
+    final lefts = <double>[];
+    for (var frame = 0; frame < 60 && tester.any(shuttle); frame++) {
+      lefts.add(tester.getRect(shuttle).left);
+      await tester.pump(const Duration(milliseconds: 16));
+    }
+
+    // It lands back on the first slot before it flies on.
+    expect(lefts.reduce((a, b) => a < b ? a : b), _slotRects[0].left);
+    expect(lefts.last, greaterThan(_slotRects[1].left));
+    expect(shuttle, findsNothing);
+    expect(find.byKey(const ValueKey('box2')), findsOneWidget);
+  });
+
   testWidgets('shuttles the new child of a hero it leaves that mounts anew', (
     tester,
   ) async {
@@ -242,6 +276,69 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.byKey(_shuttleKey), findsNothing);
     expect(find.byKey(const ValueKey('box1')), findsOneWidget);
+  });
+
+  for (final (extra, how) in [(1, ''), (2, ', then mounts anew')]) {
+    testWidgets('shows a hero that mounts mid-flight$how once it lands', (
+      tester,
+    ) async {
+      final slot = ValueNotifier(0);
+      addTearDown(slot.dispose);
+      final extraHero = ValueNotifier(0);
+      addTearDown(extraHero.dispose);
+      final rebuilds = ValueNotifier(0);
+      addTearDown(rebuilds.dispose);
+
+      await tester.pumpWidget(
+        _ExtraSwitcher(slot: slot, extra: extraHero, rebuilds: rebuilds),
+      );
+      await tester.pumpAndSettle();
+
+      slot.value = 1;
+      await _pumpSwitch(tester);
+      await tester.pump(HeroHere.defaultFlightAnimationDuration ~/ 4);
+
+      // No switch: the hero mounts below the switcher.
+      for (var value = 1; value <= extra; value++) {
+        extraHero.value = value;
+        await tester.pump();
+      }
+      expect(find.byKey(const ValueKey('box-extra')), findsNothing);
+
+      await tester.pumpAndSettle();
+
+      expect(find.byKey(const ValueKey('box1')), findsOneWidget);
+      expect(find.byKey(const ValueKey('box-extra')), findsOneWidget);
+    });
+  }
+
+  testWidgets('keeps a hero that mounts mid-flight hidden when a switch hides '
+      'it', (tester) async {
+    final slot = ValueNotifier(0);
+    addTearDown(slot.dispose);
+    final extraHero = ValueNotifier(0);
+    addTearDown(extraHero.dispose);
+    final rebuilds = ValueNotifier(0);
+    addTearDown(rebuilds.dispose);
+
+    await tester.pumpWidget(
+      _ExtraSwitcher(slot: slot, extra: extraHero, rebuilds: rebuilds),
+    );
+    await tester.pumpAndSettle();
+
+    slot.value = 1;
+    await _pumpSwitch(tester);
+    await tester.pump(HeroHere.defaultFlightAnimationDuration ~/ 4);
+
+    extraHero.value = 1;
+    await tester.pump();
+
+    // The switch hides the extra hero, since a later one with its tag shows.
+    rebuilds.value++;
+    await tester.pumpAndSettle();
+
+    expect(find.byKey(const ValueKey('box1')), findsOneWidget);
+    expect(find.byKey(const ValueKey('box-extra')), findsNothing);
   });
 
   testWidgets('stops a flight when its hero goes away mid-flight', (
@@ -742,6 +839,59 @@ class _RemountSwitcher extends StatelessWidget {
           child: Stack(
             children: [
               Positioned.fromRect(rect: _slotRects[slot], child: hero),
+            ],
+          ),
+        );
+      },
+    ),
+  );
+}
+
+/// Shows a hero in the slot of [_slotRects] that [slot] picks, after an
+/// extra hero with the same tag in the third slot. A builder inside the
+/// switcher's child adds the extra hero when [extra] is 1, and mounts it anew
+/// in one more widget when it's 2, so neither runs a switch. Each change of
+/// [rebuilds] rebuilds the switcher with a new child.
+class _ExtraSwitcher extends StatelessWidget {
+  const _ExtraSwitcher({
+    required this.slot,
+    required this.extra,
+    required this.rebuilds,
+  });
+
+  final ValueNotifier<int> slot;
+  final ValueNotifier<int> extra;
+  final ValueNotifier<int> rebuilds;
+
+  @override
+  Widget build(BuildContext context) => MaterialApp(
+    home: ListenableBuilder(
+      listenable: Listenable.merge([slot, rebuilds]),
+      builder: (context, _) {
+        Widget hero(Object key, String box) => HeroHere(
+          key: ValueKey(key),
+          tag: 'hero',
+          child: ColoredBox(key: ValueKey(box), color: const Color(0xFF2196F3)),
+        );
+
+        return HeroHereSwitcher(
+          child: Stack(
+            children: [
+              ValueListenableBuilder(
+                valueListenable: extra,
+                builder: (context, extra, _) => extra == 0
+                    ? const SizedBox.shrink()
+                    : Positioned.fromRect(
+                        rect: _slotRects[2],
+                        child: extra == 1
+                            ? hero('extra', 'box-extra')
+                            : KeyedSubtree(child: hero('extra', 'box-extra')),
+                      ),
+              ),
+              Positioned.fromRect(
+                rect: _slotRects[slot.value],
+                child: hero(slot.value, 'box${slot.value}'),
+              ),
             ],
           ),
         );

@@ -1,3 +1,9 @@
+## 1.1.10
+
+### Fixes
+
+* Show a hero that mounts while a flight of its tag is under way, and has no part in it, once the flight ends, instead of keeping it hidden until the next switch. A switch during the flight still decides whether it shows.
+
 ## 1.1.9
 
 ### Fixes
