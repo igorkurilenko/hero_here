@@ -100,6 +100,8 @@ class _HeroHereSwitcherState extends State<HeroHereSwitcher>
     for (final flight in flights) {
       flight.dispose();
     }
+    // RawImage doesn't dispose its image.
+    _childScreenshot?.image?.dispose();
     super.dispose();
   }
 
@@ -192,11 +194,14 @@ class _Idle extends _SwitchingState {
 
   @override
   void execute() {
-    switcher._child = switcher.widget.child;
     switcher._switchingState = _Prepare(
       switcher,
       prevSwitchHeroes: prevSwitchHeroes,
     );
+    // A child that arrived during the last switch needs a switch of its own.
+    if (!identical(switcher._child, switcher.widget.child)) {
+      switcher._switchingState.execute();
+    }
   }
 }
 
@@ -246,6 +251,7 @@ class _Execute extends _SwitchingState {
     _dispatchFlights(flightManifestsByTag);
 
     switcher.setChildState(() {
+      switcher._childScreenshot?.image?.dispose();
       switcher._childScreenshot = null;
       switcher._childOffstage = false;
       switcher._switchingState = _Idle(switcher, prevSwitchHeroes: nextHeroes);
@@ -489,6 +495,7 @@ class _FlightWidgetState extends State<_FlightWidget> {
   Rect? fromRect;
   Rect? toRect;
   Rect curRect = Rect.zero;
+  _Hero? _legFromHero;
 
   _Flight get flight => widget.flight;
 
@@ -499,7 +506,17 @@ class _FlightWidgetState extends State<_FlightWidget> {
   @override
   void initState() {
     super.initState();
-    flight.addListener(() => setState(() {}));
+    _legFromHero = fromHero;
+    flight.addListener(
+      () => setState(() {
+        // A new leg starts from the hero the last one landed on, so it
+        // starts where the shuttle is.
+        if (fromHero != _legFromHero) {
+          _legFromHero = fromHero;
+          fromRect = curRect;
+        }
+      }),
+    );
   }
 
   @override
