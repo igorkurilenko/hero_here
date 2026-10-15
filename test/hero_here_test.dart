@@ -93,6 +93,49 @@ void main() {
     expect(find.byKey(const ValueKey('box2')), findsOneWidget);
   });
 
+  testWidgets('flies on when its sky mounts anew mid-flight', (tester) async {
+    final slot = ValueNotifier(0);
+    addTearDown(slot.dispose);
+    final wrapped = ValueNotifier(false);
+    addTearDown(wrapped.dispose);
+
+    await tester.pumpWidget(
+      _SlotSwitcher(
+        slot: slot,
+        // Wrapping the sky in one more widget mounts it anew.
+        layoutBuilder: (child, sky) => Stack(
+          children: [
+            child,
+            ValueListenableBuilder(
+              valueListenable: wrapped,
+              builder: (context, wrapped, _) =>
+                  wrapped ? KeyedSubtree(child: sky) : sky,
+            ),
+          ],
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    slot.value = 1;
+    await _pumpSwitch(tester);
+    await tester.pump(HeroHere.defaultFlightAnimationDuration ~/ 4);
+
+    wrapped.value = true;
+    await tester.pump();
+
+    // The flight lands on the second slot, then flies on to the third.
+    slot.value = 2;
+    await _pumpSwitch(tester);
+    final shuttle = find.byKey(_shuttleKey);
+    for (var frame = 0; frame < 40 && tester.any(shuttle); frame++) {
+      await tester.pump(const Duration(milliseconds: 16));
+    }
+
+    expect(shuttle, findsNothing);
+    expect(find.byKey(const ValueKey('box2')), findsOneWidget);
+  });
+
   testWidgets('flies a hero back when its child changes back mid-flight', (
     tester,
   ) async {
