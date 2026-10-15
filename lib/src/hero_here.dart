@@ -502,9 +502,9 @@ class _HeroHereState extends State<HeroHere> {
 
     _switcher = context.findAncestorStateOfType<_Switcher>();
 
-    // A hero mounted while its tag flies hides until a flight lands on it.
-    // If it mounts anew a hero of the flight, it takes over that hero's part
-    // and placeholder.
+    // A hero mounted while its tag flies hides. If it mounts anew a hero of
+    // the flight, it takes over that hero's part and placeholder; any other
+    // hero shows when the flight ends.
     final flight = _switcher?.flights[tag];
     if (flight != null) {
       _placeholderRect = flight.adopt(this)?.placeholderRect;
@@ -734,6 +734,10 @@ class _Flight extends ChangeNotifier {
   Rect? _legBegin;
   Rect? _rect;
 
+  /// The heroes with no part in this flight that mounted while it flew, with
+  /// no switch since. They hide until it ends.
+  final _latecomers = <_Hero>{};
+
   _Flight({
     required TickerProvider vsync,
     required this._registry,
@@ -769,6 +773,9 @@ class _Flight extends ChangeNotifier {
   }
 
   void update(_FlightManifest manifest) {
+    // The switch decides about every hero, the latecomers too.
+    _latecomers.clear();
+
     if (_shouldReverse(manifest)) {
       _manifest = manifest.reversed;
       notifyListeners();
@@ -789,7 +796,8 @@ class _Flight extends ChangeNotifier {
 
   /// Gives [hero] the part in this flight of the hero it mounts anew, the
   /// one with its key, if any, and returns that hero: the hero the flight
-  /// leaves, lands on, or lands on next.
+  /// leaves, lands on, or lands on next. Any other hero is a latecomer, which
+  /// shows when the flight ends.
   ///
   /// Listeners need no notice: the new hero equals the old one, so the
   /// flight's leg doesn't change.
@@ -809,6 +817,9 @@ class _Flight extends ChangeNotifier {
       _nextHero = hero;
       return replaced;
     }
+    _latecomers
+      ..remove(hero)
+      ..add(hero);
     return null;
   }
 
@@ -896,10 +907,13 @@ class _Flight extends ChangeNotifier {
     });
   }
 
-  /// Ends this flight: shows the hero it [landedOn], if any, and leaves the
-  /// registry, which disposes it.
+  /// Ends this flight: shows the hero it [landedOn], if any, and the
+  /// latecomers, and leaves the registry, which disposes it.
   void _end({_Hero? landedOn}) {
     landedOn?.offstage = false;
+    for (final hero in _latecomers) {
+      hero.offstage = false;
+    }
     _registry.remove(this);
   }
 }
