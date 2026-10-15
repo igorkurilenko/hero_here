@@ -1,3 +1,5 @@
+import 'dart:ui' as ui;
+
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:hero_here/hero_here.dart';
@@ -90,6 +92,57 @@ void main() {
 
     expect(find.byKey(const ValueKey('box2')), findsOneWidget);
   });
+
+  testWidgets('disposes the snapshot when a switch ends', (tester) async {
+    final liveImages = _trackLiveImages();
+    final slot = ValueNotifier(0);
+    addTearDown(slot.dispose);
+
+    await tester.pumpWidget(_SlotSwitcher(slot: slot));
+    await tester.pumpAndSettle();
+
+    slot.value = 1;
+    await tester.pumpAndSettle();
+
+    expect(liveImages(), 0);
+  });
+
+  testWidgets('disposes the snapshot when unmounted during a switch', (
+    tester,
+  ) async {
+    final liveImages = _trackLiveImages();
+    final slot = ValueNotifier(0);
+    addTearDown(slot.dispose);
+
+    await tester.pumpWidget(_SlotSwitcher(slot: slot));
+    await tester.pumpAndSettle();
+
+    slot.value = 1;
+    await tester.pump(); // The snapshot is taken after this frame.
+    await tester.pumpWidget(const SizedBox());
+
+    expect(liveImages(), 0);
+  });
+}
+
+/// Counts the `ui.Image` handles created and not yet disposed from now until
+/// the end of the test.
+int Function() _trackLiveImages() {
+  var live = 0;
+  final onCreate = ui.Image.onCreate, onDispose = ui.Image.onDispose;
+  ui.Image.onCreate = (image) {
+    live++;
+    onCreate?.call(image);
+  };
+  ui.Image.onDispose = (image) {
+    live--;
+    onDispose?.call(image);
+  };
+  addTearDown(() {
+    ui.Image.onCreate = onCreate;
+    ui.Image.onDispose = onDispose;
+  });
+  return () => live;
 }
 
 /// Snapshots the old child, lays the new one out offstage, starts the flight.

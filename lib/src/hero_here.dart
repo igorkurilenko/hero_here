@@ -100,6 +100,8 @@ class _HeroHereSwitcherState extends State<HeroHereSwitcher>
     for (final flight in flights) {
       flight.dispose();
     }
+    // RawImage doesn't dispose its image.
+    _childScreenshot?.image?.dispose();
     super.dispose();
   }
 
@@ -249,6 +251,7 @@ class _Execute extends _SwitchingState {
     _dispatchFlights(flightManifestsByTag);
 
     switcher.setChildState(() {
+      switcher._childScreenshot?.image?.dispose();
       switcher._childScreenshot = null;
       switcher._childOffstage = false;
       switcher._switchingState = _Idle(switcher, prevSwitchHeroes: nextHeroes);
