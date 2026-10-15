@@ -5,6 +5,7 @@
 * Run one switch per flight in the show details example, instead of a second one that snapshots the whole page after each flight lands.
 * Keep the show details example's back button in place when the page rebuilds, such as on a window resize, instead of fading in a new one over it.
 * Rebuild only the image, title and description wrappers on each frame of a drag on the show details example's details, instead of the whole details view.
+* Close the show details example's details onto where the cell is, instead of where it was when it was tapped, which was wrong after a window resize.
 
 ## 1.1.4
 

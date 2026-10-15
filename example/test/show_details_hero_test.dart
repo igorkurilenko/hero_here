@@ -119,6 +119,47 @@ void main() {
 
     expect(find.byType(EightThousanderDetailsHero), findsNothing);
   });
+
+  testWidgets('closes the details onto where the cell is after a resize', (
+    tester,
+  ) async {
+    await tester.pumpWidget(const MaterialApp(home: ShowDetailsExample()));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('K2'));
+    await tester.pumpAndSettle();
+
+    // A narrower window moves the cell.
+    tester.view.physicalSize = const Size(1200, 1800);
+    addTearDown(tester.view.resetPhysicalSize);
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byIcon(Icons.chevron_left));
+
+    // While the cell is hidden, the image showing is the flight's shuttle.
+    final image = find.byWidgetPredicate(
+      (widget) =>
+          widget is Image &&
+          widget.image == const AssetImage('assets/images/k2.jpeg'),
+    );
+    final cellImage = find.descendant(
+      of: find.byType(GridView),
+      matching: image,
+    );
+    Rect? shuttleRect;
+    for (var frame = 0; frame < 40; frame++) {
+      await tester.pump(const Duration(milliseconds: 16));
+      if (tester.any(image) && !tester.any(cellImage)) {
+        shuttleRect = tester.getRect(image);
+      }
+    }
+
+    final cellRect = tester.getRect(cellImage);
+    expect(
+      (shuttleRect!.topLeft - cellRect.topLeft).distance,
+      lessThan(10),
+      reason: 'The shuttle landed at $shuttleRect, the cell is at $cellRect.',
+    );
+  });
 }
 
 /// Counts the `ui.Image`s created from now until the end of the test, leaving
