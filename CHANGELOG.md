@@ -3,6 +3,7 @@
 ### Fixes
 
 * Fly a hero on from where its shuttle is when the child changes again mid-flight, instead of jumping back to where the flight started.
+* Show the heroes of a child that arrives while a switch is still running, instead of keeping them hidden for good.
 
 ## 1.1.0
 

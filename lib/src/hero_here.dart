@@ -192,11 +192,14 @@ class _Idle extends _SwitchingState {
 
   @override
   void execute() {
-    switcher._child = switcher.widget.child;
     switcher._switchingState = _Prepare(
       switcher,
       prevSwitchHeroes: prevSwitchHeroes,
     );
+    // A child that arrived during the last switch needs a switch of its own.
+    if (!identical(switcher._child, switcher.widget.child)) {
+      switcher._switchingState.execute();
+    }
   }
 }
 

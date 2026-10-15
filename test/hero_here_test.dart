@@ -73,6 +73,23 @@ void main() {
     expect(shuttle, findsNothing);
     expect(find.byKey(const ValueKey('box2')), findsOneWidget);
   });
+
+  testWidgets('shows a hero whose child arrives during a switch', (
+    tester,
+  ) async {
+    final slot = ValueNotifier(0);
+    addTearDown(slot.dispose);
+
+    await tester.pumpWidget(_SlotSwitcher(slot: slot));
+    await tester.pumpAndSettle();
+
+    slot.value = 1;
+    await tester.pump(); // The switch to the second slot starts.
+    slot.value = 2; // The third slot arrives before that switch ends.
+    await tester.pumpAndSettle();
+
+    expect(find.byKey(const ValueKey('box2')), findsOneWidget);
+  });
 }
 
 /// Snapshots the old child, lays the new one out offstage, starts the flight.
