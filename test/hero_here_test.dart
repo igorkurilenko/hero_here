@@ -1037,7 +1037,154 @@ void main() {
 
       expect(snapshots(), 3);
     });
+
+    testWidgets('runs a switch only when its switch key changes, with '
+        '$child', (tester) async {
+      final rebuilds = ValueNotifier(0);
+      final switchKey = ValueNotifier<Object?>('a');
+      addTearDown(rebuilds.dispose);
+      addTearDown(switchKey.dispose);
+
+      await tester.pumpWidget(
+        _RebuildSwitcher(
+          rebuilds: rebuilds,
+          sameChild: sameChild,
+          switchKey: switchKey,
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      final snapshots = _countNewImages();
+      for (var rebuild = 0; rebuild < 3; rebuild++) {
+        rebuilds.value++;
+        await tester.pumpAndSettle();
+      }
+
+      expect(snapshots(), 0);
+
+      switchKey.value = 'b';
+      await tester.pumpAndSettle();
+
+      expect(snapshots(), 1);
+    });
   }
+
+  testWidgets('shows a child with the same switch key on the frame it '
+      'rebuilds', (tester) async {
+    final rebuilds = ValueNotifier(0);
+    final switchKey = ValueNotifier<Object?>('a');
+    addTearDown(rebuilds.dispose);
+    addTearDown(switchKey.dispose);
+
+    await tester.pumpWidget(
+      _RebuildSwitcher(
+        rebuilds: rebuilds,
+        sameChild: false,
+        switchKey: switchKey,
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    rebuilds.value++;
+    await tester.pump();
+
+    expect(find.byKey(const ValueKey(1)), findsOneWidget);
+  });
+
+  testWidgets('runs another switch for a child that arrives during a switch', (
+    tester,
+  ) async {
+    final rebuilds = ValueNotifier(0);
+    addTearDown(rebuilds.dispose);
+
+    await tester.pumpWidget(
+      _RebuildSwitcher(rebuilds: rebuilds, sameChild: false),
+    );
+    await tester.pumpAndSettle();
+
+    final snapshots = _countNewImages();
+    rebuilds.value++;
+    await tester.pump(); // The switch snapshots the child after this frame.
+    rebuilds.value++;
+    await tester.pumpAndSettle();
+
+    expect(snapshots(), 2);
+  });
+
+  testWidgets('runs no other switch for a child with the same switch key '
+      'that arrives during a switch', (tester) async {
+    final rebuilds = ValueNotifier(0);
+    final switchKey = ValueNotifier<Object?>('a');
+    addTearDown(rebuilds.dispose);
+    addTearDown(switchKey.dispose);
+
+    await tester.pumpWidget(
+      _RebuildSwitcher(
+        rebuilds: rebuilds,
+        sameChild: false,
+        switchKey: switchKey,
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    final snapshots = _countNewImages();
+    switchKey.value = 'b';
+    await tester.pump(); // The switch snapshots the child after this frame.
+    rebuilds.value++;
+    await tester.pumpAndSettle();
+
+    expect(snapshots(), 1);
+    expect(find.byKey(const ValueKey(1)), findsOneWidget);
+  });
+
+  for (final (to, nextKey) in [('another key', 'c'), ('none', null)]) {
+    testWidgets('runs another switch when its switch key changes to $to '
+        'during a switch, with the same child', (tester) async {
+      final rebuilds = ValueNotifier(0);
+      final switchKey = ValueNotifier<Object?>('a');
+      addTearDown(rebuilds.dispose);
+      addTearDown(switchKey.dispose);
+
+      await tester.pumpWidget(
+        _RebuildSwitcher(
+          rebuilds: rebuilds,
+          sameChild: true,
+          switchKey: switchKey,
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      final snapshots = _countNewImages();
+      switchKey.value = 'b';
+      await tester.pump(); // The switch snapshots the child after this frame.
+      switchKey.value = nextKey;
+      await tester.pumpAndSettle();
+
+      expect(snapshots(), 2);
+    });
+  }
+
+  testWidgets('shuttles the new child of a hero that changes in place '
+      'mid-flight', (tester) async {
+    final hero = ValueNotifier((slot: 0, look: 'a'));
+    addTearDown(hero.dispose);
+
+    await tester.pumpWidget(_InPlaceSwitcher(hero: hero));
+    await tester.pumpAndSettle();
+
+    hero.value = (slot: 1, look: 'a');
+    await _pumpSwitch(tester);
+    await tester.pump(const Duration(milliseconds: 100));
+    hero.value = (slot: 1, look: 'b');
+    await tester.pump();
+
+    Finder shuttled(String box) => find.descendant(
+      of: find.byKey(_shuttleKey),
+      matching: find.byKey(ValueKey(box)),
+    );
+    expect(shuttled('box1b'), findsOneWidget);
+    expect(shuttled('box1a'), findsNothing);
+  });
 
   testWidgets('runs no switch on a window resize when sizes are read below '
       'it', (tester) async {
@@ -1834,22 +1981,66 @@ class _ExtraSwitcher extends StatelessWidget {
   );
 }
 
-/// Rebuilds a switcher on each change of [rebuilds], with a new child each
-/// time, or with the same `const` child when [sameChild].
+/// Rebuilds a switcher on each change of [rebuilds] or [switchKey], with a new
+/// child keyed by [rebuilds] each time, or with the same `const` child when
+/// [sameChild]. The switcher's switch key is [switchKey]'s, if any.
 class _RebuildSwitcher extends StatelessWidget {
-  const _RebuildSwitcher({required this.rebuilds, required this.sameChild});
+  const _RebuildSwitcher({
+    required this.rebuilds,
+    required this.sameChild,
+    this.switchKey,
+  });
 
   final ValueNotifier<int> rebuilds;
   final bool sameChild;
+  final ValueNotifier<Object?>? switchKey;
+
+  @override
+  Widget build(BuildContext context) => MaterialApp(
+    home: ListenableBuilder(
+      listenable: Listenable.merge([rebuilds, switchKey]),
+      builder: (context, _) => HeroHereSwitcher(
+        switchKey: switchKey?.value,
+        child: sameChild
+            ? const SizedBox.square(dimension: 40)
+            : SizedBox.square(key: ValueKey(rebuilds.value), dimension: 40),
+      ),
+    ),
+  );
+}
+
+/// Shows one hero in the slot of [_slotRects] that [hero] picks, with a box
+/// keyed by the slot and the look as its child. Its switch key is the slot,
+/// so a new look alone shows in place. Its shuttle shows its `toHero`'s
+/// child, in a box with [_shuttleKey].
+class _InPlaceSwitcher extends StatelessWidget {
+  const _InPlaceSwitcher({required this.hero});
+
+  final ValueNotifier<({int slot, String look})> hero;
 
   @override
   Widget build(BuildContext context) => MaterialApp(
     home: ValueListenableBuilder(
-      valueListenable: rebuilds,
-      builder: (context, rebuild, _) => HeroHereSwitcher(
-        child: sameChild
-            ? const SizedBox.square(dimension: 40)
-            : SizedBox.square(key: ValueKey(rebuild), dimension: 40),
+      valueListenable: hero,
+      builder: (context, hero, _) => HeroHereSwitcher(
+        switchKey: hero.slot,
+        child: Stack(
+          children: [
+            Positioned.fromRect(
+              rect: _slotRects[hero.slot],
+              child: HeroHere(
+                key: ValueKey(hero.slot),
+                tag: 'hero',
+                flightShuttleBuilder: (_, _, _, toHero) =>
+                    KeyedSubtree(key: _shuttleKey, child: toHero.child),
+                child: ColoredBox(
+                  key: ValueKey('box${hero.slot}${hero.look}'),
+                  color: const Color(0xFF2196F3),
+                ),
+              ),
+            ),
+          ],
+        ),
       ),
     ),
   );
