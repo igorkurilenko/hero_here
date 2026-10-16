@@ -804,28 +804,42 @@ class _FlightWidget extends StatelessWidget {
   final _Flight flight;
   const _FlightWidget({super.key, required this.flight});
 
-  // A new leg flies between other heroes, so it builds its shuttle anew.
-  //
   // The layout builder builds what changes below it while it lays out, which
   // is after the switcher's child lays out, in the default layout. So the
   // flight finds its heroes where this frame's layout puts them, such as on
   // the frame of a window resize, rather than where they were on the last
-  // frame. It builds anew on a resize too, since that changes the sky's
-  // constraints.
+  // frame, and its shuttle shows what they are on this frame's build.
   @override
   Widget build(BuildContext context) => LayoutBuilder(
     builder: (context, _) => ListenableBuilder(
       listenable: flight,
       builder: (context, _) => AnimatedBuilder(
         animation: flight.animation,
-        builder: (context, child) => _GlobalRect(
+        builder: (context, _) => _GlobalRect(
           rect: flight.evaluateRect(),
-          child: IgnorePointer(child: child),
+          child: IgnorePointer(child: flight.shuttle),
         ),
-        child: flight.buildShuttle(context),
       ),
     ),
   );
+}
+
+/// Builds a flight's shuttle from the heroes it shows.
+class _Shuttle extends StatelessWidget {
+  final HeroHereFlightShuttleBuilder builder;
+  final Animation<double> animation;
+  final HeroHere from;
+  final HeroHere to;
+
+  const _Shuttle({
+    required this.builder,
+    required this.animation,
+    required this.from,
+    required this.to,
+  });
+
+  @override
+  Widget build(BuildContext context) => builder(context, animation, from, to);
 }
 
 /// Lays its child out with its own constraints and takes the smallest size
@@ -971,6 +985,9 @@ class _Flight extends ChangeNotifier {
   /// the shuttle as it was then.
   HeroHere? _divertedFrom;
 
+  /// The shuttle as last made, by [shuttle].
+  _Shuttle? _shuttle;
+
   /// The heroes with no part in this flight that mounted while it flew, with
   /// no switch since. They hide until it ends.
   final _latecomers = <_Hero>{};
@@ -1072,12 +1089,25 @@ class _Flight extends ChangeNotifier {
     return null;
   }
 
-  Widget buildShuttle(BuildContext context) => _style.shuttleBuilder(
-    context,
-    animation,
-    _divertedFrom ?? manifest.from.widget,
-    manifest.to.widget,
-  );
+  /// The shuttle, made anew only when a hero it shows has a new widget: on a
+  /// new leg, or when a switch or a rebuild gives a hero of the flight a new
+  /// widget mid-flight. So it builds then, and on no other frame.
+  Widget get shuttle {
+    final from = _divertedFrom ?? _manifest.from.widget;
+    final to = _manifest.to.widget;
+    final shuttle = _shuttle;
+    if (shuttle != null &&
+        identical(shuttle.from, from) &&
+        identical(shuttle.to, to)) {
+      return shuttle;
+    }
+    return _shuttle = _Shuttle(
+      builder: _style.shuttleBuilder,
+      animation: animation,
+      from: from,
+      to: to,
+    );
+  }
 
   /// Works out where the shuttle is on this frame: on its way from where its
   /// leg began to where the hero it flies to is. While that hero is nowhere,

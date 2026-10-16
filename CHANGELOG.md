@@ -4,6 +4,10 @@
 
 * Add `HeroHereSwitcher.switchKey`, which says which rebuilds of the switcher run a switch. Unset, every rebuild does, as before. Set, only a rebuild that changes it does. Any other rebuild shows its child at once, in place of the current one, with no snapshot, and nothing flies.
 
+### Fixes
+
+* Show the new child that a switch, or a rebuild below the switcher, gives a hero mid-flight in the flight's shuttle as soon as the hero has it, instead of the child the hero had when the shuttle was built.
+
 ### Docs
 
 * Document `HeroHereSwitcher.layoutBuilder`, its type and its default, and add a Layout section to the README: keep the sky after the child, so flights follow each frame's layout, and give the sky the switcher's size to clip the flights to it.

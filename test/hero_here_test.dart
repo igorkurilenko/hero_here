@@ -1164,26 +1164,93 @@ void main() {
     });
   }
 
-  testWidgets('shuttles the new child of a hero that changes in place '
-      'mid-flight', (tester) async {
-    final hero = ValueNotifier((slot: 0, look: 'a'));
-    addTearDown(hero.dispose);
+  for (final (how, keyed, looksBelow) in [
+    ('a switch', false, false),
+    ('an update in place', true, false),
+    ('a rebuild below the switcher', false, true),
+  ]) {
+    testWidgets('shuttles the new child that $how gives a hero mid-flight', (
+      tester,
+    ) async {
+      final slot = ValueNotifier(0), look = ValueNotifier('a');
+      addTearDown(slot.dispose);
+      addTearDown(look.dispose);
 
-    await tester.pumpWidget(_InPlaceSwitcher(hero: hero));
+      await tester.pumpWidget(
+        _LookSwitcher(
+          slot: slot,
+          look: look,
+          keyed: keyed,
+          looksBelow: looksBelow,
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      slot.value = 1;
+      await _pumpSwitch(tester);
+      await tester.pump(const Duration(milliseconds: 100));
+      look.value = 'b';
+      // A switch shows the new child on its third frame, the others at once.
+      keyed || looksBelow ? await tester.pump() : await _pumpSwitch(tester);
+
+      Finder shuttled(String box) => find.descendant(
+        of: find.byKey(_shuttleKey),
+        matching: find.byKey(ValueKey(box)),
+      );
+      expect(shuttled('box1b'), findsOneWidget);
+      expect(shuttled('box1a'), findsNothing);
+    });
+  }
+
+  testWidgets('shuttles the new child that a rebuild below the switcher gives '
+      'the hero a flight leaves', (tester) async {
+    final split = ValueNotifier(false), look = ValueNotifier('a');
+    addTearDown(split.dispose);
+    addTearDown(look.dispose);
+
+    await tester.pumpWidget(_LeftLookSwitcher(split: split, look: look));
     await tester.pumpAndSettle();
 
-    hero.value = (slot: 1, look: 'a');
+    split.value = true;
     await _pumpSwitch(tester);
     await tester.pump(const Duration(milliseconds: 100));
-    hero.value = (slot: 1, look: 'b');
+    look.value = 'b';
     await tester.pump();
 
     Finder shuttled(String box) => find.descendant(
       of: find.byKey(_shuttleKey),
       matching: find.byKey(ValueKey(box)),
     );
-    expect(shuttled('box1b'), findsOneWidget);
-    expect(shuttled('box1a'), findsNothing);
+    expect(shuttled('boxb'), findsOneWidget);
+    expect(shuttled('boxa'), findsNothing);
+  });
+
+  testWidgets('builds the shuttle of a leg once, not on each frame', (
+    tester,
+  ) async {
+    final slot = ValueNotifier(0);
+    addTearDown(slot.dispose);
+    var builds = 0;
+
+    await tester.pumpWidget(
+      _SlotSwitcher(
+        slot: slot,
+        shuttleBuilder: (_, _, _, _) {
+          builds++;
+          return const SizedBox.expand(key: _shuttleKey);
+        },
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    slot.value = 1;
+    await _pumpSwitch(tester);
+    for (var frame = 0; frame < 10; frame++) {
+      await tester.pump(const Duration(milliseconds: 16));
+    }
+
+    expect(find.byKey(_shuttleKey), findsOneWidget);
+    expect(builds, 1);
   });
 
   testWidgets('runs no switch on a window resize when sizes are read below '
@@ -2009,39 +2076,106 @@ class _RebuildSwitcher extends StatelessWidget {
   );
 }
 
-/// Shows one hero in the slot of [_slotRects] that [hero] picks, with a box
-/// keyed by the slot and the look as its child. Its switch key is the slot,
-/// so a new look alone shows in place. Its shuttle shows its `toHero`'s
-/// child, in a box with [_shuttleKey].
-class _InPlaceSwitcher extends StatelessWidget {
-  const _InPlaceSwitcher({required this.hero});
+/// Shows one hero in the slot of [_slotRects] that [slot] picks, with a box
+/// keyed by the slot and [look] as its child. The switcher rebuilds on each
+/// change of [look], unless [looksBelow], when only a builder below it does.
+/// When [keyed], its switch key is the slot, so a new look alone shows in
+/// place. Its shuttle shows its `toHero`'s child, in a box with
+/// [_shuttleKey].
+class _LookSwitcher extends StatelessWidget {
+  const _LookSwitcher({
+    required this.slot,
+    required this.look,
+    required this.keyed,
+    required this.looksBelow,
+  });
 
-  final ValueNotifier<({int slot, String look})> hero;
+  final ValueNotifier<int> slot;
+  final ValueNotifier<String> look;
+  final bool keyed;
+  final bool looksBelow;
 
   @override
   Widget build(BuildContext context) => MaterialApp(
-    home: ValueListenableBuilder(
-      valueListenable: hero,
-      builder: (context, hero, _) => HeroHereSwitcher(
-        switchKey: hero.slot,
+    home: ListenableBuilder(
+      listenable: looksBelow ? slot : Listenable.merge([slot, look]),
+      builder: (context, _) => HeroHereSwitcher(
+        switchKey: keyed ? slot.value : null,
         child: Stack(
           children: [
             Positioned.fromRect(
-              rect: _slotRects[hero.slot],
-              child: HeroHere(
-                key: ValueKey(hero.slot),
-                tag: 'hero',
-                flightShuttleBuilder: (_, _, _, toHero) =>
-                    KeyedSubtree(key: _shuttleKey, child: toHero.child),
-                child: ColoredBox(
-                  key: ValueKey('box${hero.slot}${hero.look}'),
-                  color: const Color(0xFF2196F3),
-                ),
-              ),
+              rect: _slotRects[slot.value],
+              child: looksBelow
+                  ? ValueListenableBuilder(
+                      valueListenable: look,
+                      builder: (context, look, _) => _hero(look),
+                    )
+                  : _hero(look.value),
             ),
           ],
         ),
       ),
+    ),
+  );
+
+  Widget _hero(String look) => HeroHere(
+    key: ValueKey(slot.value),
+    tag: 'hero',
+    flightShuttleBuilder: (_, _, _, toHero) =>
+        KeyedSubtree(key: _shuttleKey, child: toHero.child),
+    child: ColoredBox(
+      key: ValueKey('box${slot.value}$look'),
+      color: const Color(0xFF2196F3),
+    ),
+  );
+}
+
+/// Shows hero 'a' in the first slot of [_slotRects], with a box keyed by
+/// [look] as its child, which a builder below the switcher reads. When
+/// [split], it adds hero 'b' with the same tag in the second, so 'a' flies to
+/// 'b' and stays, hidden. Its shuttle shows its `fromHero`'s child, in a box
+/// with [_shuttleKey].
+class _LeftLookSwitcher extends StatelessWidget {
+  const _LeftLookSwitcher({required this.split, required this.look});
+
+  final ValueNotifier<bool> split;
+  final ValueNotifier<String> look;
+
+  @override
+  Widget build(BuildContext context) => MaterialApp(
+    home: ValueListenableBuilder(
+      valueListenable: split,
+      builder: (context, split, _) {
+        Widget hero(String key, String look) => HeroHere(
+          key: ValueKey(key),
+          tag: 'hero',
+          flightShuttleBuilder: (_, _, fromHero, _) =>
+              KeyedSubtree(key: _shuttleKey, child: fromHero.child),
+          child: ColoredBox(
+            key: ValueKey('box$look'),
+            color: const Color(0xFF2196F3),
+          ),
+        );
+
+        return HeroHereSwitcher(
+          child: Stack(
+            children: [
+              Positioned.fromRect(
+                rect: _slotRects[0],
+                child: ValueListenableBuilder(
+                  valueListenable: look,
+                  builder: (context, look, _) => hero('a', look),
+                ),
+              ),
+              if (split)
+                Positioned.fromRect(
+                  rect: _slotRects[1],
+                  child: hero('b', 'other'),
+                ),
+            ],
+          ),
+        );
+      },
     ),
   );
 }
