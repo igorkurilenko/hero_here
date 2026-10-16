@@ -247,7 +247,13 @@ void main() {
     slot.value = 0;
     await _pumpSwitch(tester);
 
+    // A switch on the way, with the same child, changes nothing.
     final shuttle = find.byKey(_shuttleKey);
+    final leftBeforeSwitch = tester.getRect(shuttle).left;
+    tester.element(find.byType(HeroHereSwitcher)).markNeedsBuild();
+    await _pumpSwitch(tester);
+
+    expect(tester.getRect(shuttle).left, leftBeforeSwitch);
     final lefts = <double>[];
     for (var frame = 0; frame < 40 && tester.any(shuttle); frame++) {
       lefts.add(tester.getRect(shuttle).left);

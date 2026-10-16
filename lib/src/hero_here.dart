@@ -448,14 +448,17 @@ class _SwitchPlan {
       }
     }
 
+    // A flight under way goes on while a next hero has its tag, even when it
+    // flies back to the hero it left, as a diverted flight may.
     return _SwitchPlan._(
       {
         for (final manifest in manifests.values)
-          if (!manifest.isIdle) manifest.tag: manifest,
+          if (!manifest.isIdle || flying.containsKey(manifest.tag))
+            manifest.tag: manifest,
       },
       {
         for (final tag in flying.keys)
-          if (manifests[tag]?.isIdle ?? true) tag,
+          if (!manifests.containsKey(tag)) tag,
       },
       {
         for (final hero in nextHeroes)
