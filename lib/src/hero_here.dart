@@ -13,6 +13,7 @@
 // limitations under the License.
 
 import 'dart:collection';
+import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
@@ -76,7 +77,9 @@ enum HeroHereFlightRedirect {
   /// Flies from where the shuttle is to the new hero, the hero it left too,
   /// over the flight's whole duration. The shuttle sets off at the speed it
   /// had, so it turns toward the new hero rather than stops, and swings
-  /// around to a hero behind it rather than doubling back. Its `fromHero`
+  /// around to a hero behind it rather than doubling back. Near the
+  /// switcher's edge, it slides along the edge rather than out of the
+  /// switcher. Its `fromHero`
   /// becomes a stand-in for the shuttle as it was, with the key, tag and
   /// payload of the hero the flight left, so a shuttle that fades `fromHero`
   /// into `toHero` fades from what it showed.
@@ -1446,7 +1449,36 @@ class _Flight extends ChangeNotifier {
               end,
             ).transform((value - turn.value) / (1 - turn.value))!;
     }
-    return rect.plus(_momentum(t));
+    return _carried(rect, _momentum(t), size);
+  }
+
+  /// [path] carried by [momentum], as far as that keeps it inside the
+  /// switcher's child of [size] on each axis where [path] is inside it. So a
+  /// shuttle that carries on or swings near an edge slides along it rather
+  /// than out of the switcher, while one whose path is outside, such as from
+  /// a hero scrolled away, carries on as it would.
+  static Rect _carried(Rect path, Rect momentum, Size? size) {
+    if (size == null) return path.plus(momentum);
+    // The share of a push of an edge toward a side that keeps it on the side
+    // it has room on.
+    double share(double room, double push) =>
+        room < 0 || push <= room ? 1 : room / push;
+    final across = math.min(
+      share(path.left, -momentum.left),
+      share(size.width - path.right, momentum.right),
+    );
+    final down = math.min(
+      share(path.top, -momentum.top),
+      share(size.height - path.bottom, momentum.bottom),
+    );
+    return path.plus(
+      Rect.fromLTRB(
+        momentum.left * across,
+        momentum.top * down,
+        momentum.right * across,
+        momentum.bottom * down,
+      ),
+    );
   }
 
   /// Where the leg begins, with the switcher's child of [size]: where the

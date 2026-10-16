@@ -1,3 +1,4 @@
+import 'dart:math';
 import 'dart:typed_data';
 import 'dart:ui' as ui;
 
@@ -610,6 +611,50 @@ void main() {
     final stepAfter = tester.getRect(shuttle).left - left;
     expect(stepAfter, inExclusiveRange(stepBefore / 2, stepBefore * 2));
   });
+
+  for (final (edge, flipped) in [('bottom', false), ('right', true)]) {
+    testWidgets('keeps a diverted shuttle inside the switcher as it swings '
+        'toward its $edge edge', (tester) async {
+      tester.view.devicePixelRatio = 1;
+      tester.view.physicalSize = const Size(800, 600);
+      addTearDown(tester.view.reset);
+      final slot = ValueNotifier(0);
+      addTearDown(slot.dispose);
+      const size = Size(60, 60);
+
+      // Heroes near the edge. The flight along it diverts to a hero behind it
+      // and a bit nearer the edge, so it swings toward the edge.
+      Alignment along(double x, double y) =>
+          flipped ? Alignment(y, x) : Alignment(x, y);
+      await tester.pumpWidget(
+        _AlignSwitcher(
+          slot: slot,
+          redirect: HeroHereFlightRedirect.divert,
+          spots: [
+            (alignment: along(-0.7, 0.93), size: size),
+            (alignment: along(0.7, 0.93), size: size),
+            (alignment: along(-0.9, 1), size: size),
+          ],
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      slot.value = 1;
+      await _pumpSwitch(tester);
+      await tester.pump(HeroHere.defaultFlightAnimationDuration ~/ 2);
+      slot.value = 2;
+      await _pumpSwitch(tester);
+
+      final shuttle = find.byKey(_shuttleKey);
+      var farthest = 0.0;
+      while (tester.any(shuttle)) {
+        final rect = tester.getRect(shuttle);
+        farthest = max(farthest, flipped ? rect.right : rect.bottom);
+        await tester.pump(const Duration(milliseconds: 8));
+      }
+      expect(farthest, lessThanOrEqualTo(flipped ? 800 : 600));
+    });
+  }
 
   testWidgets('flies a diverted hero back straight from where its shuttle is', (
     tester,

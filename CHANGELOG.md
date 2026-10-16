@@ -1,3 +1,9 @@
+## Unreleased
+
+### Fixes
+
+* Keep a diverted shuttle inside the switcher as it carries on or swings around near the switcher's edge, so it slides along the edge, instead of out of the switcher by as much as the speed it had takes it. A shuttle whose path is outside, such as from a hero scrolled away, carries on as before.
+
 ## 1.5.0
 
 ### Features
