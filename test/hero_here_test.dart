@@ -1255,6 +1255,139 @@ void main() {
     expect(shuttleRect.width, closeTo(heroRect.width, 2));
   });
 
+  testWidgets('flies to where its hero is on the frame of a window resize', (
+    tester,
+  ) async {
+    tester.view.devicePixelRatio = 1;
+    tester.view.physicalSize = const Size(800, 600);
+    addTearDown(tester.view.reset);
+    final moved = ValueNotifier(false);
+    addTearDown(moved.dispose);
+    late Animation<double> animation;
+
+    await tester.pumpWidget(
+      _QuarterWidthSwitcher(
+        moved: moved,
+        shuttleBuilder: (_, flight, _, _) {
+          animation = flight;
+          return const SizedBox.expand(key: _shuttleKey);
+        },
+      ),
+    );
+    await tester.pumpAndSettle();
+    final fromRect = tester.getRect(find.byKey(const ValueKey('box-false')));
+
+    moved.value = true;
+    await _pumpSwitch(tester);
+    await tester.pump(HeroHere.defaultFlightAnimationDuration ~/ 2);
+
+    // The hero the flight lands on is a quarter of the window wide.
+    tester.view.physicalSize = const Size(400, 600);
+    await tester.pump(const Duration(milliseconds: 16));
+
+    final toRect = tester.getRect(
+      find.byKey(const ValueKey('box-true'), skipOffstage: false),
+    );
+    expect(toRect, const Rect.fromLTWH(300, 0, 100, 40));
+    expect(
+      tester.getRect(find.byKey(_shuttleKey)),
+      _rectMoreOrLessEquals(Rect.lerp(fromRect, toRect, animation.value)!),
+    );
+  });
+
+  testWidgets('flies in a switcher of unbounded height', (tester) async {
+    final moved = ValueNotifier(false);
+    addTearDown(moved.dispose);
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: SingleChildScrollView(
+          child: ValueListenableBuilder(
+            valueListenable: moved,
+            builder: (context, moved, _) => HeroHereSwitcher(
+              child: Align(
+                alignment: moved ? Alignment.topRight : Alignment.topLeft,
+                child: HeroHere(
+                  key: ValueKey(moved),
+                  tag: 'hero',
+                  flightShuttleBuilder: (_, _, _, _) =>
+                      const SizedBox.expand(key: _shuttleKey),
+                  child: const SizedBox(width: 40, height: 40),
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    moved.value = true;
+    await _pumpSwitch(tester);
+    await tester.pump(HeroHere.defaultFlightAnimationDuration ~/ 2);
+
+    expect(tester.getSize(find.byKey(_shuttleKey)), const Size(40, 40));
+    await tester.pumpAndSettle();
+    expect(find.byKey(_shuttleKey), findsNothing);
+  });
+
+  for (final (intrinsic, wrap, size) in [
+    (
+      'height',
+      (Widget switcher) =>
+          SizedBox(width: 400, child: IntrinsicHeight(child: switcher)),
+      const Size(400, 40),
+    ),
+    (
+      'width',
+      (Widget switcher) =>
+          SizedBox(height: 40, child: IntrinsicWidth(child: switcher)),
+      const Size(40, 40),
+    ),
+  ]) {
+    testWidgets('flies in a switcher sized to its intrinsic $intrinsic', (
+      tester,
+    ) async {
+      final moved = ValueNotifier(false);
+      addTearDown(moved.dispose);
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Align(
+            alignment: Alignment.topLeft,
+            child: wrap(
+              ValueListenableBuilder(
+                valueListenable: moved,
+                builder: (context, moved, _) => HeroHereSwitcher(
+                  child: Align(
+                    alignment: moved ? Alignment.topRight : Alignment.topLeft,
+                    child: HeroHere(
+                      key: ValueKey(moved),
+                      tag: 'hero',
+                      flightShuttleBuilder: (_, _, _, _) =>
+                          const SizedBox.expand(key: _shuttleKey),
+                      child: const SizedBox(width: 40, height: 40),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      moved.value = true;
+      await _pumpSwitch(tester);
+      await tester.pump(HeroHere.defaultFlightAnimationDuration ~/ 2);
+
+      expect(tester.getSize(find.byKey(_shuttleKey)), const Size(40, 40));
+      expect(tester.getSize(find.byType(HeroHereSwitcher)), size);
+      await tester.pumpAndSettle();
+      expect(find.byKey(_shuttleKey), findsNothing);
+    });
+  }
+
   test('takes flight options typed with the old or the new names', () {
     // ignore: deprecated_member_use_from_same_package
     const AnimationControllerFactory oldControllerFactory =
@@ -1872,9 +2005,10 @@ class _ShuttleSwitcher extends StatelessWidget {
 /// Shows a 40 px hero at the top left, or, when [moved], a hero a quarter of
 /// the window wide at the top right.
 class _QuarterWidthSwitcher extends StatelessWidget {
-  const _QuarterWidthSwitcher({required this.moved});
+  const _QuarterWidthSwitcher({required this.moved, this.shuttleBuilder});
 
   final ValueNotifier<bool> moved;
+  final HeroHereFlightShuttleBuilder? shuttleBuilder;
 
   @override
   Widget build(BuildContext context) => MaterialApp(
@@ -1886,8 +2020,9 @@ class _QuarterWidthSwitcher extends StatelessWidget {
           child: HeroHere(
             key: ValueKey(moved),
             tag: 'hero',
-            flightShuttleBuilder: (_, _, _, _) =>
-                const SizedBox.expand(key: _shuttleKey),
+            flightShuttleBuilder:
+                shuttleBuilder ??
+                (_, _, _, _) => const SizedBox.expand(key: _shuttleKey),
             child: FractionallySizedBox(
               key: ValueKey('box-$moved'),
               widthFactor: moved ? 0.25 : null,

@@ -3,6 +3,7 @@
 ### Fixes
 
 * Keep showing a shuttle that lands while a switch shows its snapshot of the old child, until the switch runs, instead of showing nothing for a frame: the snapshot shows the hero the shuttle lands on hidden, and the new child isn't showing yet.
+* Place a shuttle by where its heroes are on each frame, rather than where they were on the frame before, so while a window is resized the shuttle keeps up with the heroes instead of lagging a frame behind them.
 
 ## 1.3.0
 

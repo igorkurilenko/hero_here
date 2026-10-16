@@ -725,18 +725,74 @@ class _FlightWidget extends StatelessWidget {
   const _FlightWidget({super.key, required this.flight});
 
   // A new leg flies between other heroes, so it builds its shuttle anew.
+  //
+  // The layout builder builds what changes below it while it lays out, which
+  // is after the switcher's child lays out, in the default layout. So the
+  // flight finds its heroes where this frame's layout puts them, such as on
+  // the frame of a window resize, rather than where they were on the last
+  // frame. It builds anew on a resize too, since that changes the sky's
+  // constraints.
   @override
-  Widget build(BuildContext context) => ListenableBuilder(
-    listenable: flight,
-    builder: (context, _) => AnimatedBuilder(
-      animation: flight.animation,
-      builder: (context, child) => _GlobalRect(
-        rect: flight.evaluateRect(),
-        child: IgnorePointer(child: child),
+  Widget build(BuildContext context) => _RelayoutBoundary(
+    child: LayoutBuilder(
+      builder: (context, _) => ListenableBuilder(
+        listenable: flight,
+        builder: (context, _) => AnimatedBuilder(
+          animation: flight.animation,
+          builder: (context, child) => _GlobalRect(
+            rect: flight.evaluateRect(),
+            child: IgnorePointer(child: child),
+          ),
+          child: flight.buildShuttle(context),
+        ),
       ),
-      child: flight.buildShuttle(context),
     ),
   );
+}
+
+/// Lays its child out with its own constraints and takes the smallest size
+/// they allow, so a layout below it, such as a flight's on each frame, lays
+/// out nothing above it.
+class _RelayoutBoundary extends SingleChildRenderObjectWidget {
+  const _RelayoutBoundary({super.child});
+
+  @override
+  _RenderRelayoutBoundary createRenderObject(BuildContext context) =>
+      _RenderRelayoutBoundary();
+}
+
+class _RenderRelayoutBoundary extends RenderProxyBox {
+  @override
+  bool get sizedByParent => true;
+
+  @override
+  Size computeDryLayout(covariant BoxConstraints constraints) =>
+      constraints.smallest;
+
+  // Its size doesn't depend on its child, so it doesn't ask its child, which
+  // a layout builder couldn't answer, such as in an IntrinsicHeight.
+  @override
+  double computeMinIntrinsicWidth(double height) => 0;
+
+  @override
+  double computeMaxIntrinsicWidth(double height) => 0;
+
+  @override
+  double computeMinIntrinsicHeight(double width) => 0;
+
+  @override
+  double computeMaxIntrinsicHeight(double width) => 0;
+
+  @override
+  double? computeDryBaseline(
+    covariant BoxConstraints constraints,
+    TextBaseline baseline,
+  ) => null;
+
+  @override
+  void performLayout() {
+    child?.layout(constraints);
+  }
 }
 
 /// Sizes its child to [rect] and paints it there. The [rect] is global, so
