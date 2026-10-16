@@ -212,13 +212,21 @@ class _HeroHereSwitcherState extends State<HeroHereSwitcher>
 
   // Flights repaint on every frame. The boundary keeps those repaints off the
   // rest of the screen, whatever the layout builder puts around the sky.
+  //
+  // The sky takes the smallest size it may, with flights or without, so it
+  // doesn't size the switcher: in a Center, an empty stack would fill the
+  // screen until a flight starts. The relayout boundary also keeps the
+  // flights' layouts on each frame inside the sky.
   Widget _buildSky() => RepaintBoundary(
-    child: Stack(
-      children: [
-        ...flights.all.map(
-          (flight) => _FlightWidget(key: ValueKey(flight.tag), flight: flight),
-        ),
-      ],
+    child: _RelayoutBoundary(
+      child: Stack(
+        children: [
+          ...flights.all.map(
+            (flight) =>
+                _FlightWidget(key: ValueKey(flight.tag), flight: flight),
+          ),
+        ],
+      ),
     ),
   );
 
@@ -310,8 +318,9 @@ class _Idle extends _SwitchingState {
       switcher.enter(_Prepare(switcher, prevSwitchHeroes: prevSwitchHeroes));
 }
 
-/// Snapshots the current child and lays the new one out offstage. Builds
-/// while it waits need nothing: it takes the newest child.
+/// Snapshots the current child and lays the new one out offstage. Holds the
+/// flights' landings from the snapshot until the switch runs. Builds while
+/// it waits need nothing: it takes the newest child.
 class _Prepare extends _SwitchingState {
   _Prepare(super.switcher, {super.prevSwitchHeroes});
 
@@ -322,6 +331,7 @@ class _Prepare extends _SwitchingState {
     final curHeroes = switcher.findHeroes();
 
     notifyWillSwitch(curHeroes);
+    switcher.flights.holdLandings();
 
     switcher.setChildState(() {
       switcher._childScreenshot = switcher.takeChildScreenshot(
@@ -351,6 +361,8 @@ class _Execute extends _SwitchingState {
   void enter() => afterFrame(_switch);
 
   void _switch() {
+    switcher.flights.releaseLandings();
+
     final nextHeroes = switcher.findHeroes();
     final plan = _SwitchPlan(
       curHeroes: curHeroes,
@@ -721,18 +733,72 @@ class _FlightWidget extends StatelessWidget {
   const _FlightWidget({super.key, required this.flight});
 
   // A new leg flies between other heroes, so it builds its shuttle anew.
+  //
+  // The layout builder builds what changes below it while it lays out, which
+  // is after the switcher's child lays out, in the default layout. So the
+  // flight finds its heroes where this frame's layout puts them, such as on
+  // the frame of a window resize, rather than where they were on the last
+  // frame. It builds anew on a resize too, since that changes the sky's
+  // constraints.
   @override
-  Widget build(BuildContext context) => ListenableBuilder(
-    listenable: flight,
-    builder: (context, _) => AnimatedBuilder(
-      animation: flight.animation,
-      builder: (context, child) => _GlobalRect(
-        rect: flight.evaluateRect(),
-        child: IgnorePointer(child: child),
+  Widget build(BuildContext context) => LayoutBuilder(
+    builder: (context, _) => ListenableBuilder(
+      listenable: flight,
+      builder: (context, _) => AnimatedBuilder(
+        animation: flight.animation,
+        builder: (context, child) => _GlobalRect(
+          rect: flight.evaluateRect(),
+          child: IgnorePointer(child: child),
+        ),
+        child: flight.buildShuttle(context),
       ),
-      child: flight.buildShuttle(context),
     ),
   );
+}
+
+/// Lays its child out with its own constraints and takes the smallest size
+/// they allow, so a layout below it, such as a flight's on each frame, lays
+/// out nothing above it.
+class _RelayoutBoundary extends SingleChildRenderObjectWidget {
+  const _RelayoutBoundary({super.child});
+
+  @override
+  _RenderRelayoutBoundary createRenderObject(BuildContext context) =>
+      _RenderRelayoutBoundary();
+}
+
+class _RenderRelayoutBoundary extends RenderProxyBox {
+  @override
+  bool get sizedByParent => true;
+
+  @override
+  Size computeDryLayout(covariant BoxConstraints constraints) =>
+      constraints.smallest;
+
+  // Its size doesn't depend on its child, so it doesn't ask its child, which
+  // a layout builder couldn't answer, such as in an IntrinsicHeight.
+  @override
+  double computeMinIntrinsicWidth(double height) => 0;
+
+  @override
+  double computeMaxIntrinsicWidth(double height) => 0;
+
+  @override
+  double computeMinIntrinsicHeight(double width) => 0;
+
+  @override
+  double computeMaxIntrinsicHeight(double width) => 0;
+
+  @override
+  double? computeDryBaseline(
+    covariant BoxConstraints constraints,
+    TextBaseline baseline,
+  ) => null;
+
+  @override
+  void performLayout() {
+    child?.layout(constraints);
+  }
 }
 
 /// Sizes its child to [rect] and paints it there. The [rect] is global, so
@@ -1105,20 +1171,24 @@ class _Flight extends ChangeNotifier {
     _manifest.to.offstage = true;
 
     final run = ++_runs;
-    _style.forwardAnimation(_controller, from: from).whenComplete(() {
-      if (run != _runs) return;
+    _style
+        .forwardAnimation(_controller, from: from)
+        .whenComplete(() => _registry.land(() => _landForward(run)));
+  }
 
-      if (_nextHero != null) {
-        // The next leg starts where the shuttle is.
-        _beginLeg(_rect);
-        _manifest.from = _manifest.to;
-        _manifest.to = _nextHero!;
-        notifyListeners();
-        _forward(from: 0);
-      } else {
-        _end(landedOn: _manifest.to);
-      }
-    });
+  void _landForward(int run) {
+    if (run != _runs) return;
+
+    if (_nextHero != null) {
+      // The next leg starts where the shuttle is.
+      _beginLeg(_rect);
+      _manifest.from = _manifest.to;
+      _manifest.to = _nextHero!;
+      notifyListeners();
+      _forward(from: 0);
+    } else {
+      _end(landedOn: _manifest.to);
+    }
   }
 
   void _reverse() {
@@ -1126,23 +1196,27 @@ class _Flight extends ChangeNotifier {
     _nextHero = null;
 
     final run = ++_runs;
-    _style.reverseAnimation(_controller).whenComplete(() {
-      if (run != _runs) return;
+    _style
+        .reverseAnimation(_controller)
+        .whenComplete(() => _registry.land(() => _landBack(run)));
+  }
 
-      if (_nextHero != null) {
-        // The next leg starts on the hero the shuttle landed back on.
-        _beginLeg(
-          _manifest.from.computeGlobalRect() ??
-              _manifest.from.placeholderRect ??
-              _rect,
-        );
-        _manifest.to = _nextHero!;
-        notifyListeners();
-        _forward(from: 0);
-      } else {
-        _end(landedOn: _manifest.from);
-      }
-    });
+  void _landBack(int run) {
+    if (run != _runs) return;
+
+    if (_nextHero != null) {
+      // The next leg starts on the hero the shuttle landed back on.
+      _beginLeg(
+        _manifest.from.computeGlobalRect() ??
+            _manifest.from.placeholderRect ??
+            _rect,
+      );
+      _manifest.to = _nextHero!;
+      notifyListeners();
+      _forward(from: 0);
+    } else {
+      _end(landedOn: _manifest.from);
+    }
   }
 
   /// Ends this flight: shows the hero it [landedOn], if any, and the
@@ -1175,6 +1249,29 @@ class _FlightRegistry extends ChangeNotifier {
   void remove(_Flight flight) {
     _flightsByTag.remove(flight.tag)?.dispose();
     notifyListeners();
+  }
+
+  /// The landings that wait for the switch under way to run.
+  List<VoidCallback>? _heldLandings;
+
+  /// Holds the flights' landings until [releaseLandings]. A switch's
+  /// snapshot shows the heroes the flights land on hidden, so a flight that
+  /// lands while it shows keeps its shuttle there instead.
+  void holdLandings() => _heldLandings ??= [];
+
+  /// Lands the flights that landed since [holdLandings].
+  void releaseLandings() {
+    final held = _heldLandings;
+    _heldLandings = null;
+    for (final land in held ?? const <VoidCallback>[]) {
+      land();
+    }
+  }
+
+  /// Runs [landing] now, or on [releaseLandings] while landings are held.
+  void land(VoidCallback landing) {
+    final held = _heldLandings;
+    held == null ? landing() : held.add(landing);
   }
 
   @override
