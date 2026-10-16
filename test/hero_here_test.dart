@@ -1659,6 +1659,49 @@ void main() {
     });
   }
 
+  testWidgets('flies to where its heroes are on the frame a window resize '
+      'moves the switcher', (tester) async {
+    tester.view.devicePixelRatio = 1;
+    tester.view.physicalSize = const Size(800, 600);
+    addTearDown(tester.view.reset);
+    final moved = ValueNotifier(false);
+    addTearDown(moved.dispose);
+    late Animation<double> animation;
+
+    await tester.pumpWidget(
+      _HeaderSwitcher(
+        moved: moved,
+        shuttleBuilder: (_, flight, _, _) {
+          animation = flight;
+          return const SizedBox.expand(key: _shuttleKey);
+        },
+      ),
+    );
+    await tester.pumpAndSettle();
+    final fromRect = tester.getRect(find.byKey(const ValueKey('box-false')));
+
+    moved.value = true;
+    await _pumpSwitch(tester);
+    await tester.pump(HeroHere.defaultFlightAnimationDuration ~/ 2);
+
+    // The header is as high as a quarter of the window's width, so the
+    // switcher moves up.
+    tester.view.physicalSize = const Size(600, 600);
+    await tester.pump(const Duration(milliseconds: 16));
+
+    final toRect = tester.getRect(
+      find.byKey(const ValueKey('box-true'), skipOffstage: false),
+    );
+    expect(toRect, const Rect.fromLTWH(560, 560, 40, 40));
+    // The hero the flight left was at the switcher's top left.
+    expect(
+      tester.getRect(find.byKey(_shuttleKey)),
+      _rectMoreOrLessEquals(
+        Rect.lerp(fromRect.translate(0, -50), toRect, animation.value)!,
+      ),
+    );
+  });
+
   testWidgets('keeps the size of its child in a center, in flight or not', (
     tester,
   ) async {
@@ -2655,6 +2698,46 @@ class _ShuttleSwitcher extends StatelessWidget {
       },
     ),
   );
+}
+
+/// Shows a 40 px hero at the top left of a switcher, or, when [moved], at its
+/// bottom right. The switcher is below a header as high as a quarter of the
+/// window's width, so a window resize moves it.
+class _HeaderSwitcher extends StatelessWidget {
+  const _HeaderSwitcher({required this.moved, required this.shuttleBuilder});
+
+  final ValueNotifier<bool> moved;
+  final HeroHereFlightShuttleBuilder shuttleBuilder;
+
+  @override
+  Widget build(BuildContext context) {
+    // Built once, so the header's rebuilds on a resize don't rebuild it.
+    final switcher = ValueListenableBuilder(
+      valueListenable: moved,
+      builder: (context, moved, _) => HeroHereSwitcher(
+        child: Align(
+          alignment: moved ? Alignment.bottomRight : Alignment.topLeft,
+          child: HeroHere(
+            key: ValueKey(moved),
+            tag: 'hero',
+            flightShuttleBuilder: shuttleBuilder,
+            child: SizedBox(key: ValueKey('box-$moved'), width: 40, height: 40),
+          ),
+        ),
+      ),
+    );
+
+    return MaterialApp(
+      home: LayoutBuilder(
+        builder: (context, constraints) => Column(
+          children: [
+            SizedBox(height: constraints.maxWidth / 4),
+            Expanded(child: switcher),
+          ],
+        ),
+      ),
+    );
+  }
 }
 
 /// Shows a 40 px hero at the top left, or, when [moved], a hero a quarter of
