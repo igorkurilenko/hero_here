@@ -12,6 +12,10 @@
 
 * Document `HeroHereSwitcher.layoutBuilder`, its type and its default, and add a Layout section to the README: keep the sky after the child, so flights follow each frame's layout, and give the sky the switcher's size to clip the flights to it.
 
+### Example
+
+* Run a switch in the auto-switching example only when its hero changes, by setting `switchKey`, rather than on each tap of its Chain, Divert, play or pause buttons.
+
 ## 1.3.1
 
 ### Fixes
