@@ -23,6 +23,7 @@ part 'switcher.dart';
 part 'hero.dart';
 part 'stand_in.dart';
 part 'flight.dart';
+part 'flight_path.dart';
 part 'layout.dart';
 
 typedef _Hero = _HeroHereState;
