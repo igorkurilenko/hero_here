@@ -1295,6 +1295,53 @@ void main() {
     );
   });
 
+  testWidgets('keeps the size of its child in a center, in flight or not', (
+    tester,
+  ) async {
+    final moved = ValueNotifier(false);
+    addTearDown(moved.dispose);
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Center(
+          child: ValueListenableBuilder(
+            valueListenable: moved,
+            builder: (context, moved, _) => HeroHereSwitcher(
+              child: SizedBox(
+                width: 100,
+                height: 100,
+                child: Align(
+                  alignment: moved ? Alignment.topRight : Alignment.topLeft,
+                  child: HeroHere(
+                    key: ValueKey(moved),
+                    tag: 'hero',
+                    flightShuttleBuilder: (_, _, _, _) =>
+                        const SizedBox.expand(key: _shuttleKey),
+                    child: const SizedBox(width: 20, height: 20),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    final switcher = find.byType(HeroHereSwitcher);
+    const centered = Rect.fromLTWH(350, 250, 100, 100);
+    expect(tester.getRect(switcher), centered);
+
+    moved.value = true;
+    await _pumpSwitch(tester);
+    expect(find.byKey(_shuttleKey), findsOneWidget);
+    expect(tester.getRect(switcher), centered);
+
+    await tester.pumpAndSettle();
+    expect(find.byKey(_shuttleKey), findsNothing);
+    expect(tester.getRect(switcher), centered);
+  });
+
   testWidgets('flies in a switcher of unbounded height', (tester) async {
     final moved = ValueNotifier(false);
     addTearDown(moved.dispose);

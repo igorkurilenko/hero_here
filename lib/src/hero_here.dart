@@ -212,13 +212,21 @@ class _HeroHereSwitcherState extends State<HeroHereSwitcher>
 
   // Flights repaint on every frame. The boundary keeps those repaints off the
   // rest of the screen, whatever the layout builder puts around the sky.
+  //
+  // The sky takes the smallest size it may, with flights or without, so it
+  // doesn't size the switcher: in a Center, an empty stack would fill the
+  // screen until a flight starts. The relayout boundary also keeps the
+  // flights' layouts on each frame inside the sky.
   Widget _buildSky() => RepaintBoundary(
-    child: Stack(
-      children: [
-        ...flights.all.map(
-          (flight) => _FlightWidget(key: ValueKey(flight.tag), flight: flight),
-        ),
-      ],
+    child: _RelayoutBoundary(
+      child: Stack(
+        children: [
+          ...flights.all.map(
+            (flight) =>
+                _FlightWidget(key: ValueKey(flight.tag), flight: flight),
+          ),
+        ],
+      ),
     ),
   );
 
@@ -733,18 +741,16 @@ class _FlightWidget extends StatelessWidget {
   // frame. It builds anew on a resize too, since that changes the sky's
   // constraints.
   @override
-  Widget build(BuildContext context) => _RelayoutBoundary(
-    child: LayoutBuilder(
-      builder: (context, _) => ListenableBuilder(
-        listenable: flight,
-        builder: (context, _) => AnimatedBuilder(
-          animation: flight.animation,
-          builder: (context, child) => _GlobalRect(
-            rect: flight.evaluateRect(),
-            child: IgnorePointer(child: child),
-          ),
-          child: flight.buildShuttle(context),
+  Widget build(BuildContext context) => LayoutBuilder(
+    builder: (context, _) => ListenableBuilder(
+      listenable: flight,
+      builder: (context, _) => AnimatedBuilder(
+        animation: flight.animation,
+        builder: (context, child) => _GlobalRect(
+          rect: flight.evaluateRect(),
+          child: IgnorePointer(child: child),
         ),
+        child: flight.buildShuttle(context),
       ),
     ),
   );
