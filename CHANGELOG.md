@@ -1,3 +1,9 @@
+## 1.4.3
+
+### Performance
+
+* Repaint a flight's shuttle only when it changes, such as when it changes size, instead of on each frame it moves. In a flight between heroes of the same size, the shuttle now moves without repainting.
+
 ## 1.4.2
 
 ### Fixes

@@ -839,7 +839,9 @@ class _FlightWidget extends StatelessWidget {
         builder: (context, _) => _ShuttleRect(
           rect: flight.evaluateRect(),
           space: () => flight._registry.switcher.childBox,
-          child: IgnorePointer(child: flight.shuttle),
+          // The shuttle moves on each frame. In its own layer, it repaints
+          // only when it changes, such as when it changes size.
+          child: IgnorePointer(child: RepaintBoundary(child: flight.shuttle)),
         ),
       ),
     ),

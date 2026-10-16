@@ -1366,6 +1366,29 @@ void main() {
     expect(siblingPaints, 0);
   });
 
+  testWidgets('repaints nothing inside a shuttle that only moves', (
+    tester,
+  ) async {
+    var shuttlePaints = 0;
+    final right = ValueNotifier(false);
+    addTearDown(right.dispose);
+
+    await tester.pumpWidget(
+      _MoveSwitcher(right: right, onPaint: () => shuttlePaints++),
+    );
+    await tester.pumpAndSettle();
+
+    right.value = true;
+    await _pumpSwitch(tester);
+    shuttlePaints = 0;
+    for (var frame = 0; frame < 10; frame++) {
+      await tester.pump(const Duration(milliseconds: 16));
+    }
+
+    expect(find.byKey(_moverKey), findsOneWidget);
+    expect(shuttlePaints, 0);
+  });
+
   testWidgets('shows the first child on the first frame', (tester) async {
     final slot = ValueNotifier(0);
     addTearDown(slot.dispose);
@@ -2401,6 +2424,40 @@ class _AlignSwitcher extends StatelessWidget {
             flightShuttleBuilder: (_, _, _, _) =>
                 const SizedBox.expand(key: _shuttleKey),
             child: SizedBox.fromSize(size: spots[slot].size),
+          ),
+        ),
+      ),
+    ),
+  );
+}
+
+const _moverKey = ValueKey('mover');
+
+/// Shows one hero of a fixed size at the left, or when [right], at the right,
+/// so it flies without changing size. Its child, which its shuttle shows,
+/// calls [onPaint] each time it paints.
+class _MoveSwitcher extends StatelessWidget {
+  const _MoveSwitcher({required this.right, required this.onPaint});
+
+  final ValueNotifier<bool> right;
+  final VoidCallback onPaint;
+
+  @override
+  Widget build(BuildContext context) => MaterialApp(
+    home: ValueListenableBuilder(
+      valueListenable: right,
+      builder: (context, right, _) => HeroHereSwitcher(
+        child: Align(
+          alignment: right ? Alignment.centerRight : Alignment.centerLeft,
+          child: HeroHere(
+            key: ValueKey(right),
+            tag: 'hero',
+            child: SizedBox(
+              key: _moverKey,
+              width: 100,
+              height: 100,
+              child: CustomPaint(painter: _PaintCounter(onPaint)),
+            ),
           ),
         ),
       ),
