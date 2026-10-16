@@ -1,3 +1,9 @@
+## Unreleased
+
+### Docs
+
+* Document `HeroHereSwitcher.layoutBuilder`, its type and its default, and add a Layout section to the README: keep the sky after the child, so flights follow each frame's layout, and give the sky the switcher's size to clip the flights to it.
+
 ## 1.3.1
 
 ### Fixes

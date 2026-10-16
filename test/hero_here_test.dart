@@ -1342,6 +1342,57 @@ void main() {
     expect(tester.getRect(switcher), centered);
   });
 
+  testWidgets('clips its flights to it when its layout builder sizes the sky', (
+    tester,
+  ) async {
+    final moved = ValueNotifier(false);
+    addTearDown(moved.dispose);
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Center(
+          child: ValueListenableBuilder(
+            valueListenable: moved,
+            builder: (context, moved, _) => HeroHereSwitcher(
+              layoutBuilder: (child, sky) => Stack(
+                children: [
+                  child,
+                  Positioned.fill(child: ClipRect(child: sky)),
+                ],
+              ),
+              child: SizedBox(
+                width: 100,
+                height: 100,
+                child: Align(
+                  alignment: moved ? Alignment.topRight : Alignment.topLeft,
+                  child: HeroHere(
+                    key: ValueKey(moved),
+                    tag: 'hero',
+                    flightShuttleBuilder: (_, _, _, _) =>
+                        const SizedBox.expand(key: _shuttleKey),
+                    child: const SizedBox(width: 20, height: 20),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    moved.value = true;
+    await _pumpSwitch(tester);
+
+    final switcher = find.byType(HeroHereSwitcher);
+    final clip = find.descendant(of: switcher, matching: find.byType(ClipRect));
+    expect(tester.getRect(clip), tester.getRect(switcher));
+    expect(
+      tester.getRect(find.byKey(_shuttleKey)),
+      const Rect.fromLTWH(350, 250, 20, 20),
+    );
+  });
+
   testWidgets('flies in a switcher of unbounded height', (tester) async {
     final moved = ValueNotifier(false);
     addTearDown(moved.dispose);

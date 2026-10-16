@@ -196,6 +196,20 @@ When a flight diverts, its shuttle's `fromHero` becomes a stand-in for the shutt
 
 With `chain`, a flight sent back to the hero it left turns back from where it is. With `divert`, it swings around to that hero, as to any hero behind it.
 
+## Layout
+
+`HeroHereSwitcher` puts the layer its flights fly in, its sky, over its child in a `Stack`. To lay them out yourself, set `layoutBuilder`. Keep the sky after the child in the stack, so it paints over the child and lays out after it: then on each frame, such as on a window resize, flights find their heroes where that frame's layout puts them.
+
+Shuttles fly where their heroes are on the screen, wherever the sky is. The sky takes the smallest size it may, so it doesn't size the switcher. To clip the flights to the switcher, give the sky the switcher's size:
+
+```dart
+HeroHereSwitcher(
+  layoutBuilder: (child, sky) => Stack(
+    children: [child, Positioned.fill(child: ClipRect(child: sky))],
+  ),
+  child: child,
+)
+```
 
 ## Performance
 

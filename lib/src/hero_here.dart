@@ -20,6 +20,8 @@ import 'package:flutter/rendering.dart';
 typedef _Hero = _HeroHereState;
 typedef _Switcher = _HeroHereSwitcherState;
 
+/// Lays out a [HeroHereSwitcher]'s `child` and its `sky`, the layer its
+/// flights fly in. See [HeroHereSwitcher.layoutBuilder].
 typedef HeroHereSwitcherLayoutBuilder = Widget Function(
   Widget child,
   Widget sky,
@@ -120,7 +122,32 @@ typedef RectTweenFactory = HeroHereFlightRectTweenFactory;
 /// sizes below the switcher instead, such as with a [LayoutBuilder] in its
 /// child.
 class HeroHereSwitcher extends StatefulWidget {
+  /// The widget whose heroes fly when it changes.
   final Widget? child;
+
+  /// Lays out the switcher's [child] and its sky, the layer its flights fly
+  /// in. Defaults to [defaultLayoutBuilder].
+  ///
+  /// Put the sky after the child in a [Stack], as the default does. The stack
+  /// paints the sky over the child and lays it out after the child, so on
+  /// each frame a flight finds its heroes where that frame's layout puts
+  /// them. A sky laid out before the child, such as one before it in a stack
+  /// that doesn't position it, places its shuttles by the layout of the frame
+  /// before, so on a window resize they lag a frame behind their heroes.
+  ///
+  /// Shuttles fly where their heroes are on the screen, wherever the sky is.
+  /// The sky takes the smallest size its constraints allow, so it doesn't
+  /// size the switcher. To clip the flights to the switcher, give the sky the
+  /// switcher's size:
+  ///
+  /// ```dart
+  /// HeroHereSwitcher(
+  ///   layoutBuilder: (child, sky) => Stack(
+  ///     children: [child, Positioned.fill(child: ClipRect(child: sky))],
+  ///   ),
+  ///   child: child,
+  /// )
+  /// ```
   final HeroHereSwitcherLayoutBuilder layoutBuilder;
 
   const HeroHereSwitcher({
@@ -132,6 +159,7 @@ class HeroHereSwitcher extends StatefulWidget {
   @override
   State<HeroHereSwitcher> createState() => _HeroHereSwitcherState();
 
+  /// Puts the sky over the child in a [Stack], in a [Material].
   static Widget defaultLayoutBuilder(Widget child, Widget sky) =>
       Material(child: Stack(children: [child, sky]));
 }
