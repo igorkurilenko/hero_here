@@ -268,6 +268,75 @@ void main() {
     expect(find.byKey(const ValueKey('box0')), findsOneWidget);
   });
 
+  testWidgets('shuttles what its shuttle showed when it diverts', (
+    tester,
+  ) async {
+    final slot = ValueNotifier(0);
+    addTearDown(slot.dispose);
+    final fromHeroes = <HeroHere>[];
+
+    await tester.pumpWidget(
+      _SlotSwitcher(
+        slot: slot,
+        redirect: HeroHereFlightRedirect.divert,
+        // Fades the hero the flight leaves out into the one it lands on.
+        shuttleBuilder: (_, animation, fromHero, toHero) {
+          fromHeroes.add(fromHero);
+          return Stack(
+            fit: StackFit.expand,
+            children: [
+              toHero.child,
+              FadeTransition(
+                opacity: ReverseAnimation(animation),
+                child: fromHero.child,
+              ),
+            ],
+          );
+        },
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    slot.value = 2;
+    await _pumpSwitch(tester);
+    await tester.pump(HeroHere.defaultFlightAnimationDuration ~/ 4);
+
+    final box0 = find.byKey(const ValueKey('box0'));
+    final box2 = find.byKey(const ValueKey('box2'));
+    final box0Opacity = _opacityOf(tester, box0);
+    expect(box0Opacity, inExclusiveRange(0, 1));
+
+    slot.value = 1;
+    await _pumpSwitch(tester);
+
+    // The new leg starts from the shuttle as it was: the hero it left half
+    // faded out over the one it flew to, then fades that out.
+    expect(_opacityOf(tester, box0), closeTo(box0Opacity, 0.001));
+    expect(_opacityOf(tester, box2), 1);
+    expect(fromHeroes.last.tag, 'hero');
+    expect(fromHeroes.last.key, const ValueKey(0));
+
+    // Back to the first slot, so the hero it leaves is the one it lands on.
+    // The new leg starts from the shuttle as it was again.
+    await tester.pump(HeroHere.defaultFlightAnimationDuration ~/ 4);
+    final box1 = find.byKey(const ValueKey('box1'));
+    final box2Opacity = _opacityOf(tester, box2);
+    expect(box2Opacity, inExclusiveRange(0, 1));
+    expect(_opacityOf(tester, box1), 1);
+
+    slot.value = 0;
+    await _pumpSwitch(tester);
+
+    expect(_opacityOf(tester, box2), closeTo(box2Opacity, 0.001));
+    expect(_opacityOf(tester, box1), 1);
+    expect(fromHeroes.last.key, const ValueKey(0));
+
+    await tester.pumpAndSettle();
+    expect(box1, findsNothing);
+    expect(box2, findsNothing);
+    expect(box0, findsOneWidget);
+  });
+
   testWidgets('flies back, then on to where its child changes next', (
     tester,
   ) async {
@@ -892,6 +961,17 @@ int Function() _trackLiveImages() {
   return () => live;
 }
 
+/// How opaque the widget [finder] finds shows, through the fades above it.
+double _opacityOf(WidgetTester tester, Finder finder) {
+  var opacity = 1.0;
+  tester.element(finder).visitAncestorElements((element) {
+    final widget = element.widget;
+    if (widget is FadeTransition) opacity *= widget.opacity.value;
+    return true;
+  });
+  return opacity;
+}
+
 /// Snapshots the old child, lays the new one out offstage, starts the flight.
 Future<void> _pumpSwitch(WidgetTester tester) async {
   await tester.pump();
@@ -1117,17 +1197,20 @@ class _RebuildSwitcher extends StatelessWidget {
 const _noSlot = -1;
 
 /// Shows one hero in the slot of [_slotRects] that [slot] picks, or none for
-/// [_noSlot].
+/// [_noSlot]. Its shuttle is a box with [_shuttleKey], unless
+/// [shuttleBuilder] builds one.
 class _SlotSwitcher extends StatelessWidget {
   const _SlotSwitcher({
     required this.slot,
     this.layoutBuilder = HeroHereSwitcher.defaultLayoutBuilder,
     this.redirect,
+    this.shuttleBuilder,
   });
 
   final ValueNotifier<int> slot;
   final HeroHereSwitcherLayoutBuilder layoutBuilder;
   final HeroHereFlightRedirect? redirect;
+  final HeroHereFlightShuttleBuilder? shuttleBuilder;
 
   @override
   Widget build(BuildContext context) => MaterialApp(
@@ -1144,8 +1227,9 @@ class _SlotSwitcher extends StatelessWidget {
                   key: ValueKey(slot),
                   tag: 'hero',
                   flightRedirect: redirect,
-                  flightShuttleBuilder: (_, _, _, _) =>
-                      const SizedBox.expand(key: _shuttleKey),
+                  flightShuttleBuilder:
+                      shuttleBuilder ??
+                      (_, _, _, _) => const SizedBox.expand(key: _shuttleKey),
                   child: ColoredBox(
                     key: ValueKey('box$slot'),
                     color: const Color(0xFF2196F3),

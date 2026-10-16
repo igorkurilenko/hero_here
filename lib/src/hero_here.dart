@@ -67,9 +67,11 @@ enum HeroHereFlightRedirect {
   chain,
 
   /// Flies from where the shuttle is straight to the new hero, over the
-  /// flight's whole duration. The shuttle's `fromHero` stays the hero the
-  /// flight left. Until a flight diverts, sending it back to that hero turns
-  /// it back, as with [chain].
+  /// flight's whole duration. The shuttle's `fromHero` becomes a stand-in for
+  /// the shuttle as it was, with the key, tag and payload of the hero the
+  /// flight left, so a shuttle that fades `fromHero` into `toHero` fades from
+  /// what it showed. Until a flight diverts, sending it back to the hero it
+  /// left turns it back, as with [chain].
   divert,
 }
 
@@ -805,6 +807,10 @@ class _Flight extends ChangeNotifier {
   /// was rather than at the hero it left, and it can't turn back to that one.
   bool _diverted = false;
 
+  /// What the shuttle shows as the hero it leaves once the flight diverts:
+  /// the shuttle as it was then.
+  HeroHere? _divertedFrom;
+
   /// The heroes with no part in this flight that mounted while it flew, with
   /// no switch since. They hide until it ends.
   final _latecomers = <_Hero>{};
@@ -901,7 +907,7 @@ class _Flight extends ChangeNotifier {
   Widget buildShuttle(BuildContext context) => _style.shuttleBuilder(
     context,
     animation,
-    manifest.from.widget,
+    _divertedFrom ?? manifest.from.widget,
     manifest.to.widget,
   );
 
@@ -934,13 +940,32 @@ class _Flight extends ChangeNotifier {
   bool _shouldForward(_FlightManifest manifest) =>
       _reversed && (_manifest.to == manifest.to);
 
-  /// Flies on to [hero] straight from where the shuttle is.
+  /// Flies on to [hero] straight from where the shuttle is, and from what it
+  /// shows.
   void _divert(_Hero hero) {
     _diverted = true;
     _legBegin = _rect;
+    _divertedFrom = _freezeShuttle();
     _manifest.to = hero;
     notifyListeners();
     _forward(from: 0);
+  }
+
+  /// A stand-in for the hero the flight leaves, with that hero's key, tag and
+  /// payload, whose child is the shuttle as it is now, stopped.
+  HeroHere _freezeShuttle() {
+    final from = _divertedFrom ?? _manifest.from.widget;
+    final to = _manifest.to.widget;
+    final stopped = AlwaysStoppedAnimation(animation.value);
+
+    return HeroHere(
+      key: from.key,
+      tag: from.tag,
+      payload: from.payload,
+      child: Builder(
+        builder: (context) => _style.shuttleBuilder(context, stopped, from, to),
+      ),
+    );
   }
 
   void _forward({double? from}) {
