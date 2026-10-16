@@ -65,16 +65,18 @@ typedef HeroHereFlightShuttleBuilder = Widget Function(
 /// What a flight does when the hero it flies to changes while it flies, such
 /// as when the switcher's child changes again mid-flight.
 enum HeroHereFlightRedirect {
-  /// Lands on the hero it flies to, then flies on to the new one.
+  /// Lands on the hero it flies to, then flies on to the new one. A flight
+  /// sent back to the hero it left turns back from where it is, and takes as
+  /// long as it flew.
   chain,
 
-  /// Flies from where the shuttle is to the new hero, over the flight's whole
-  /// duration. The shuttle sets off at the speed it had, so it turns toward
-  /// the new hero rather than stops. Its `fromHero` becomes a stand-in for the
-  /// shuttle as it was, with the key, tag and payload of the hero the flight
-  /// left, so a shuttle that fades `fromHero` into `toHero` fades from what it
-  /// showed. Until a flight diverts, sending it back to the hero it left turns
-  /// it back, as with [chain].
+  /// Flies from where the shuttle is to the new hero, the hero it left too,
+  /// over the flight's whole duration. The shuttle sets off at the speed it
+  /// had, so it turns toward the new hero rather than stops, and swings
+  /// around to a hero behind it rather than doubling back. Its `fromHero`
+  /// becomes a stand-in for the shuttle as it was, with the key, tag and
+  /// payload of the hero the flight left, so a shuttle that fades `fromHero`
+  /// into `toHero` fades from what it showed.
   divert,
 }
 
@@ -822,9 +824,10 @@ class _Flight extends ChangeNotifier {
   /// there.
   ({Rect rect, double value})? _turn;
 
-  /// Whether this flight has diverted, so its leg started where the shuttle
-  /// was rather than at the hero it left, and it can't turn back to that one.
-  bool _diverted = false;
+  /// How fast, and which way, the shuttle swings out to the side when the
+  /// flight diverts to a hero behind it, in logical pixels a second, so it
+  /// comes around to that hero rather than doubling back.
+  Offset _divertSwing = Offset.zero;
 
   /// What the shuttle shows as the hero it leaves once the flight diverts:
   /// the shuttle as it was then.
@@ -997,10 +1000,37 @@ class _Flight extends ChangeNotifier {
   /// the speed it had when the flight diverted. It sets off at that speed, so
   /// it turns rather than stops, and loses it on its way.
   Rect _momentum(double t) {
-    final duration = _controller.duration ?? _style.duration;
-    return _divertVelocity.times(
-      duration.seconds * t * (1 - t) * (1 - t) * (1 - t),
-    );
+    final seconds = (_controller.duration ?? _style.duration).seconds;
+    final fade = t * (1 - t) * (1 - t) * (1 - t);
+    // The swing sets in after the shuttle sets off, and fades out before it
+    // lands.
+    final swing = 3 * t * fade;
+    return _divertVelocity
+        .times(seconds * fade)
+        .shift(_divertSwing * (seconds * swing));
+  }
+
+  /// How the shuttle swings out on its way to [hero]: toward the side [hero]
+  /// is on, as hard as it moves, and the more so the more [hero] is behind
+  /// it. A hero ahead of it or to its side needs no swing, since the speed
+  /// the shuttle carries on at already curves its path.
+  Offset _swingToward(_Hero hero) {
+    final from = _rect;
+    final to = hero.computeGlobalRect() ?? hero.placeholderRect;
+    final velocity = _divertVelocity.center;
+    if (from == null || to == null || velocity == Offset.zero) {
+      return Offset.zero;
+    }
+    final toward = to.center - from.center;
+    if (toward == Offset.zero) return Offset.zero;
+
+    final cos =
+        (velocity.dx * toward.dx + velocity.dy * toward.dy) /
+        (velocity.distance * toward.distance);
+    final behind = (-cos).clamp(0.0, 1.0);
+    final cross = velocity.dx * toward.dy - velocity.dy * toward.dx;
+    final side = Offset(-velocity.dy, velocity.dx) * (cross < 0 ? -1 : 1);
+    return side * behind;
   }
 
   @override
@@ -1013,7 +1043,9 @@ class _Flight extends ChangeNotifier {
   _Hero get _target => _reversed ? _manifest.from : _manifest.to;
 
   bool _shouldReverse(_FlightManifest manifest) =>
-      !_reversed && !_diverted && (_manifest.from == manifest.to);
+      _style.redirect == HeroHereFlightRedirect.chain &&
+      !_reversed &&
+      (_manifest.from == manifest.to);
 
   bool _shouldForward(_FlightManifest manifest) =>
       _reversed && (_manifest.to == manifest.to);
@@ -1021,8 +1053,8 @@ class _Flight extends ChangeNotifier {
   /// Flies on to [hero] from where the shuttle is, at the speed it has, and
   /// from what it shows.
   void _divert(_Hero hero) {
-    _diverted = true;
     _divertVelocity = _velocity;
+    _divertSwing = _swingToward(hero);
     _beginLeg(_rect);
     _divertedFrom = _freezeShuttle();
     _manifest.to = hero;

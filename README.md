@@ -194,7 +194,7 @@ HeroHere(
 
 When a flight diverts, its shuttle's `fromHero` becomes a stand-in for the shuttle as it was, so a shuttle that fades `fromHero` into `toHero` fades from what it showed.
 
-Either way, a flight sent back to the hero it left turns back from where it is, unless it has already diverted.
+With `chain`, a flight sent back to the hero it left turns back from where it is. With `divert`, it swings around to that hero, as to any hero behind it.
 
 
 ## Performance
