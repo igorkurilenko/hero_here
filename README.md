@@ -20,6 +20,7 @@ A Flutter library that enables hero transitions on the same screen without the n
 - Allows hero transitions within the same screen.
 - Similar widgets to `AnimatedSwitcher` and `Hero`: `HeroHereSwitcher` and `HeroHere`.
 - Customizable flight animations
+- Flights that change course mid-flight, either landing on each hero in turn or diverting straight to the new one
 
 ## Getting Started
 
@@ -27,7 +28,7 @@ Add the following line to your `pubspec.yaml` file:
 
 ```yaml
 dependencies:
-  hero_here: ^1.2.1
+  hero_here: ^1.3.0
 ```
 
 Then, run:
@@ -177,6 +178,23 @@ class _HeroHereExampleState extends State<HeroHereExample> {
 ```
 
 More advanced examples can be found in the `example` folder or by following [this link](https://github.com/igorkurilenko/hero_here/tree/main/example/lib).
+
+## Redirected flights
+
+When the switcher's child changes again while a hero flies, the hero's flight changes course. By default, it lands on the hero it was flying to, then flies on to the new one (`HeroHereFlightRedirect.chain`). To fly from where the shuttle is to the new hero instead, turning toward it at the speed the shuttle had, set `flightRedirect` on the heroes:
+
+```dart
+HeroHere(
+  key: ValueKey(slot),
+  tag: 'avatar',
+  flightRedirect: HeroHereFlightRedirect.divert,
+  child: avatar,
+)
+```
+
+When a flight diverts, its shuttle's `fromHero` becomes a stand-in for the shuttle as it was, so a shuttle that fades `fromHero` into `toHero` fades from what it showed.
+
+With `chain`, a flight sent back to the hero it left turns back from where it is. With `divert`, it swings around to that hero, as to any hero behind it.
 
 
 ## Performance

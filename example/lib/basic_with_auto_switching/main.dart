@@ -41,8 +41,12 @@ class HeroHereExample extends StatefulWidget {
 
 class _HeroHereExampleState extends State<HeroHereExample> {
   HeroType _curHeroType = HeroType.red;
+  HeroHereFlightRedirect _redirect = HeroHereFlightRedirect.chain;
   bool _paused = true;
   Timer? _timer;
+
+  // Where each hero shows, picked at random once, so flights go every way.
+  final _alignments = _pickAlignments();
 
   HeroType get curHeroType => _curHeroType;
 
@@ -71,12 +75,34 @@ class _HeroHereExampleState extends State<HeroHereExample> {
 
   @override
   Widget build(BuildContext context) => Scaffold(
+    appBar: AppBar(
+      centerTitle: true,
+      // What a flight does when the hero changes mid-flight: land on each
+      // hero in turn, or divert straight to the new one.
+      title: SegmentedButton(
+        showSelectedIcon: false,
+        segments: const [
+          ButtonSegment(
+            value: HeroHereFlightRedirect.chain,
+            label: Text('Chain'),
+          ),
+          ButtonSegment(
+            value: HeroHereFlightRedirect.divert,
+            label: Text('Divert'),
+          ),
+        ],
+        selected: {_redirect},
+        onSelectionChanged: (selected) =>
+            setState(() => _redirect = selected.single),
+      ),
+    ),
     body: HeroHereSwitcher(
-      child: Center(
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-          children: [
-            SizedBox(
+      child: Stack(
+        fit: StackFit.expand,
+        children: [
+          Align(
+            alignment: _alignments[HeroType.red]!,
+            child: SizedBox(
               width: 100,
               height: 100,
               child: curHeroType == HeroType.red
@@ -85,11 +111,15 @@ class _HeroHereExampleState extends State<HeroHereExample> {
                       tag: kHeroTag,
                       flightAnimationDuration: kHeroFlightAnimationDuration,
                       flightShuttleBuilder: _flightShuttleBuilder,
+                      flightRedirect: _redirect,
                       child: Container(color: Colors.red),
                     )
                   : null,
             ),
-            SizedBox(
+          ),
+          Align(
+            alignment: _alignments[HeroType.green]!,
+            child: SizedBox(
               width: 150,
               height: 150,
               child: curHeroType == HeroType.green
@@ -98,11 +128,15 @@ class _HeroHereExampleState extends State<HeroHereExample> {
                       tag: kHeroTag,
                       flightAnimationDuration: kHeroFlightAnimationDuration,
                       flightShuttleBuilder: _flightShuttleBuilder,
+                      flightRedirect: _redirect,
                       child: Container(color: Colors.green),
                     )
                   : null,
             ),
-            SizedBox(
+          ),
+          Align(
+            alignment: _alignments[HeroType.blue]!,
+            child: SizedBox(
               width: 100,
               height: 100,
               child: curHeroType == HeroType.blue
@@ -111,12 +145,13 @@ class _HeroHereExampleState extends State<HeroHereExample> {
                       tag: kHeroTag,
                       flightAnimationDuration: kHeroFlightAnimationDuration,
                       flightShuttleBuilder: _flightShuttleBuilder,
+                      flightRedirect: _redirect,
                       child: Container(color: Colors.blue),
                     )
                   : null,
             ),
-          ],
-        ),
+          ),
+        ],
       ),
     ),
     bottomNavigationBar: BottomAppBar(
@@ -219,6 +254,26 @@ class _HeroHereExampleState extends State<HeroHereExample> {
 
   void _pauseHeroSwitching() {
     _timer?.cancel();
+  }
+
+  /// Picks a spot for each hero, far enough from the others that the heroes
+  /// don't overlap on most screens.
+  static Map<HeroType, Alignment> _pickAlignments() {
+    final random = Random();
+    final alignments = <Alignment>[];
+    while (alignments.length < HeroType.values.length) {
+      final alignment = Alignment(
+        random.nextDouble() * 2 - 1,
+        random.nextDouble() * 2 - 1,
+      );
+      final apart = alignments.every(
+        (other) =>
+            (other.x - alignment.x).abs() > 0.8 ||
+            (other.y - alignment.y).abs() > 0.8,
+      );
+      if (apart) alignments.add(alignment);
+    }
+    return Map.fromIterables(HeroType.values, alignments);
   }
 }
 

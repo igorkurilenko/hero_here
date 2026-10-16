@@ -45,9 +45,11 @@ typedef HeroHereFlightAnimationStarter = TickerFuture Function(
 });
 
 /// Makes the tween of the rect a flight's shuttle takes, from where its leg
-/// [begin]s to where the hero it lands on is, its [end]. It's called on every
-/// frame of the flight with where that hero is on that frame, so the shuttle
-/// follows the hero when it moves.
+/// [begin]s to where the hero it lands on is, its [end]. Once the flight
+/// turns around, the rest of it takes a tween between where it turned and
+/// where the hero it heads for is, backward if it heads back. It's called on
+/// every frame of the flight with where that hero is on that frame, so the
+/// shuttle follows the hero when it moves.
 typedef HeroHereFlightRectTweenFactory = RectTween Function(
   Rect? begin,
   Rect? end,
@@ -59,6 +61,24 @@ typedef HeroHereFlightShuttleBuilder = Widget Function(
   HeroHere fromHero,
   HeroHere toHero,
 );
+
+/// What a flight does when the hero it flies to changes while it flies, such
+/// as when the switcher's child changes again mid-flight.
+enum HeroHereFlightRedirect {
+  /// Lands on the hero it flies to, then flies on to the new one. A flight
+  /// sent back to the hero it left turns back from where it is, and takes as
+  /// long as it flew.
+  chain,
+
+  /// Flies from where the shuttle is to the new hero, the hero it left too,
+  /// over the flight's whole duration. The shuttle sets off at the speed it
+  /// had, so it turns toward the new hero rather than stops, and swings
+  /// around to a hero behind it rather than doubling back. Its `fromHero`
+  /// becomes a stand-in for the shuttle as it was, with the key, tag and
+  /// payload of the hero the flight left, so a shuttle that fades `fromHero`
+  /// into `toHero` fades from what it showed.
+  divert,
+}
 
 @Deprecated(
   'Use HeroHereFlightAnimationControllerFactory. '
@@ -435,14 +455,17 @@ class _SwitchPlan {
       }
     }
 
+    // A flight under way goes on while a next hero has its tag, even when it
+    // flies back to the hero it left, as a diverted flight may.
     return _SwitchPlan._(
       {
         for (final manifest in manifests.values)
-          if (!manifest.isIdle) manifest.tag: manifest,
+          if (!manifest.isIdle || flying.containsKey(manifest.tag))
+            manifest.tag: manifest,
       },
       {
         for (final tag in flying.keys)
-          if (manifests[tag]?.isIdle ?? true) tag,
+          if (!manifests.containsKey(tag)) tag,
       },
       {
         for (final hero in nextHeroes)
@@ -457,6 +480,7 @@ class _SwitchPlan {
 class HeroHere extends StatefulWidget {
   static const defaultFlightAnimationCurve = Curves.easeInOut;
   static const defaultFlightAnimationDuration = Duration(milliseconds: 300);
+  static const defaultFlightRedirect = HeroHereFlightRedirect.chain;
 
   final Object tag;
   final Widget child;
@@ -468,6 +492,12 @@ class HeroHere extends StatefulWidget {
   final HeroHereFlightAnimationStarter? reverseFlightAnimation;
   final HeroHereFlightShuttleBuilder? flightShuttleBuilder;
   final HeroHereFlightRectTweenFactory? rectTweenFactory;
+
+  /// What a flight does when the hero it flies to changes mid-flight, or
+  /// [defaultFlightRedirect] when neither the hero it lands on nor the one it
+  /// leaves says. Like the other flight options, it's taken when the flight
+  /// starts.
+  final HeroHereFlightRedirect? flightRedirect;
   final Object? payload;
 
   const HeroHere({
@@ -481,6 +511,7 @@ class HeroHere extends StatefulWidget {
     this.reverseFlightAnimation,
     this.flightShuttleBuilder,
     this.rectTweenFactory,
+    this.flightRedirect,
     this.payload,
   });
 
@@ -777,9 +808,40 @@ class _Flight extends ChangeNotifier {
   Rect? _legBegin;
   Rect? _rect;
 
+  /// The controller's elapsed time, and the values of the flight's animation
+  /// and of its controller, when the shuttle was at [_rect].
+  ({Duration elapsed, double value, double t})? _rectFrame;
+
+  /// How fast each of the shuttle's edges moves along its leg's path, in
+  /// logical pixels a second, as of its last frame.
+  Rect _velocity = Rect.zero;
+
+  /// The shuttle's [_velocity] when the flight last diverted.
+  Rect _divertVelocity = Rect.zero;
+
+  /// Where the shuttle was when the flight last turned around on its leg,
+  /// and the value of the flight's animation then. The leg goes on from
+  /// there.
+  ({Rect rect, double value})? _turn;
+
+  /// How fast, and which way, the shuttle swings out to the side when the
+  /// flight diverts to a hero behind it, in logical pixels a second, so it
+  /// comes around to that hero rather than doubling back.
+  Offset _divertSwing = Offset.zero;
+
+  /// What the shuttle shows as the hero it leaves once the flight diverts:
+  /// the shuttle as it was then.
+  HeroHere? _divertedFrom;
+
   /// The heroes with no part in this flight that mounted while it flew, with
   /// no switch since. They hide until it ends.
   final _latecomers = <_Hero>{};
+
+  /// Counts the runs of the flight's animation and the flight's end. A run's
+  /// completion that comes after a later run started or the flight ended does
+  /// nothing: on the web, it comes after the frame it landed on, so after a
+  /// switch on that frame that redirected or stopped the flight.
+  int _runs = 0;
 
   _Flight({
     required TickerProvider vsync,
@@ -821,14 +883,20 @@ class _Flight extends ChangeNotifier {
 
     if (_shouldReverse(manifest)) {
       _manifest = manifest.reversed;
+      _turnHere();
       notifyListeners();
       _reverse();
     } else if (_shouldForward(manifest)) {
       _manifest = manifest;
+      _turnHere();
       notifyListeners();
       _forward();
+    } else if (manifest.to == _target) {
+      _nextHero = null;
+    } else if (_style.redirect == HeroHereFlightRedirect.divert) {
+      _divert(manifest.to);
     } else {
-      _registerNextFlight(manifest.to);
+      _nextHero = manifest.to;
     }
   }
 
@@ -869,7 +937,7 @@ class _Flight extends ChangeNotifier {
   Widget buildShuttle(BuildContext context) => _style.shuttleBuilder(
     context,
     animation,
-    manifest.from.widget,
+    _divertedFrom ?? manifest.from.widget,
     manifest.to.widget,
   );
 
@@ -882,9 +950,93 @@ class _Flight extends ChangeNotifier {
     final end =
         _manifest.to.computeGlobalRect() ?? _manifest.to.placeholderRect;
     if (end != null) {
-      _rect = _style.rectTweenFactory(_legBegin, end).evaluate(animation)!;
+      final value = animation.value;
+      final t = _controller.value;
+      _rect = _onPath(value, t, end);
+
+      // How fast the shuttle moves along the path as it is now, so heroes
+      // that move, such as on a window resize, don't count. The elapsed time
+      // starts over with each leg.
+      final last = _rectFrame;
+      final elapsed = _controller.lastElapsedDuration;
+      if (last != null && elapsed != null && elapsed > last.elapsed) {
+        _velocity = _rect!
+            .minus(_onPath(last.value, last.t, end))
+            .times(1 / (elapsed - last.elapsed).seconds);
+      }
+      _rectFrame = elapsed == null
+          ? null
+          : (elapsed: elapsed, value: value, t: t);
     }
     return _rect ?? Rect.zero;
+  }
+
+  /// Where the shuttle is on its leg's path at [value] of the flight's
+  /// animation and [t] of its controller, given [end], where the hero it
+  /// lands on is. The path runs from where the leg began to [end]. Once the
+  /// flight turns around, the rest of it runs from where it turned to where
+  /// the hero it heads for is, so it lands on that hero even if it moved,
+  /// such as on a window resize.
+  Rect _onPath(double value, double t, Rect end) {
+    final tween = _style.rectTweenFactory;
+    final turn = _turn;
+    final Rect rect;
+    if (turn == null) {
+      rect = tween(_legBegin, end).transform(value)!;
+    } else if (_reversed) {
+      final begin =
+          _manifest.from.computeGlobalRect() ??
+          _manifest.from.placeholderRect ??
+          turn.rect;
+      rect = turn.value == 0
+          ? begin
+          : tween(begin, turn.rect).transform(value / turn.value)!;
+    } else {
+      rect = turn.value == 1
+          ? end
+          : tween(
+              turn.rect,
+              end,
+            ).transform((value - turn.value) / (1 - turn.value))!;
+    }
+    return rect.plus(_momentum(t));
+  }
+
+  /// How far the shuttle is off its leg's path at [t] of the controller, for
+  /// the speed it had when the flight diverted. It sets off at that speed, so
+  /// it turns rather than stops, and loses it on its way.
+  Rect _momentum(double t) {
+    final seconds = (_controller.duration ?? _style.duration).seconds;
+    final fade = t * (1 - t) * (1 - t) * (1 - t);
+    // The swing sets in after the shuttle sets off, and fades out before it
+    // lands.
+    final swing = 3 * t * fade;
+    return _divertVelocity
+        .times(seconds * fade)
+        .shift(_divertSwing * (seconds * swing));
+  }
+
+  /// How the shuttle swings out on its way to [hero]: toward the side [hero]
+  /// is on, as hard as it moves, and the more so the more [hero] is behind
+  /// it. A hero ahead of it or to its side needs no swing, since the speed
+  /// the shuttle carries on at already curves its path.
+  Offset _swingToward(_Hero hero) {
+    final from = _rect;
+    final to = hero.computeGlobalRect() ?? hero.placeholderRect;
+    final velocity = _divertVelocity.center;
+    if (from == null || to == null || velocity == Offset.zero) {
+      return Offset.zero;
+    }
+    final toward = to.center - from.center;
+    if (toward == Offset.zero) return Offset.zero;
+
+    final cos =
+        (velocity.dx * toward.dx + velocity.dy * toward.dy) /
+        (velocity.distance * toward.distance);
+    final behind = (-cos).clamp(0.0, 1.0);
+    final cross = velocity.dx * toward.dy - velocity.dy * toward.dx;
+    final side = Offset(-velocity.dy, velocity.dx) * (cross < 0 ? -1 : 1);
+    return side * behind;
   }
 
   @override
@@ -893,22 +1045,57 @@ class _Flight extends ChangeNotifier {
     super.dispose();
   }
 
+  /// The hero the shuttle is on its way to.
+  _Hero get _target => _reversed ? _manifest.from : _manifest.to;
+
   bool _shouldReverse(_FlightManifest manifest) =>
-      !_reversed && (_manifest.from == manifest.to);
+      _style.redirect == HeroHereFlightRedirect.chain &&
+      !_reversed &&
+      (_manifest.from == manifest.to);
 
   bool _shouldForward(_FlightManifest manifest) =>
       _reversed && (_manifest.to == manifest.to);
 
-  void _registerNextFlight(_Hero? to) {
-    if (!_reversed && _manifest.to == to) {
-      _nextHero = null;
-      return;
-    }
-    if (_reversed && _manifest.from == to) {
-      _nextHero = null;
-      return;
-    }
-    _nextHero = to;
+  /// Flies on to [hero] from where the shuttle is, at the speed it has, and
+  /// from what it shows.
+  void _divert(_Hero hero) {
+    _divertVelocity = _velocity;
+    _divertSwing = _swingToward(hero);
+    _beginLeg(_rect);
+    _divertedFrom = _freezeShuttle();
+    _manifest.to = hero;
+    notifyListeners();
+    _forward(from: 0);
+  }
+
+  /// A stand-in for the hero the flight leaves, with that hero's key, tag and
+  /// payload, whose child is the shuttle as it is now, stopped.
+  HeroHere _freezeShuttle() {
+    final from = _divertedFrom ?? _manifest.from.widget;
+    final to = _manifest.to.widget;
+    final stopped = AlwaysStoppedAnimation(animation.value);
+
+    return HeroHere(
+      key: from.key,
+      tag: from.tag,
+      payload: from.payload,
+      child: Builder(
+        builder: (context) => _style.shuttleBuilder(context, stopped, from, to),
+      ),
+    );
+  }
+
+  /// Starts a new leg at [begin].
+  void _beginLeg(Rect? begin) {
+    _legBegin = begin;
+    _turn = null;
+    _rectFrame = null;
+  }
+
+  /// Turns the flight around where the shuttle is.
+  void _turnHere() {
+    final rect = _rect;
+    _turn = rect == null ? null : (rect: rect, value: animation.value);
   }
 
   void _forward({double? from}) {
@@ -917,12 +1104,13 @@ class _Flight extends ChangeNotifier {
     _manifest.from.offstage = true;
     _manifest.to.offstage = true;
 
+    final run = ++_runs;
     _style.forwardAnimation(_controller, from: from).whenComplete(() {
-      if (_controller.status == AnimationStatus.reverse) return;
+      if (run != _runs) return;
 
       if (_nextHero != null) {
         // The next leg starts where the shuttle is.
-        _legBegin = _rect;
+        _beginLeg(_rect);
         _manifest.from = _manifest.to;
         _manifest.to = _nextHero!;
         notifyListeners();
@@ -937,10 +1125,17 @@ class _Flight extends ChangeNotifier {
     _reversed = true;
     _nextHero = null;
 
+    final run = ++_runs;
     _style.reverseAnimation(_controller).whenComplete(() {
-      if (_controller.status == AnimationStatus.forward) return;
+      if (run != _runs) return;
 
       if (_nextHero != null) {
+        // The next leg starts on the hero the shuttle landed back on.
+        _beginLeg(
+          _manifest.from.computeGlobalRect() ??
+              _manifest.from.placeholderRect ??
+              _rect,
+        );
         _manifest.to = _nextHero!;
         notifyListeners();
         _forward(from: 0);
@@ -953,6 +1148,7 @@ class _Flight extends ChangeNotifier {
   /// Ends this flight: shows the hero it [landedOn], if any, and the
   /// latecomers, and leaves the registry, which disposes it.
   void _end({_Hero? landedOn}) {
+    _runs++;
     landedOn?.offstage = false;
     for (final hero in _latecomers) {
       hero.offstage = false;
@@ -1001,6 +1197,7 @@ class _FlightStyle {
   final HeroHereFlightAnimationStarter reverseAnimation;
   final HeroHereFlightShuttleBuilder shuttleBuilder;
   final HeroHereFlightRectTweenFactory rectTweenFactory;
+  final HeroHereFlightRedirect redirect;
 
   const _FlightStyle._({
     required this.duration,
@@ -1010,6 +1207,7 @@ class _FlightStyle {
     required this.reverseAnimation,
     required this.shuttleBuilder,
     required this.rectTweenFactory,
+    required this.redirect,
   });
 
   factory _FlightStyle.of({required HeroHere from, required HeroHere to}) {
@@ -1045,6 +1243,7 @@ class _FlightStyle {
         (x) => x.rectTweenFactory,
         HeroHere.defaultFlightRectTweenFactory,
       ),
+      redirect: pick((x) => x.flightRedirect, HeroHere.defaultFlightRedirect),
     );
   }
 }
@@ -1069,6 +1268,29 @@ class _FlightManifest {
 
   @override
   String toString() => '_FlightManifest(from: $from, to: $to)';
+}
+
+/// Rects as the four numbers of their edges, such as the edges' speeds.
+extension _RectEdges on Rect {
+  Rect plus(Rect other) => Rect.fromLTRB(
+    left + other.left,
+    top + other.top,
+    right + other.right,
+    bottom + other.bottom,
+  );
+
+  Rect minus(Rect other) => plus(other.times(-1));
+
+  Rect times(double factor) => Rect.fromLTRB(
+    left * factor,
+    top * factor,
+    right * factor,
+    bottom * factor,
+  );
+}
+
+extension _Seconds on Duration {
+  double get seconds => inMicroseconds / Duration.microsecondsPerSecond;
 }
 
 extension _RenderBox on RenderBox {
