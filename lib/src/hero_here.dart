@@ -66,12 +66,13 @@ enum HeroHereFlightRedirect {
   /// Lands on the hero it flies to, then flies on to the new one.
   chain,
 
-  /// Flies from where the shuttle is straight to the new hero, over the
-  /// flight's whole duration. The shuttle's `fromHero` becomes a stand-in for
-  /// the shuttle as it was, with the key, tag and payload of the hero the
-  /// flight left, so a shuttle that fades `fromHero` into `toHero` fades from
-  /// what it showed. Until a flight diverts, sending it back to the hero it
-  /// left turns it back, as with [chain].
+  /// Flies from where the shuttle is to the new hero, over the flight's whole
+  /// duration. The shuttle sets off at the speed it had, so it turns toward
+  /// the new hero rather than stops. Its `fromHero` becomes a stand-in for the
+  /// shuttle as it was, with the key, tag and payload of the hero the flight
+  /// left, so a shuttle that fades `fromHero` into `toHero` fades from what it
+  /// showed. Until a flight diverts, sending it back to the hero it left turns
+  /// it back, as with [chain].
   divert,
 }
 
@@ -803,6 +804,17 @@ class _Flight extends ChangeNotifier {
   Rect? _legBegin;
   Rect? _rect;
 
+  /// The controller's elapsed time, and the values of the flight's animation
+  /// and of its controller, when the shuttle was at [_rect].
+  ({Duration elapsed, double value, double t})? _rectFrame;
+
+  /// How fast each of the shuttle's edges moves along its leg's path, in
+  /// logical pixels a second, as of its last frame.
+  Rect _velocity = Rect.zero;
+
+  /// The shuttle's [_velocity] when the flight last diverted.
+  Rect _divertVelocity = Rect.zero;
+
   /// Whether this flight has diverted, so its leg started where the shuttle
   /// was rather than at the hero it left, and it can't turn back to that one.
   bool _diverted = false;
@@ -920,9 +932,42 @@ class _Flight extends ChangeNotifier {
     final end =
         _manifest.to.computeGlobalRect() ?? _manifest.to.placeholderRect;
     if (end != null) {
-      _rect = _style.rectTweenFactory(_legBegin, end).evaluate(animation)!;
+      final value = animation.value;
+      final t = _controller.value;
+      _rect = _onPath(value, t, end);
+
+      // How fast the shuttle moves along the path as it is now, so heroes
+      // that move, such as on a window resize, don't count. The elapsed time
+      // starts over with each leg.
+      final last = _rectFrame;
+      final elapsed = _controller.lastElapsedDuration;
+      if (last != null && elapsed != null && elapsed > last.elapsed) {
+        _velocity = _rect!
+            .minus(_onPath(last.value, last.t, end))
+            .times(1 / (elapsed - last.elapsed).seconds);
+      }
+      _rectFrame = elapsed == null
+          ? null
+          : (elapsed: elapsed, value: value, t: t);
     }
     return _rect ?? Rect.zero;
+  }
+
+  /// Where the shuttle is on its leg's path, from where the leg began to
+  /// [end], at [value] of the flight's animation and [t] of its controller.
+  Rect _onPath(double value, double t, Rect end) => _style
+      .rectTweenFactory(_legBegin, end)
+      .transform(value)!
+      .plus(_momentum(t));
+
+  /// How far the shuttle is off its leg's path at [t] of the controller, for
+  /// the speed it had when the flight diverted. It sets off at that speed, so
+  /// it turns rather than stops, and loses it on its way.
+  Rect _momentum(double t) {
+    final duration = _controller.duration ?? _style.duration;
+    return _divertVelocity.times(
+      duration.seconds * t * (1 - t) * (1 - t) * (1 - t),
+    );
   }
 
   @override
@@ -940,11 +985,13 @@ class _Flight extends ChangeNotifier {
   bool _shouldForward(_FlightManifest manifest) =>
       _reversed && (_manifest.to == manifest.to);
 
-  /// Flies on to [hero] straight from where the shuttle is, and from what it
-  /// shows.
+  /// Flies on to [hero] from where the shuttle is, at the speed it has, and
+  /// from what it shows.
   void _divert(_Hero hero) {
     _diverted = true;
     _legBegin = _rect;
+    _divertVelocity = _velocity;
+    _rectFrame = null;
     _divertedFrom = _freezeShuttle();
     _manifest.to = hero;
     notifyListeners();
@@ -1129,6 +1176,29 @@ class _FlightManifest {
 
   @override
   String toString() => '_FlightManifest(from: $from, to: $to)';
+}
+
+/// Rects as the four numbers of their edges, such as the edges' speeds.
+extension _RectEdges on Rect {
+  Rect plus(Rect other) => Rect.fromLTRB(
+    left + other.left,
+    top + other.top,
+    right + other.right,
+    bottom + other.bottom,
+  );
+
+  Rect minus(Rect other) => plus(other.times(-1));
+
+  Rect times(double factor) => Rect.fromLTRB(
+    left * factor,
+    top * factor,
+    right * factor,
+    bottom * factor,
+  );
+}
+
+extension _Seconds on Duration {
+  double get seconds => inMicroseconds / Duration.microsecondsPerSecond;
 }
 
 extension _RenderBox on RenderBox {

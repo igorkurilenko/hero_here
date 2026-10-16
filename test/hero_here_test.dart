@@ -224,6 +224,102 @@ void main() {
     expect(find.byKey(const ValueKey('box1')), findsOneWidget);
   });
 
+  testWidgets('carries a diverted hero on at the speed its shuttle had', (
+    tester,
+  ) async {
+    final slot = ValueNotifier(0);
+    addTearDown(slot.dispose);
+
+    await tester.pumpWidget(
+      _SlotSwitcher(slot: slot, redirect: HeroHereFlightRedirect.divert),
+    );
+    await tester.pumpAndSettle();
+
+    slot.value = 2;
+    await _pumpSwitch(tester);
+    await tester.pump(HeroHere.defaultFlightAnimationDuration ~/ 2);
+
+    // At full speed past the middle slot, redirect the flight to it.
+    final shuttle = find.byKey(_shuttleKey);
+    const frame = Duration(milliseconds: 16);
+    final leftBefore = tester.getRect(shuttle).left;
+    await tester.pump(frame);
+    final left = tester.getRect(shuttle).left;
+    final stepBefore = left - leftBefore;
+    expect(stepBefore, greaterThan(10));
+
+    slot.value = 1;
+    await _pumpSwitch(tester);
+    expect(tester.getRect(shuttle).left, left);
+    await tester.pump(frame);
+
+    // It goes on at about the speed it had rather than stopping, then turns
+    // back and lands on the middle slot.
+    final stepAfter = tester.getRect(shuttle).left - left;
+    expect(stepAfter, closeTo(stepBefore, stepBefore / 4));
+    await tester.pumpAndSettle();
+    expect(shuttle, findsNothing);
+    expect(find.byKey(const ValueKey('box1')), findsOneWidget);
+  });
+
+  testWidgets('carries a diverted hero on at its own speed as heroes move', (
+    tester,
+  ) async {
+    final slot = ValueNotifier(0);
+    final shift = ValueNotifier(0.0);
+    addTearDown(slot.dispose);
+    addTearDown(shift.dispose);
+
+    await tester.pumpWidget(
+      _SlotSwitcher(
+        slot: slot,
+        redirect: HeroHereFlightRedirect.divert,
+        // Moves the heroes without a switch, as a window resize may.
+        layoutBuilder: (child, sky) => Material(
+          child: Stack(
+            children: [
+              ValueListenableBuilder(
+                valueListenable: shift,
+                builder: (context, shift, child) => Padding(
+                  padding: EdgeInsets.only(left: shift),
+                  child: child,
+                ),
+                child: child,
+              ),
+              sky,
+            ],
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    slot.value = 2;
+    await _pumpSwitch(tester);
+    await tester.pump(HeroHere.defaultFlightAnimationDuration ~/ 2);
+
+    final shuttle = find.byKey(_shuttleKey);
+    const frame = Duration(milliseconds: 16);
+    final leftBefore = tester.getRect(shuttle).left;
+    await tester.pump(frame);
+    final stepBefore = tester.getRect(shuttle).left - leftBefore;
+
+    // The hero it flies to jumps right, and the shuttle with it, just before
+    // the flight diverts.
+    shift.value = 200;
+    await tester.pump(frame);
+    await tester.pump(frame);
+    final left = tester.getRect(shuttle).left;
+
+    slot.value = 1;
+    await _pumpSwitch(tester);
+    await tester.pump(frame);
+
+    // It goes on at about the speed it flew at, not at the jump's.
+    final stepAfter = tester.getRect(shuttle).left - left;
+    expect(stepAfter, inExclusiveRange(stepBefore / 2, stepBefore * 2));
+  });
+
   testWidgets('flies a diverted hero back straight from where its shuttle is', (
     tester,
   ) async {
@@ -260,8 +356,19 @@ void main() {
       await tester.pump(const Duration(milliseconds: 16));
     }
 
+    // It carries on toward the middle slot a little at the speed it had,
+    // short of it, then turns once and flies to the first slot.
+    final farthest = lefts.reduce((a, b) => a > b ? a : b);
+    final turn = lefts.indexOf(farthest);
+    expect(farthest, lessThan(_slotRects[1].left));
     for (var i = 1; i < lefts.length; i++) {
-      expect(lefts[i], lessThanOrEqualTo(lefts[i - 1]), reason: '$lefts');
+      expect(
+        lefts[i],
+        i <= turn
+            ? greaterThanOrEqualTo(lefts[i - 1])
+            : lessThanOrEqualTo(lefts[i - 1]),
+        reason: '$lefts',
+      );
     }
     expect(lefts.last, closeTo(_slotRects[0].left, 1));
     expect(shuttle, findsNothing);

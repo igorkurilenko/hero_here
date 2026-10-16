@@ -181,7 +181,7 @@ More advanced examples can be found in the `example` folder or by following [thi
 
 ## Redirected flights
 
-When the switcher's child changes again while a hero flies, the hero's flight changes course. By default, it lands on the hero it was flying to, then flies on to the new one (`HeroHereFlightRedirect.chain`). To fly straight from where the shuttle is to the new hero instead, set `flightRedirect` on the heroes:
+When the switcher's child changes again while a hero flies, the hero's flight changes course. By default, it lands on the hero it was flying to, then flies on to the new one (`HeroHereFlightRedirect.chain`). To fly from where the shuttle is to the new hero instead, turning toward it at the speed the shuttle had, set `flightRedirect` on the heroes:
 
 ```dart
 HeroHere(
