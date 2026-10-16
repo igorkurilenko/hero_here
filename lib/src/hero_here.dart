@@ -181,7 +181,7 @@ class HeroHereSwitcher extends StatefulWidget {
 class _HeroHereSwitcherState extends State<HeroHereSwitcher>
     with TickerProviderStateMixin {
   final _childKey = GlobalKey();
-  final flights = _FlightRegistry();
+  late final flights = _FlightRegistry(() => childRect);
   late _SwitchingState _switchingState;
   Widget? _child;
 
@@ -201,6 +201,11 @@ class _HeroHereSwitcherState extends State<HeroHereSwitcher>
   }
 
   Set<_Hero> findHeroes() => _childKey.currentContext?.findHeroes() ?? const {};
+
+  /// Where the switcher's child is on the screen, which the rects kept from
+  /// earlier frames move with, see [_KeptRect].
+  Rect? get childRect =>
+      _childKey.currentContext?.findRenderBox()?.globalRect(Offset.zero);
 
   bool hidesOnMount(_Hero hero) => switch (_switchingState) {
     final _Mount mount => mount.hiddenHeroes.contains(hero),
@@ -636,7 +641,7 @@ class _HeroHereState extends State<HeroHere> {
   final _childKey = GlobalKey();
   _Switcher? _switcher;
   bool _offstage = false;
-  Rect? _placeholderRect;
+  _KeptRect? _placeholder;
   bool _active = true;
 
   Key get key => widget.key!;
@@ -652,7 +657,9 @@ class _HeroHereState extends State<HeroHere> {
 
   bool get onstage => !offstage;
 
-  Rect? get placeholderRect => _placeholderRect;
+  /// Where the hero was at the last switch, as it would be in the
+  /// switcher's child now.
+  Rect? get placeholderRect => _placeholder?.within(_switcher?.childRect);
 
   @override
   void initState() {
@@ -665,7 +672,7 @@ class _HeroHereState extends State<HeroHere> {
     // hero shows when the flight ends.
     final flight = _switcher?.flights[tag];
     if (flight != null) {
-      _placeholderRect = flight.adopt(this)?.placeholderRect;
+      _placeholder = flight.adopt(this)?._placeholder;
       _offstage = true;
     }
   }
@@ -682,7 +689,10 @@ class _HeroHereState extends State<HeroHere> {
     _active = false;
   }
 
-  void willSwitch() => _placeholderRect = computeGlobalRect();
+  void willSwitch() {
+    final rect = computeGlobalRect();
+    _placeholder = rect == null ? null : _KeptRect(rect, _switcher?.childRect);
+  }
 
   Rect? computeGlobalRect() => _active
       ? _childKey.currentContext?.findRenderBox()?.globalRect(Offset.zero)
@@ -957,7 +967,15 @@ class _Flight extends ChangeNotifier {
   late final Animation<double> animation;
   _Hero? _nextHero;
   bool _reversed = false;
-  Rect? _legBegin;
+
+  /// Where the shuttle was when its leg began.
+  _KeptRect? _legBegin;
+
+  /// Whether the leg began on the hero the flight leaves, so it begins
+  /// wherever that hero is on each frame, while it's anywhere, rather than at
+  /// [_legBegin].
+  bool _legBeginsOnHero = true;
+
   Rect? _rect;
 
   /// The controller's elapsed time, and the values of the flight's animation
@@ -974,7 +992,7 @@ class _Flight extends ChangeNotifier {
   /// Where the shuttle was when the flight last turned around on its leg,
   /// and the value of the flight's animation then. The leg goes on from
   /// there.
-  ({Rect rect, double value})? _turn;
+  ({_KeptRect rect, double value})? _turn;
 
   /// How fast, and which way, the shuttle swings out to the side when the
   /// flight diverts to a hero behind it, in logical pixels a second, so it
@@ -1113,14 +1131,13 @@ class _Flight extends ChangeNotifier {
   /// leg began to where the hero it flies to is. While that hero is nowhere,
   /// the shuttle stays where it was.
   Rect evaluateRect() {
-    _legBegin ??=
-        _manifest.from.computeGlobalRect() ?? _manifest.from.placeholderRect;
+    final frame = _registry.childRect();
     final end =
         _manifest.to.computeGlobalRect() ?? _manifest.to.placeholderRect;
     if (end != null) {
       final value = animation.value;
       final t = _controller.value;
-      _rect = _onPath(value, t, end);
+      _rect = _onPath(value, t, end, frame);
 
       // How fast the shuttle moves along the path as it is now, so heroes
       // that move, such as on a window resize, don't count. The elapsed time
@@ -1129,7 +1146,7 @@ class _Flight extends ChangeNotifier {
       final elapsed = _controller.lastElapsedDuration;
       if (last != null && elapsed != null && elapsed > last.elapsed) {
         _velocity = _rect!
-            .minus(_onPath(last.value, last.t, end))
+            .minus(_onPath(last.value, last.t, end, frame))
             .times(1 / (elapsed - last.elapsed).seconds);
       }
       _rectFrame = elapsed == null
@@ -1141,34 +1158,44 @@ class _Flight extends ChangeNotifier {
 
   /// Where the shuttle is on its leg's path at [value] of the flight's
   /// animation and [t] of its controller, given [end], where the hero it
-  /// lands on is. The path runs from where the leg began to [end]. Once the
-  /// flight turns around, the rest of it runs from where it turned to where
-  /// the hero it heads for is, so it lands on that hero even if it moved,
-  /// such as on a window resize.
-  Rect _onPath(double value, double t, Rect end) {
+  /// lands on is, and [frame], where the switcher's child is. The path runs
+  /// from where the leg began to [end]. Once the flight turns around, the
+  /// rest of it runs from where it turned to where the hero it heads for is,
+  /// so it lands on that hero even if it moved, such as on a window resize.
+  Rect _onPath(double value, double t, Rect end, Rect? frame) {
     final tween = _style.rectTweenFactory;
     final turn = _turn;
     final Rect rect;
     if (turn == null) {
-      rect = tween(_legBegin, end).transform(value)!;
+      rect = tween(_legBeginOn(frame), end).transform(value)!;
     } else if (_reversed) {
+      final turnRect = turn.rect.within(frame);
       final begin =
           _manifest.from.computeGlobalRect() ??
           _manifest.from.placeholderRect ??
-          turn.rect;
+          turnRect;
       rect = turn.value == 0
           ? begin
-          : tween(begin, turn.rect).transform(value / turn.value)!;
+          : tween(begin, turnRect).transform(value / turn.value)!;
     } else {
       rect = turn.value == 1
           ? end
           : tween(
-              turn.rect,
+              turn.rect.within(frame),
               end,
             ).transform((value - turn.value) / (1 - turn.value))!;
     }
     return rect.plus(_momentum(t));
   }
+
+  /// Where the leg begins, with the switcher's child at [frame]: where the
+  /// hero the flight leaves is now, if the leg began on it, or else where the
+  /// shuttle was when the leg began.
+  Rect? _legBeginOn(Rect? frame) =>
+      (_legBeginsOnHero
+          ? _manifest.from.computeGlobalRect() ?? _manifest.from.placeholderRect
+          : null) ??
+      _legBegin?.within(frame);
 
   /// How far the shuttle is off its leg's path at [t] of the controller, for
   /// the speed it had when the flight diverted. It sets off at that speed, so
@@ -1229,7 +1256,7 @@ class _Flight extends ChangeNotifier {
   void _divert(_Hero hero) {
     _divertVelocity = _velocity;
     _divertSwing = _swingToward(hero);
-    _beginLeg(_rect);
+    _beginLeg(_rect, onHero: false);
     _divertedFrom = _freezeShuttle();
     _manifest.to = hero;
     notifyListeners();
@@ -1253,18 +1280,24 @@ class _Flight extends ChangeNotifier {
     );
   }
 
-  /// Starts a new leg at [begin].
-  void _beginLeg(Rect? begin) {
-    _legBegin = begin;
+  /// Starts a new leg where the shuttle is, at [begin], and, [onHero], on the
+  /// hero the flight leaves.
+  void _beginLeg(Rect? begin, {required bool onHero}) {
+    _legBegin = _keep(begin);
+    _legBeginsOnHero = onHero;
     _turn = null;
     _rectFrame = null;
   }
 
   /// Turns the flight around where the shuttle is.
   void _turnHere() {
-    final rect = _rect;
+    final rect = _keep(_rect);
     _turn = rect == null ? null : (rect: rect, value: animation.value);
   }
+
+  /// [rect], kept with where the switcher's child is now.
+  _KeptRect? _keep(Rect? rect) =>
+      rect == null ? null : _KeptRect(rect, _registry.childRect());
 
   void _forward({double? from}) {
     _reversed = false;
@@ -1282,8 +1315,8 @@ class _Flight extends ChangeNotifier {
     if (run != _runs) return;
 
     if (_nextHero != null) {
-      // The next leg starts where the shuttle is.
-      _beginLeg(_rect);
+      // The next leg starts on the hero the shuttle landed on.
+      _beginLeg(_rect, onHero: true);
       _manifest.from = _manifest.to;
       _manifest.to = _nextHero!;
       notifyListeners();
@@ -1308,11 +1341,7 @@ class _Flight extends ChangeNotifier {
 
     if (_nextHero != null) {
       // The next leg starts on the hero the shuttle landed back on.
-      _beginLeg(
-        _manifest.from.computeGlobalRect() ??
-            _manifest.from.placeholderRect ??
-            _rect,
-      );
+      _beginLeg(_rect, onHero: true);
       _manifest.to = _nextHero!;
       notifyListeners();
       _forward(from: 0);
@@ -1337,6 +1366,11 @@ class _Flight extends ChangeNotifier {
 /// a flight starts or ends.
 class _FlightRegistry extends ChangeNotifier {
   final _flightsByTag = <Object, _Flight>{};
+
+  /// Where the switcher's child is on the screen now.
+  final Rect? Function() childRect;
+
+  _FlightRegistry(this.childRect);
 
   Iterable<_Flight> get all => _flightsByTag.values;
 
@@ -1467,6 +1501,52 @@ class _FlightManifest {
 
   @override
   String toString() => '_FlightManifest(from: $from, to: $to)';
+}
+
+/// A rect kept from an earlier frame, with where the switcher's child was
+/// then. When the child changes, such as on a window resize, the rect keeps
+/// its size, and its place in the room the child has around it, as an
+/// [Align] keeps a child's: as far across that room, in proportion. So a rect
+/// at an edge stays there, and one in the middle stays in the middle. A rect
+/// outside that room, such as a hero's that was scrolled away, keeps its
+/// distance from it, so it stays outside.
+class _KeptRect {
+  final Rect rect;
+
+  /// Where the switcher's child was when the rect was kept.
+  final Rect? frame;
+
+  const _KeptRect(this.rect, this.frame);
+
+  /// The rect, with the switcher's child at [now].
+  Rect within(Rect? now) {
+    final then = frame;
+    if (then == null || now == null || now == then) return rect;
+    return Rect.fromLTWH(
+      now.left +
+          _place(
+            rect.left - then.left,
+            then.width - rect.width,
+            now.width - rect.width,
+          ),
+      now.top +
+          _place(
+            rect.top - then.top,
+            then.height - rect.height,
+            now.height - rect.height,
+          ),
+      rect.width,
+      rect.height,
+    );
+  }
+
+  /// Where a rect [offset] from the child's start goes along an axis, given
+  /// the room the child had around it, [room], and has now, [nowRoom].
+  static double _place(double offset, double room, double nowRoom) {
+    if (offset <= 0) return offset;
+    if (offset >= room) return nowRoom + (offset - room);
+    return offset / room * nowRoom;
+  }
 }
 
 /// Rects as the four numbers of their edges, such as the edges' speeds.

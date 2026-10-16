@@ -1,3 +1,9 @@
+## 1.4.1
+
+### Fixes
+
+* Start a flight's leg where its start would be after a window resize, rather than where it was on the screen, so after a fast shrink the shuttle no longer starts off the screen. A start kept from an earlier frame, such as where a hero that went away was, or where the shuttle diverted or turned around, moves as the switcher's child resizes: a start at an edge stays at that edge, one in between stays as far across in proportion, and one off the screen stays as far off it. A leg that starts on a hero that's still there starts wherever that hero is on each frame.
+
 ## 1.4.0
 
 ### Features

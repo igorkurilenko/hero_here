@@ -1509,6 +1509,156 @@ void main() {
     );
   });
 
+  for (final (where, spot, start) in [
+    (
+      'at the right edge',
+      (alignment: Alignment.topRight, size: const Size(40, 40)),
+      const Rect.fromLTWH(360, 0, 40, 40),
+    ),
+    (
+      'off the screen',
+      (alignment: const Alignment(2, -1), size: const Size(40, 40)),
+      // As far past the right edge as it was: 380 px.
+      const Rect.fromLTWH(740, 0, 40, 40),
+    ),
+    (
+      'as wide as the switcher',
+      (alignment: Alignment.topCenter, size: const Size(double.infinity, 40)),
+      const Rect.fromLTWH(0, 0, 800, 40),
+    ),
+  ]) {
+    testWidgets('starts where the hero it leaves would be after the window '
+        'shrinks, when that hero was $where', (tester) async {
+      tester.view.devicePixelRatio = 1;
+      tester.view.physicalSize = const Size(800, 600);
+      addTearDown(tester.view.reset);
+      final slot = ValueNotifier(0);
+      addTearDown(slot.dispose);
+
+      await tester.pumpWidget(
+        _AlignSwitcher(
+          slot: slot,
+          spots: [
+            spot,
+            (alignment: Alignment.bottomLeft, size: const Size(40, 40)),
+          ],
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      slot.value = 1;
+      await tester.pump(); // The switch keeps where the hero it leaves is.
+      tester.view.physicalSize = const Size(400, 600);
+      await tester.pump(); // The flight starts after this frame.
+      await tester.pump();
+
+      expect(
+        tester.getRect(find.byKey(_shuttleKey)),
+        _rectMoreOrLessEquals(start),
+      );
+    });
+  }
+
+  for (final (redirect, how, course) in [
+    (HeroHereFlightRedirect.divert, 'diverts', [2]),
+    (HeroHereFlightRedirect.chain, 'turns back', [0]),
+    (HeroHereFlightRedirect.chain, 'turns around again', [0, 1]),
+  ]) {
+    testWidgets('$how from where its shuttle would be after the window '
+        'shrinks', (tester) async {
+      tester.view.devicePixelRatio = 1;
+      tester.view.physicalSize = const Size(800, 600);
+      addTearDown(tester.view.reset);
+      final slot = ValueNotifier(0);
+      addTearDown(slot.dispose);
+      const size = Size(40, 40);
+
+      await tester.pumpWidget(
+        _AlignSwitcher(
+          slot: slot,
+          redirect: redirect,
+          spots: const [
+            (alignment: Alignment.topLeft, size: size),
+            (alignment: Alignment.topRight, size: size),
+            (alignment: Alignment.bottomLeft, size: size),
+          ],
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      slot.value = 1;
+      await _pumpSwitch(tester);
+      await tester.pump(HeroHere.defaultFlightAnimationDuration ~/ 2);
+      for (final next in course) {
+        if (next != course.first) {
+          await tester.pump(const Duration(milliseconds: 50));
+        }
+        slot.value = next;
+        await tester.pump();
+        await tester.pump(); // The flight changes course after this frame.
+      }
+      final shuttle = find.byKey(_shuttleKey);
+      final rect = tester.getRect(shuttle);
+      tester.view.physicalSize = const Size(400, 600);
+      await tester.pump();
+
+      // Where it was in the free space across the window, which shrank.
+      final left = rect.left / (800 - rect.width) * (400 - rect.width);
+      expect(
+        tester.getRect(shuttle),
+        _rectMoreOrLessEquals(rect.translate(left - rect.left, 0)),
+      );
+    });
+  }
+
+  for (final (leg, leaves) in [('first', 0), ('next', 1)]) {
+    testWidgets('flies its $leg leg from where the hero it leaves is as that '
+        'one moves', (tester) async {
+      final count = ValueNotifier(1), shift = ValueNotifier(0.0);
+      addTearDown(count.dispose);
+      addTearDown(shift.dispose);
+      late Animation<double> animation;
+
+      await tester.pumpWidget(
+        _ShiftSwitcher(
+          count: count,
+          shifted: leaves,
+          shift: shift,
+          shuttleBuilder: (_, flight, _, _) {
+            animation = flight;
+            return const SizedBox.expand(key: _shuttleKey);
+          },
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      const duration = HeroHere.defaultFlightAnimationDuration;
+      count.value = 2;
+      await _pumpSwitch(tester);
+      if (leaves == 1) {
+        // The flight lands on the second hero, then flies on to the third.
+        await tester.pump(duration ~/ 4);
+        count.value = 3;
+        await _pumpSwitch(tester);
+        await tester.pump(duration);
+      }
+      await tester.pump(duration ~/ 4);
+      shift.value = 200; // The hero it leaves moves down, without a switch.
+      await tester.pump(const Duration(milliseconds: 16));
+
+      expect(
+        tester.getRect(find.byKey(_shuttleKey)),
+        _rectMoreOrLessEquals(
+          Rect.lerp(
+            _slotRects[leaves].translate(0, 200),
+            _slotRects[leaves + 1],
+            animation.value,
+          )!,
+        ),
+      );
+    });
+  }
+
   testWidgets('keeps the size of its child in a center, in flight or not', (
     tester,
   ) async {
@@ -2173,6 +2323,88 @@ class _LeftLookSwitcher extends StatelessWidget {
                   child: hero('b', 'other'),
                 ),
             ],
+          ),
+        );
+      },
+    ),
+  );
+}
+
+/// Shows one hero, at the alignment and of the size of the spot of [spots]
+/// that [slot] picks. A size of infinite width is as wide as the switcher.
+/// Its shuttle is a box with [_shuttleKey].
+class _AlignSwitcher extends StatelessWidget {
+  const _AlignSwitcher({
+    required this.slot,
+    required this.spots,
+    this.redirect,
+  });
+
+  final ValueNotifier<int> slot;
+  final List<({Alignment alignment, Size size})> spots;
+  final HeroHereFlightRedirect? redirect;
+
+  @override
+  Widget build(BuildContext context) => MaterialApp(
+    home: ValueListenableBuilder(
+      valueListenable: slot,
+      builder: (context, slot, _) => HeroHereSwitcher(
+        child: Align(
+          alignment: spots[slot].alignment,
+          child: HeroHere(
+            key: ValueKey(slot),
+            tag: 'hero',
+            flightRedirect: redirect,
+            flightShuttleBuilder: (_, _, _, _) =>
+                const SizedBox.expand(key: _shuttleKey),
+            child: SizedBox.fromSize(size: spots[slot].size),
+          ),
+        ),
+      ),
+    ),
+  );
+}
+
+/// Shows [count] heroes with the same tag in the first slots of
+/// [_slotRects], so a new one flies from the last one, which stays, hidden.
+/// Hero [shifted] is [shift] down, which a builder below the switcher reads.
+class _ShiftSwitcher extends StatelessWidget {
+  const _ShiftSwitcher({
+    required this.count,
+    required this.shifted,
+    required this.shift,
+    required this.shuttleBuilder,
+  });
+
+  final ValueNotifier<int> count;
+  final int shifted;
+  final ValueNotifier<double> shift;
+  final HeroHereFlightShuttleBuilder shuttleBuilder;
+
+  @override
+  Widget build(BuildContext context) => MaterialApp(
+    home: ValueListenableBuilder(
+      valueListenable: count,
+      builder: (context, count, _) {
+        Widget hero(int i, double shift) => Positioned.fromRect(
+          rect: _slotRects[i].translate(0, shift),
+          child: HeroHere(
+            key: ValueKey(i),
+            tag: 'hero',
+            flightShuttleBuilder: shuttleBuilder,
+            child: const ColoredBox(color: Color(0xFF2196F3)),
+          ),
+        );
+
+        return HeroHereSwitcher(
+          child: ValueListenableBuilder(
+            valueListenable: shift,
+            builder: (context, shift, _) => Stack(
+              children: [
+                for (var i = 0; i < count; i++)
+                  hero(i, i == shifted ? shift : 0),
+              ],
+            ),
           ),
         );
       },
