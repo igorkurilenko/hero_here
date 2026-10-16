@@ -181,7 +181,7 @@ class HeroHereSwitcher extends StatefulWidget {
 class _HeroHereSwitcherState extends State<HeroHereSwitcher>
     with TickerProviderStateMixin {
   final _childKey = GlobalKey();
-  late final flights = _FlightRegistry(() => childRect);
+  late final flights = _FlightRegistry(this);
   late _SwitchingState _switchingState;
   Widget? _child;
 
@@ -202,10 +202,18 @@ class _HeroHereSwitcherState extends State<HeroHereSwitcher>
 
   Set<_Hero> findHeroes() => _childKey.currentContext?.findHeroes() ?? const {};
 
-  /// Where the switcher's child is on the screen, which the rects kept from
-  /// earlier frames move with, see [_KeptRect].
-  Rect? get childRect =>
-      _childKey.currentContext?.findRenderBox()?.globalRect(Offset.zero);
+  /// The switcher's child. Flights work out their rects in its space, so the
+  /// rects don't depend on where the switcher is on the screen, which may not
+  /// be known yet when they do, such as when a window resize lays the
+  /// switcher out anew and moves it.
+  RenderBox? get childBox => _childKey.currentContext?.findRenderBox();
+
+  /// The size of the switcher's child, which the rects kept from earlier
+  /// frames move with, see [_KeptRect].
+  Size? get childSize {
+    final box = childBox;
+    return box != null && box.hasSize ? box.size : null;
+  }
 
   bool hidesOnMount(_Hero hero) => switch (_switchingState) {
     final _Mount mount => mount.hiddenHeroes.contains(hero),
@@ -659,7 +667,7 @@ class _HeroHereState extends State<HeroHere> {
 
   /// Where the hero was at the last switch, as it would be in the
   /// switcher's child now.
-  Rect? get placeholderRect => _placeholder?.within(_switcher?.childRect);
+  Rect? get placeholderRect => _placeholder?.within(_switcher?.childSize);
 
   @override
   void initState() {
@@ -690,13 +698,16 @@ class _HeroHereState extends State<HeroHere> {
   }
 
   void willSwitch() {
-    final rect = computeGlobalRect();
-    _placeholder = rect == null ? null : _KeptRect(rect, _switcher?.childRect);
+    final rect = computeRect();
+    _placeholder = rect == null ? null : _KeptRect(rect, _switcher?.childSize);
   }
 
-  Rect? computeGlobalRect() => _active
-      ? _childKey.currentContext?.findRenderBox()?.globalRect(Offset.zero)
-      : null;
+  /// Where the hero is in the switcher's child.
+  Rect? computeRect() {
+    final space = _switcher?.childBox;
+    if (!_active || space == null) return null;
+    return _childKey.currentContext?.findRenderBox()?.rectIn(space);
+  }
 
   @override
   Widget build(BuildContext context) => _HeroOffstage(
@@ -825,8 +836,9 @@ class _FlightWidget extends StatelessWidget {
       listenable: flight,
       builder: (context, _) => AnimatedBuilder(
         animation: flight.animation,
-        builder: (context, _) => _GlobalRect(
+        builder: (context, _) => _ShuttleRect(
           rect: flight.evaluateRect(),
+          space: () => flight._registry.switcher.childBox,
           child: IgnorePointer(child: flight.shuttle),
         ),
       ),
@@ -899,26 +911,35 @@ class _RenderRelayoutBoundary extends RenderProxyBox {
 
 /// Sizes its child to [rect] and paints it there. The [rect] is global, so
 /// the flight lands on its heroes wherever the switcher's sky is placed.
-class _GlobalRect extends SingleChildRenderObjectWidget {
+/// Places a shuttle at [rect], in the space of the switcher's child, which
+/// [space] gives. It works out where that is on the screen when it paints,
+/// once the whole screen is laid out, so the shuttle is where its heroes are
+/// even when the switcher moves on the frame, such as on a window resize
+/// that lays the switcher out anew.
+class _ShuttleRect extends SingleChildRenderObjectWidget {
   final Rect rect;
+  final RenderBox? Function() space;
 
-  const _GlobalRect({required this.rect, super.child});
+  const _ShuttleRect({required this.rect, required this.space, super.child});
 
   @override
-  _RenderGlobalRect createRenderObject(BuildContext context) =>
-      _RenderGlobalRect(rect);
+  _RenderShuttleRect createRenderObject(BuildContext context) =>
+      _RenderShuttleRect(rect, space);
 
   @override
   void updateRenderObject(
     BuildContext context,
-    _RenderGlobalRect renderObject,
-  ) => renderObject.rect = rect;
+    _RenderShuttleRect renderObject,
+  ) => renderObject
+    ..rect = rect
+    ..space = space;
 }
 
-class _RenderGlobalRect extends RenderProxyBox {
+class _RenderShuttleRect extends RenderProxyBox {
   Rect _rect;
+  RenderBox? Function() space;
 
-  _RenderGlobalRect(this._rect);
+  _RenderShuttleRect(this._rect, this.space);
 
   set rect(Rect value) {
     if (_rect == value) return;
@@ -930,7 +951,10 @@ class _RenderGlobalRect extends RenderProxyBox {
     _rect = value;
   }
 
-  Offset get _childOffset => _rect.topLeft - localToGlobal(Offset.zero);
+  Offset get _childOffset {
+    final topLeft = space()?.localToGlobal(_rect.topLeft) ?? _rect.topLeft;
+    return topLeft - localToGlobal(Offset.zero);
+  }
 
   // Sizing by the constraints alone makes this a relayout boundary, so a
   // shuttle that changes size doesn't lay out the screen on every frame.
@@ -1131,13 +1155,12 @@ class _Flight extends ChangeNotifier {
   /// leg began to where the hero it flies to is. While that hero is nowhere,
   /// the shuttle stays where it was.
   Rect evaluateRect() {
-    final frame = _registry.childRect();
-    final end =
-        _manifest.to.computeGlobalRect() ?? _manifest.to.placeholderRect;
+    final size = _registry.switcher.childSize;
+    final end = _manifest.to.computeRect() ?? _manifest.to.placeholderRect;
     if (end != null) {
       final value = animation.value;
       final t = _controller.value;
-      _rect = _onPath(value, t, end, frame);
+      _rect = _onPath(value, t, end, size);
 
       // How fast the shuttle moves along the path as it is now, so heroes
       // that move, such as on a window resize, don't count. The elapsed time
@@ -1146,7 +1169,7 @@ class _Flight extends ChangeNotifier {
       final elapsed = _controller.lastElapsedDuration;
       if (last != null && elapsed != null && elapsed > last.elapsed) {
         _velocity = _rect!
-            .minus(_onPath(last.value, last.t, end, frame))
+            .minus(_onPath(last.value, last.t, end, size))
             .times(1 / (elapsed - last.elapsed).seconds);
       }
       _rectFrame = elapsed == null
@@ -1158,20 +1181,20 @@ class _Flight extends ChangeNotifier {
 
   /// Where the shuttle is on its leg's path at [value] of the flight's
   /// animation and [t] of its controller, given [end], where the hero it
-  /// lands on is, and [frame], where the switcher's child is. The path runs
+  /// lands on is, and [size], the size of the switcher's child. The path runs
   /// from where the leg began to [end]. Once the flight turns around, the
   /// rest of it runs from where it turned to where the hero it heads for is,
   /// so it lands on that hero even if it moved, such as on a window resize.
-  Rect _onPath(double value, double t, Rect end, Rect? frame) {
+  Rect _onPath(double value, double t, Rect end, Size? size) {
     final tween = _style.rectTweenFactory;
     final turn = _turn;
     final Rect rect;
     if (turn == null) {
-      rect = tween(_legBeginOn(frame), end).transform(value)!;
+      rect = tween(_legBeginOn(size), end).transform(value)!;
     } else if (_reversed) {
-      final turnRect = turn.rect.within(frame);
+      final turnRect = turn.rect.within(size);
       final begin =
-          _manifest.from.computeGlobalRect() ??
+          _manifest.from.computeRect() ??
           _manifest.from.placeholderRect ??
           turnRect;
       rect = turn.value == 0
@@ -1181,21 +1204,21 @@ class _Flight extends ChangeNotifier {
       rect = turn.value == 1
           ? end
           : tween(
-              turn.rect.within(frame),
+              turn.rect.within(size),
               end,
             ).transform((value - turn.value) / (1 - turn.value))!;
     }
     return rect.plus(_momentum(t));
   }
 
-  /// Where the leg begins, with the switcher's child at [frame]: where the
+  /// Where the leg begins, with the switcher's child of [size]: where the
   /// hero the flight leaves is now, if the leg began on it, or else where the
   /// shuttle was when the leg began.
-  Rect? _legBeginOn(Rect? frame) =>
+  Rect? _legBeginOn(Size? size) =>
       (_legBeginsOnHero
-          ? _manifest.from.computeGlobalRect() ?? _manifest.from.placeholderRect
+          ? _manifest.from.computeRect() ?? _manifest.from.placeholderRect
           : null) ??
-      _legBegin?.within(frame);
+      _legBegin?.within(size);
 
   /// How far the shuttle is off its leg's path at [t] of the controller, for
   /// the speed it had when the flight diverted. It sets off at that speed, so
@@ -1217,7 +1240,7 @@ class _Flight extends ChangeNotifier {
   /// the shuttle carries on at already curves its path.
   Offset _swingToward(_Hero hero) {
     final from = _rect;
-    final to = hero.computeGlobalRect() ?? hero.placeholderRect;
+    final to = hero.computeRect() ?? hero.placeholderRect;
     final velocity = _divertVelocity.center;
     if (from == null || to == null || velocity == Offset.zero) {
       return Offset.zero;
@@ -1295,9 +1318,9 @@ class _Flight extends ChangeNotifier {
     _turn = rect == null ? null : (rect: rect, value: animation.value);
   }
 
-  /// [rect], kept with where the switcher's child is now.
+  /// [rect], kept with the size the switcher's child has now.
   _KeptRect? _keep(Rect? rect) =>
-      rect == null ? null : _KeptRect(rect, _registry.childRect());
+      rect == null ? null : _KeptRect(rect, _registry.switcher.childSize);
 
   void _forward({double? from}) {
     _reversed = false;
@@ -1367,10 +1390,10 @@ class _Flight extends ChangeNotifier {
 class _FlightRegistry extends ChangeNotifier {
   final _flightsByTag = <Object, _Flight>{};
 
-  /// Where the switcher's child is on the screen now.
-  final Rect? Function() childRect;
+  /// The switcher whose flights these are.
+  final _Switcher switcher;
 
-  _FlightRegistry(this.childRect);
+  _FlightRegistry(this.switcher);
 
   Iterable<_Flight> get all => _flightsByTag.values;
 
@@ -1503,8 +1526,9 @@ class _FlightManifest {
   String toString() => '_FlightManifest(from: $from, to: $to)';
 }
 
-/// A rect kept from an earlier frame, with where the switcher's child was
-/// then. When the child changes, such as on a window resize, the rect keeps
+/// A rect in the switcher's child kept from an earlier frame, with the size
+/// the child had then. When the child changes size, such as on a window
+/// resize, the rect keeps
 /// its size, and its place in the room the child has around it, as an
 /// [Align] keeps a child's: as far across that room, in proportion. So a rect
 /// at an edge stays there, and one in the middle stays in the middle. A rect
@@ -1513,28 +1537,18 @@ class _FlightManifest {
 class _KeptRect {
   final Rect rect;
 
-  /// Where the switcher's child was when the rect was kept.
-  final Rect? frame;
+  /// The size of the switcher's child when the rect was kept.
+  final Size? size;
 
-  const _KeptRect(this.rect, this.frame);
+  const _KeptRect(this.rect, this.size);
 
-  /// The rect, with the switcher's child at [now].
-  Rect within(Rect? now) {
-    final then = frame;
+  /// The rect, with the switcher's child of size [now].
+  Rect within(Size? now) {
+    final then = size;
     if (then == null || now == null || now == then) return rect;
     return Rect.fromLTWH(
-      now.left +
-          _place(
-            rect.left - then.left,
-            then.width - rect.width,
-            now.width - rect.width,
-          ),
-      now.top +
-          _place(
-            rect.top - then.top,
-            then.height - rect.height,
-            now.height - rect.height,
-          ),
+      _place(rect.left, then.width - rect.width, now.width - rect.width),
+      _place(rect.top, then.height - rect.height, now.height - rect.height),
       rect.width,
       rect.height,
     );
@@ -1573,9 +1587,10 @@ extension _Seconds on Duration {
 }
 
 extension _RenderBox on RenderBox {
-  Rect? globalRect(Offset offset) {
+  /// Where this box is in [ancestor]'s space.
+  Rect? rectIn(RenderObject ancestor) {
     if (!hasSize) return null;
-    return localToGlobal(offset) & size;
+    return localToGlobal(Offset.zero, ancestor: ancestor) & size;
   }
 }
 

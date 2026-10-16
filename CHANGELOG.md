@@ -1,3 +1,9 @@
+## Unreleased
+
+### Fixes
+
+* Place a shuttle where its heroes are on the frame a window resize moves the switcher, such as one below a header whose height follows the window's width, instead of where the switcher was on the frame before.
+
 ## 1.4.1
 
 ### Fixes
