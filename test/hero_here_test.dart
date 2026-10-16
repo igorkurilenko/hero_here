@@ -1,3 +1,6 @@
+import 'dart:typed_data';
+import 'dart:ui' as ui;
+
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -1005,7 +1008,7 @@ void main() {
     expect(find.text('label 1'), findsOneWidget);
     expect(_painted(tester, find.byKey(const ValueKey('box1'))), isFalse);
     expect(leftLayer.attached, isTrue);
-    expect(leftLayer.offset, _slotRects[0].topLeft);
+    expect(_paintedAt(leftLayer), _slotRects[0].topLeft);
 
     // The flight starts where the stand-in was, and the stand-in goes.
     await tester.pump();
@@ -1036,7 +1039,7 @@ void main() {
     // The sky is at the screen's origin, so the stand-in is where the hero
     // was on the screen.
     expect(leftLayer.attached, isTrue);
-    expect(leftLayer.offset, leftRect.topLeft);
+    expect(_paintedAt(leftLayer), leftRect.topLeft);
   });
 
   testWidgets('stands in for a hero that a switch takes away as a flight '
@@ -1060,7 +1063,7 @@ void main() {
     await tester.pump(const Duration(milliseconds: 1));
 
     expect(shuttleLayer.attached, isTrue);
-    expect(shuttleLayer.offset, _slotRects[1].topLeft);
+    expect(_paintedAt(shuttleLayer), _slotRects[1].topLeft);
   });
 
   testWidgets('hides the hero that a switch redirects a flight to from the '
@@ -1104,9 +1107,41 @@ void main() {
     await tester.pump();
 
     expect(heroLayer.attached, isTrue);
-    expect(heroLayer.offset, _slotRects[1].topLeft);
+    expect(_paintedAt(heroLayer), _slotRects[1].topLeft);
     expect(shuttleLayer.debugDisposed, isTrue);
   });
+
+  for (final (how, inBoundary) in [('', false), (', in a layer', true)]) {
+    testWidgets('stands in for a hero with the clip around it$how', (
+      tester,
+    ) async {
+      tester.view.devicePixelRatio = 1;
+      tester.view.physicalSize = const Size(800, 600);
+      addTearDown(tester.view.reset);
+      final slot = ValueNotifier(0);
+      addTearDown(slot.dispose);
+
+      await tester.pumpWidget(
+        _ClippedSwitcher(slot: slot, inBoundary: inBoundary),
+      );
+      await tester.pumpAndSettle();
+      const red = Color(0xFFFF0000);
+      expect(
+        await _pixelAt(tester, _clippedRect.topLeft + const Offset(4, 4)),
+        isNot(red),
+      );
+
+      slot.value = 1;
+      await tester.pump();
+
+      // The stand-in keeps the rounded corners the clip gave the hero.
+      expect(await _pixelAt(tester, _clippedRect.center), red);
+      expect(
+        await _pixelAt(tester, _clippedRect.topLeft + const Offset(4, 4)),
+        isNot(red),
+      );
+    });
+  }
 
   testWidgets('disposes the layer a stand-in shows once it goes', (
     tester,
@@ -2079,10 +2114,41 @@ void main() {
   }
 }
 
+/// The color of the pixel at [position] on the last frame, with a device
+/// pixel ratio of 1.
+Future<Color> _pixelAt(WidgetTester tester, Offset position) async {
+  final scene = tester.binding.renderViews.first.debugLayer! as OffsetLayer;
+  final size = tester.view.physicalSize;
+  late ByteData bytes;
+  await tester.runAsync(() async {
+    final image = await scene.toImage(Offset.zero & size);
+    bytes = (await image.toByteData(format: ui.ImageByteFormat.rawRgba))!;
+    image.dispose();
+  });
+  final i =
+      (position.dy.round() * size.width.round() + position.dx.round()) * 4;
+  return Color.fromARGB(
+    bytes.getUint8(i + 3),
+    bytes.getUint8(i),
+    bytes.getUint8(i + 1),
+    bytes.getUint8(i + 2),
+  );
+}
+
 /// The layer that the hero painting the widget [finder] finds paints into,
 /// if it painted: each hero paints into a layer of its own.
 OffsetLayer? _layerOf(WidgetTester tester, Finder finder) =>
     _heroBoundaryOf(tester, finder)?.debugLayer as OffsetLayer?;
+
+/// Where [layer] was on the screen on the last frame, if it was in it.
+Offset? _paintedAt(Layer layer) {
+  if (!layer.attached) return null;
+  var offset = Offset.zero;
+  for (Layer? x = layer; x != null && x is! TransformLayer; x = x.parent) {
+    if (x is OffsetLayer) offset += x.offset;
+  }
+  return offset;
+}
 
 /// Whether the hero painting the widget [finder] finds was in the last frame:
 /// a hidden hero's layer isn't, and a hero that never painted has none.
@@ -2659,6 +2725,58 @@ class _LabelSwitcher extends StatelessWidget {
       },
     ),
   );
+}
+
+const _clippedRect = Rect.fromLTWH(100, 100, 200, 200);
+
+/// Shows a red hero at [_clippedRect], in a clip that rounds its corners from
+/// outside it, or, when [slot] is 1, a hero with its tag in the third slot of
+/// [_slotRects], with no clip. When [inBoundary], the clip is in a layer of
+/// its own, away from the switcher's origin.
+class _ClippedSwitcher extends StatelessWidget {
+  const _ClippedSwitcher({required this.slot, this.inBoundary = false});
+
+  final ValueNotifier<int> slot;
+  final bool inBoundary;
+
+  @override
+  Widget build(BuildContext context) => MaterialApp(
+    home: ValueListenableBuilder(
+      valueListenable: slot,
+      builder: (context, slot, _) => HeroHereSwitcher(
+        child: Stack(
+          children: [
+            if (slot == 0)
+              Positioned.fromRect(
+                rect: _clippedRect,
+                child: _maybeInBoundary(
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(50),
+                    child: const HeroHere(
+                      key: ValueKey(0),
+                      tag: 'hero',
+                      child: ColoredBox(color: Color(0xFFFF0000)),
+                    ),
+                  ),
+                ),
+              )
+            else
+              Positioned.fromRect(
+                rect: _slotRects[2],
+                child: const HeroHere(
+                  key: ValueKey(1),
+                  tag: 'hero',
+                  child: ColoredBox(color: Color(0xFFFF0000)),
+                ),
+              ),
+          ],
+        ),
+      ),
+    ),
+  );
+
+  Widget _maybeInBoundary(Widget child) =>
+      inBoundary ? RepaintBoundary(child: child) : child;
 }
 
 /// A [_SlotSwitcher] slot that shows no hero.

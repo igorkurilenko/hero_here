@@ -204,6 +204,9 @@ class _HeroHereSwitcherState extends State<HeroHereSwitcher>
   /// switcher out anew and moves it.
   RenderBox? get childBox => _childKey.currentContext?.findRenderBox();
 
+  /// The layer the switcher's child last painted into.
+  OffsetLayer? get childLayer => (childBox as _RenderBoundary?)?.lastLayer;
+
   /// The size of the switcher's child, which the rects kept from earlier
   /// frames move with, see [_KeptRect].
   Size? get childSize {
@@ -243,7 +246,7 @@ class _HeroHereSwitcherState extends State<HeroHereSwitcher>
   Widget build(BuildContext context) {
     _switchingState.onBuild();
 
-    final child = RepaintBoundary(key: _childKey, child: _child);
+    final child = _Boundary(key: _childKey, child: _child);
     final sky = ListenableBuilder(
       listenable: flights,
       builder: (context, _) => _buildSky(),
@@ -267,7 +270,7 @@ class _HeroHereSwitcherState extends State<HeroHereSwitcher>
             _StandIn(
               key: ValueKey((_StandIn, hero)),
               hero: hero,
-              layer: _switchingState.standInLayer(hero),
+              look: _switchingState.standInLook(hero),
             ),
           ...flights.all.map(
             (flight) =>
@@ -302,8 +305,8 @@ abstract class _SwitchingState {
   /// The heroes the sky shows stand-ins of, where they were.
   Iterable<_Hero> get standIns => const [];
 
-  /// The layer [hero] last painted, which its stand-in shows.
-  OffsetLayer? standInLayer(_Hero hero) => null;
+  /// What [hero] last showed, which its stand-in shows.
+  _KeptLook? standInLook(_Hero hero) => null;
 
   /// Called when the switcher goes away.
   void dispose() {}
@@ -408,12 +411,13 @@ class _Switch extends _SwitchingState {
   /// mounted anew.
   late final Set<_Hero> _stayed = Set.identity()..addAll(curHeroes);
 
-  /// The layers [standIns] last painted, kept from before the switch until
-  /// the stand-ins, which keep them while they show, have them.
-  late final Map<_Hero, LayerHandle<OffsetLayer>> _layers = Map.identity()
+  /// What [standIns] last showed, kept from before the switch. Their layers
+  /// are kept until the stand-ins, which keep them while they show, have
+  /// them.
+  late final Map<_Hero, _KeptLook> _looks = Map.identity()
     ..addAll({
       for (final hero in standIns)
-        hero: LayerHandle<OffsetLayer>()..layer = hero.lastLayer,
+        hero: ?_KeptLook.of(hero, switcher.childLayer),
     });
 
   factory _Switch(
@@ -446,7 +450,7 @@ class _Switch extends _SwitchingState {
   // are as they were.
   @override
   void enter() {
-    _layers;
+    _looks;
     afterFrame(_switch);
   }
 
@@ -457,14 +461,14 @@ class _Switch extends _SwitchingState {
   bool hides(_Hero hero) => _tags.contains(hero.tag) && !_stayed.contains(hero);
 
   @override
-  OffsetLayer? standInLayer(_Hero hero) => _layers[hero]?.layer;
+  _KeptLook? standInLook(_Hero hero) => _looks[hero];
 
   @override
   void dispose() => _releaseLayers();
 
   void _releaseLayers() {
-    for (final layer in _layers.values) {
-      layer.layer = null;
+    for (final look in _looks.values) {
+      look.release();
     }
   }
 
@@ -744,7 +748,7 @@ class _HeroHereState extends State<HeroHere> {
   /// landed on it, which it hasn't painted since, that flight's shuttle's.
   OffsetLayer? get lastLayer =>
       _landedLayer.layer ??
-      (_childKey.currentContext?.findRenderObject() as _RenderHeroLayer?)
+      (_childKey.currentContext?.findRenderObject() as _RenderBoundary?)
           ?.lastLayer;
 
   /// Keeps [shuttleLayer], of a flight that landed on the hero, as what the
@@ -772,7 +776,7 @@ class _HeroHereState extends State<HeroHere> {
       changes: _hiding,
       child: KeyedSubtree(
         key: _childKey,
-        child: _HeroLayer(child: widget.child),
+        child: _Boundary(child: widget.child),
       ),
     ),
   );
@@ -925,15 +929,15 @@ class _FlightWidget extends StatelessWidget {
   );
 }
 
-/// Shows [hero] where it was at a switch, as it last painted, while the
-/// switch waits to fly its tag, if the hero went away. It shows the hero's
-/// own [layer], kept from before the switch, so the hero isn't built or
-/// drawn again. The flight then starts where the stand-in is.
+/// Shows [hero] where it was at a switch, as it last showed, while the switch
+/// waits to fly its tag, if the hero went away. It shows the [look] kept from
+/// before the switch, so the hero isn't built or drawn again. The flight then
+/// starts where the stand-in is.
 class _StandIn extends StatelessWidget {
   final _Hero hero;
-  final OffsetLayer? layer;
+  final _KeptLook? look;
 
-  const _StandIn({super.key, required this.hero, required this.layer});
+  const _StandIn({super.key, required this.hero, required this.look});
 
   // Like a flight's, its place is worked out as it lays out, by the size the
   // switcher's child has on this frame.
@@ -944,42 +948,44 @@ class _StandIn extends StatelessWidget {
       space: () => hero._switcher?.childBox,
       // A hero that stays shows itself. Whether it stays is known by the
       // time the frame paints, once the new child is built and laid out.
-      child: _KeptLayer(layer: layer, shows: () => !hero._active),
+      child: _KeptLayer(look: look, shows: () => !hero._active),
     ),
   );
 }
 
-/// Shows [layer] where it lays out, while [shows] says so when it paints.
+/// Shows [look] where it lays out, while [shows] says so when it paints.
 class _KeptLayer extends LeafRenderObjectWidget {
-  final OffsetLayer? layer;
+  final _KeptLook? look;
   final bool Function() shows;
 
-  const _KeptLayer({required this.layer, required this.shows});
+  const _KeptLayer({required this.look, required this.shows});
 
   @override
   _RenderKeptLayer createRenderObject(BuildContext context) =>
-      _RenderKeptLayer(layer, shows);
+      _RenderKeptLayer(look, shows);
 
   @override
   void updateRenderObject(
     BuildContext context,
     _RenderKeptLayer renderObject,
   ) => renderObject
-    ..keptLayer = layer
+    ..look = look
     ..shows = shows;
 }
 
 class _RenderKeptLayer extends RenderBox {
   final _layer = LayerHandle<OffsetLayer>();
+  _KeptLook? _look;
   bool Function() shows;
 
-  _RenderKeptLayer(OffsetLayer? layer, this.shows) {
-    _layer.layer = layer;
+  _RenderKeptLayer(this._look, this.shows) {
+    _layer.layer = _look?.layer;
   }
 
-  set keptLayer(OffsetLayer? value) {
-    if (_layer.layer == value) return;
-    _layer.layer = value;
+  set look(_KeptLook? value) {
+    if (identical(_look, value)) return;
+    _look = value;
+    _layer.layer = value?.layer;
     markNeedsCompositingBitsUpdate();
     markNeedsPaint();
   }
@@ -994,13 +1000,11 @@ class _RenderKeptLayer extends RenderBox {
   Size computeDryLayout(covariant BoxConstraints constraints) =>
       constraints.biggest;
 
-  // Adding the layer takes it out of where it was, if it's still there.
   @override
   void paint(PaintingContext context, Offset offset) {
-    final layer = _layer.layer;
-    if (layer == null || !shows()) return;
-    layer.offset = offset;
-    context.addLayer(layer);
+    final look = _look, layer = _layer.layer;
+    if (look == null || layer == null || !shows()) return;
+    context.addLayer(look.build(layer, at: offset));
   }
 
   @override
@@ -1056,17 +1060,18 @@ class _RenderShuttleLayer extends RenderRepaintBoundary {
   }
 }
 
-/// Paints a hero's child into a layer of its own, so a switch can show that
-/// layer, as the hero last painted it, after the hero went away.
-class _HeroLayer extends SingleChildRenderObjectWidget {
-  const _HeroLayer({super.child});
+/// A [RepaintBoundary] that tells the layer it last painted into. Each hero
+/// paints its child into one, so a switch can show that layer, as the hero
+/// last painted it, after the hero went away. The switcher's child is in one
+/// too, where the layers a hero is in end.
+class _Boundary extends SingleChildRenderObjectWidget {
+  const _Boundary({super.key, super.child});
 
   @override
-  _RenderHeroLayer createRenderObject(BuildContext context) =>
-      _RenderHeroLayer();
+  _RenderBoundary createRenderObject(BuildContext context) => _RenderBoundary();
 }
 
-class _RenderHeroLayer extends RenderRepaintBoundary {
+class _RenderBoundary extends RenderRepaintBoundary {
   /// The layer this boundary last painted into, if it painted.
   OffsetLayer? get lastLayer => layer as OffsetLayer?;
 }
@@ -1731,6 +1736,99 @@ class _FlightManifest {
 
   @override
   String toString() => '_FlightManifest(from: $from, to: $to)';
+}
+
+/// What a hero last showed, kept at a switch: the layer it last painted into,
+/// and the layers its ancestors in the switcher's child put that layer in,
+/// such as a clip that rounds its corners from outside it, or a fade.
+class _KeptLook {
+  /// Keeps the layer until [release].
+  final _handle = LayerHandle<OffsetLayer>();
+
+  /// Where the hero was in the switcher's child.
+  final Offset _origin;
+
+  /// Make the layers its ancestors put the layer in, innermost first, or
+  /// null if it wasn't in the switcher's child, as a shuttle's isn't.
+  final List<ContainerLayer Function()>? _wrappers;
+
+  _KeptLook._(OffsetLayer layer, this._origin, this._wrappers) {
+    _handle.layer = layer;
+  }
+
+  /// What [hero] last showed, if it painted, in the switcher's child, which
+  /// last painted into [childLayer].
+  static _KeptLook? of(_Hero hero, OffsetLayer? childLayer) {
+    final layer = hero.lastLayer;
+    if (layer == null) return null;
+    final wrappers = <ContainerLayer Function()>[];
+    for (var parent = layer.parent; parent != null; parent = parent.parent) {
+      if (identical(parent, childLayer)) {
+        final origin = hero._placeholder?.rect.topLeft ?? Offset.zero;
+        return _KeptLook._(layer, origin, wrappers);
+      }
+      if (_wrapperLike(parent) case final wrapper?) wrappers.add(wrapper);
+    }
+    return _KeptLook._(layer, Offset.zero, null);
+  }
+
+  OffsetLayer? get layer => _handle.layer;
+
+  void release() => _handle.layer = null;
+
+  /// Puts [layer] back in the layers it was in, so the hero, as it showed,
+  /// is [at] where its stand-in lays out. Adding the result takes [layer]
+  /// out of where it was, if it's still there.
+  Layer build(OffsetLayer layer, {required Offset at}) {
+    final wrappers = _wrappers;
+    if (wrappers == null) return layer..offset = at;
+    // The layer keeps its offset in the layer it was in.
+    layer.remove();
+    Layer built = layer;
+    for (final wrapper in wrappers) {
+      built = wrapper()..append(built);
+    }
+    return OffsetLayer(offset: at - _origin)..append(built);
+  }
+
+  /// A function that makes a layer like [layer], with nothing in it, if it
+  /// changes how what's in it shows.
+  static ContainerLayer Function()? _wrapperLike(ContainerLayer layer) =>
+      switch (layer) {
+        ClipRectLayer(:final clipRect, :final clipBehavior) =>
+          () => ClipRectLayer(clipRect: clipRect, clipBehavior: clipBehavior),
+        ClipRRectLayer(:final clipRRect, :final clipBehavior) =>
+          () =>
+              ClipRRectLayer(clipRRect: clipRRect, clipBehavior: clipBehavior),
+        ClipRSuperellipseLayer(:final clipRSuperellipse, :final clipBehavior) =>
+          () => ClipRSuperellipseLayer(
+            clipRSuperellipse: clipRSuperellipse,
+            clipBehavior: clipBehavior,
+          ),
+        ClipPathLayer(:final clipPath, :final clipBehavior) =>
+          () => ClipPathLayer(clipPath: clipPath, clipBehavior: clipBehavior),
+        ColorFilterLayer(:final colorFilter) => () => ColorFilterLayer(
+          colorFilter: colorFilter,
+        ),
+        ShaderMaskLayer(:final shader, :final maskRect, :final blendMode) =>
+          () => ShaderMaskLayer(
+            shader: shader,
+            maskRect: maskRect,
+            blendMode: blendMode,
+          ),
+        ImageFilterLayer(:final imageFilter, :final offset) =>
+          () => ImageFilterLayer(imageFilter: imageFilter, offset: offset),
+        TransformLayer(:final transform, :final offset) => () => TransformLayer(
+          transform: transform,
+          offset: offset,
+        ),
+        OpacityLayer(:final alpha, :final offset) => () => OpacityLayer(
+          alpha: alpha,
+          offset: offset,
+        ),
+        OffsetLayer(:final offset) => () => OffsetLayer(offset: offset),
+        _ => null,
+      };
 }
 
 /// A rect in the switcher's child kept from an earlier frame, with the size
