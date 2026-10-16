@@ -411,6 +411,93 @@ void main() {
     expect(find.byKey(_shuttleKey), findsNothing);
   });
 
+  testWidgets('shows a shuttle that lands while a switch shows its snapshot', (
+    tester,
+  ) async {
+    final slot = ValueNotifier(0);
+    addTearDown(slot.dispose);
+
+    await tester.pumpWidget(_SlotSwitcher(slot: slot));
+    await tester.pumpAndSettle();
+
+    slot.value = 2;
+    await _pumpSwitch(tester);
+    const frame = Duration(milliseconds: 16);
+    await tester.pump(HeroHere.defaultFlightAnimationDuration - frame);
+
+    // The switch snapshots the child with the hero the flight lands on
+    // hidden, and the flight lands on the next frame, which shows that
+    // snapshot.
+    slot.value = 1;
+    await tester.pump();
+    await tester.pump(frame * 2);
+
+    final shuttle = find.byKey(_shuttleKey);
+    expect(shuttle, findsOneWidget);
+    expect(tester.getRect(shuttle), _slotRects[2]);
+    await tester.pumpAndSettle();
+    expect(shuttle, findsNothing);
+    expect(find.byKey(const ValueKey('box1')), findsOneWidget);
+  });
+
+  testWidgets('shows a shuttle that lands back while a switch shows its '
+      'snapshot', (tester) async {
+    final slot = ValueNotifier(0);
+    addTearDown(slot.dispose);
+
+    await tester.pumpWidget(_SlotSwitcher(slot: slot));
+    await tester.pumpAndSettle();
+
+    slot.value = 1;
+    await _pumpSwitch(tester);
+    await tester.pump(HeroHere.defaultFlightAnimationDuration ~/ 2);
+
+    // Back to the first slot, which takes as long as it flew.
+    slot.value = 0;
+    await _pumpSwitch(tester);
+    const frame = Duration(milliseconds: 16);
+    await tester.pump(HeroHere.defaultFlightAnimationDuration ~/ 2 - frame);
+
+    // The flight lands back on the frame that shows the next switch's
+    // snapshot, in which the hero it lands on is hidden.
+    slot.value = 2;
+    await tester.pump();
+    await tester.pump(frame * 2);
+
+    final shuttle = find.byKey(_shuttleKey);
+    expect(shuttle, findsOneWidget);
+    expect(tester.getRect(shuttle), _slotRects[0]);
+    await tester.pumpAndSettle();
+    expect(shuttle, findsNothing);
+    expect(find.byKey(const ValueKey('box2')), findsOneWidget);
+  });
+
+  testWidgets('shows a shuttle that lands after a switch snapshots its frame, '
+      'as on the web', (tester) async {
+    final slot = ValueNotifier(0);
+    addTearDown(slot.dispose);
+
+    await tester.pumpWidget(_SlotSwitcher(slot: slot));
+    await tester.pumpAndSettle();
+
+    slot.value = 2;
+    await _pumpSwitch(tester);
+    const frame = Duration(milliseconds: 16);
+    await tester.pump(HeroHere.defaultFlightAnimationDuration - frame);
+
+    // The flight lands after the switch on its frame snapshots the child with
+    // the hero it lands on hidden.
+    slot.value = 1;
+    await _pumpWebFrame(tester, frame * 2);
+
+    final shuttle = find.byKey(_shuttleKey);
+    expect(shuttle, findsOneWidget);
+    expect(tester.getRect(shuttle), _slotRects[2]);
+    await tester.pumpAndSettle();
+    expect(shuttle, findsNothing);
+    expect(find.byKey(const ValueKey('box1')), findsOneWidget);
+  });
+
   testWidgets('turns a flight around on the frame it lands back, as on the '
       'web', (tester) async {
     final slot = ValueNotifier(0);

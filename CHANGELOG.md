@@ -1,3 +1,9 @@
+## Unreleased
+
+### Fixes
+
+* Keep showing a shuttle that lands while a switch shows its snapshot of the old child, until the switch runs, instead of showing nothing for a frame: the snapshot shows the hero the shuttle lands on hidden, and the new child isn't showing yet.
+
 ## 1.3.0
 
 ### Features
