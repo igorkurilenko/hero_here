@@ -793,6 +793,38 @@ void main() {
     expect(find.byKey(const ValueKey('a1')), findsNothing);
   });
 
+  testWidgets('flies on to where the hero it flies to was when that one '
+      'mounts anew, then goes away', (tester) async {
+    final moved = ValueNotifier(false), b = ValueNotifier(0);
+    addTearDown(moved.dispose);
+    addTearDown(b.dispose);
+    const duration = HeroHere.defaultFlightAnimationDuration;
+
+    await tester.pumpWidget(_GoneSwitcher(moved: moved, b: b));
+    await tester.pumpAndSettle();
+
+    moved.value = true;
+    await _pumpSwitch(tester);
+    await tester.pump(duration ~/ 4);
+
+    // No switch: the hero the flight lands on mounts anew, then goes away.
+    b.value = 1;
+    await tester.pump();
+    b.value = 2;
+    await tester.pump();
+    final shuttle = find.byKey(_shuttleKey);
+    final gone = tester.getRect(shuttle);
+
+    await tester.pump(duration ~/ 2);
+
+    final to = _slotRects[1].center;
+    final now = tester.getRect(shuttle);
+    expect(
+      (now.center - to).distance,
+      lessThan((gone.center - to).distance / 2),
+    );
+  });
+
   testWidgets('lands on a next hero that mounts anew without a switch', (
     tester,
   ) async {
@@ -2777,6 +2809,54 @@ class _ClippedSwitcher extends StatelessWidget {
 
   Widget _maybeInBoundary(Widget child) =>
       inBoundary ? RepaintBoundary(child: child) : child;
+}
+
+/// Shows hero 'a' in the first slot of [_slotRects], or, when [moved], hero
+/// 'b' in the second. A builder below the switcher reads [b]: 0 shows 'b',
+/// 1 mounts it anew in one more widget, and 2 takes it away, none of which
+/// runs a switch. Its shuttle is a box with [_shuttleKey].
+class _GoneSwitcher extends StatelessWidget {
+  const _GoneSwitcher({required this.moved, required this.b});
+
+  final ValueNotifier<bool> moved;
+  final ValueNotifier<int> b;
+
+  @override
+  Widget build(BuildContext context) => MaterialApp(
+    home: ValueListenableBuilder(
+      valueListenable: moved,
+      builder: (context, moved, _) {
+        Widget hero(String key) => HeroHere(
+          key: ValueKey(key),
+          tag: 'hero',
+          flightShuttleBuilder: (_, _, _, _) =>
+              const SizedBox.expand(key: _shuttleKey),
+          child: const ColoredBox(color: Color(0xFF2196F3)),
+        );
+
+        return HeroHereSwitcher(
+          child: Stack(
+            children: [
+              if (!moved)
+                Positioned.fromRect(rect: _slotRects[0], child: hero('a'))
+              else
+                ValueListenableBuilder(
+                  valueListenable: b,
+                  builder: (context, b, _) => Positioned.fromRect(
+                    rect: _slotRects[1],
+                    child: switch (b) {
+                      0 => hero('b'),
+                      1 => KeyedSubtree(child: hero('b')),
+                      _ => const SizedBox(),
+                    },
+                  ),
+                ),
+            ],
+          ),
+        );
+      },
+    ),
+  );
 }
 
 /// A [_SlotSwitcher] slot that shows no hero.
