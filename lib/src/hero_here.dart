@@ -189,15 +189,10 @@ class _HeroHereSwitcherState extends State<HeroHereSwitcher>
   /// The [HeroHereSwitcher.switchKey] that [_child] came with.
   Object? _switchKey;
 
-  StateSetter setChildState = (_) {};
-  RawImage? _childScreenshot;
-  bool _childOffstage = false;
-
   @override
   void dispose() {
+    _switchingState.dispose();
     flights.dispose();
-    // RawImage doesn't dispose its image.
-    _childScreenshot?.image?.dispose();
     super.dispose();
   }
 
@@ -216,19 +211,9 @@ class _HeroHereSwitcherState extends State<HeroHereSwitcher>
     return box != null && box.hasSize ? box.size : null;
   }
 
-  bool hidesOnMount(_Hero hero) => switch (_switchingState) {
-    final _Mount mount => mount.hiddenHeroes.contains(hero),
-    _ => false,
-  };
-
-  RawImage? takeChildScreenshot({double pixelRatio = 1.0}) {
-    final renderRepaintBoundary = _childKey.currentContext
-        ?.findRenderRepaintBoundary();
-
-    return renderRepaintBoundary != null
-        ? _takeScreenshot(renderRepaintBoundary, pixelRatio: pixelRatio)
-        : null;
-  }
+  /// Whether [hero] hides for the switcher's state, as when the first child
+  /// mounts, or while a switch waits to fly its tag.
+  bool hides(_Hero hero) => _switchingState.hides(hero);
 
   /// Takes the widget's child, with its switch key, as the one to show.
   void takeChild() {
@@ -258,12 +243,7 @@ class _HeroHereSwitcherState extends State<HeroHereSwitcher>
   Widget build(BuildContext context) {
     _switchingState.onBuild();
 
-    final child = StatefulBuilder(
-      builder: (context, setState) {
-        setChildState = setState;
-        return _buildChild();
-      },
-    );
+    final child = RepaintBoundary(key: _childKey, child: _child);
     final sky = ListenableBuilder(
       listenable: flights,
       builder: (context, _) => _buildSky(),
@@ -271,16 +251,6 @@ class _HeroHereSwitcherState extends State<HeroHereSwitcher>
 
     return widget.layoutBuilder(child, sky);
   }
-
-  Widget _buildChild() => Stack(
-    children: [
-      Offstage(
-        offstage: _childOffstage,
-        child: RepaintBoundary(key: _childKey, child: _child),
-      ),
-      ?_childScreenshot,
-    ],
-  );
 
   // Flights repaint on every frame. The boundary keeps those repaints off the
   // rest of the screen, whatever the layout builder puts around the sky.
@@ -293,6 +263,12 @@ class _HeroHereSwitcherState extends State<HeroHereSwitcher>
     child: _RelayoutBoundary(
       child: Stack(
         children: [
+          for (final hero in _switchingState.standIns)
+            _StandIn(
+              key: ValueKey((_StandIn, hero)),
+              hero: hero,
+              layer: _switchingState.standInLayer(hero),
+            ),
           ...flights.all.map(
             (flight) =>
                 _FlightWidget(key: ValueKey(flight.tag), flight: flight),
@@ -301,29 +277,13 @@ class _HeroHereSwitcherState extends State<HeroHereSwitcher>
       ),
     ),
   );
-
-  RawImage? _takeScreenshot(
-    RenderRepaintBoundary renderRepaintBoundary, {
-    double pixelRatio = 1.0,
-  }) {
-    try {
-      return RawImage(
-        width: renderRepaintBoundary.size.width,
-        height: renderRepaintBoundary.size.height,
-        image: renderRepaintBoundary.toImageSync(pixelRatio: pixelRatio),
-      );
-    } catch (_) {
-      return null;
-    }
-  }
 }
 
 /// A phase of the switcher's life. The switcher [enter]s a state once, then
 /// tells it about each of its builds; a state moves the switcher on by
 /// entering the next one. A build of the switcher runs a switch, unless its
 /// switch key says its child shows in place: from [_Idle] it enters
-/// [_Prepare], and a build during a switch is taken up by that switch, or by
-/// the next one if its child arrived too late.
+/// [_Switch], which takes up the builds until it flies the heroes.
 abstract class _SwitchingState {
   final _Switcher switcher;
   final Set<_Hero>? prevSwitchHeroes;
@@ -335,6 +295,18 @@ abstract class _SwitchingState {
 
   /// Called on each build of the switcher, which may bring a new child.
   void onBuild() {}
+
+  /// Whether [hero] hides for this state, whatever its own offstage.
+  bool hides(_Hero hero) => false;
+
+  /// The heroes the sky shows stand-ins of, where they were.
+  Iterable<_Hero> get standIns => const [];
+
+  /// The layer [hero] last painted, which its stand-in shows.
+  OffsetLayer? standInLayer(_Hero hero) => null;
+
+  /// Called when the switcher goes away.
+  void dispose() {}
 
   /// Runs [work] after this frame, if the switcher is still mounted by then.
   void afterFrame(VoidCallback work) =>
@@ -365,6 +337,9 @@ class _Mount extends _SwitchingState {
   @override
   void onBuild() => switcher.takeChild();
 
+  @override
+  bool hides(_Hero hero) => hiddenHeroes.contains(hero);
+
   void _mount() {
     final heroes = switcher.findHeroes();
 
@@ -388,60 +363,112 @@ class _Idle extends _SwitchingState {
 
   @override
   void onBuild() {
-    if (switcher.switchesChild) {
-      switcher.enter(_Prepare(switcher, prevSwitchHeroes: prevSwitchHeroes));
-    } else {
+    if (!switcher.switchesChild) {
       switcher.takeChild();
+      return;
     }
-  }
-}
 
-/// Snapshots the current child and lays the new one out offstage. Holds the
-/// flights' landings from the snapshot until the switch runs. Builds while
-/// it waits need nothing: it takes the newest child.
-class _Prepare extends _SwitchingState {
-  _Prepare(super.switcher, {super.prevSwitchHeroes});
-
-  @override
-  void enter() => afterFrame(_prepareSwitch);
-
-  void _prepareSwitch() {
+    // The heroes on the screen, found and kept where they are before the
+    // new child replaces them, while their layout is the last frame's.
     final curHeroes = switcher.findHeroes();
-
     notifyWillSwitch(curHeroes);
-    switcher.flights.holdLandings();
 
-    switcher.setChildState(() {
-      switcher._childScreenshot = switcher.takeChildScreenshot(
-        pixelRatio: MediaQuery.devicePixelRatioOf(switcher.context),
-      );
-      switcher.takeChild();
-      switcher._childOffstage = true;
-      switcher.enter(
-        _Execute(
-          switcher,
-          prevSwitchHeroes: prevSwitchHeroes,
-          curHeroes: curHeroes,
-        ),
-      );
-    });
+    switcher.takeChild();
+    switcher.enter(
+      _Switch(
+        switcher,
+        prevSwitchHeroes: prevSwitchHeroes,
+        curHeroes: curHeroes,
+      ),
+    );
   }
 }
 
-/// Flies the heroes and shows the new child. A child that arrives while it
-/// waits gets a switch of its own after this one, or shows in place once
-/// this one ends.
-class _Execute extends _SwitchingState {
+/// Shows the new child on the frame of the build that brought it, and flies
+/// its heroes after that frame, once it is built and laid out, so with no
+/// snapshot of the old child. On that frame, the new heroes of every tag that
+/// may fly hide, those built later in the frame too, while the heroes that
+/// stay show as they are. The sky shows a stand-in of each hero that was on
+/// the screen and went away, where it was, so its flight starts where its
+/// stand-in is. Builds while it waits need nothing: it takes the newest
+/// child.
+class _Switch extends _SwitchingState {
   final Set<_Hero> curHeroes;
 
-  _Execute(super.switcher, {super.prevSwitchHeroes, required this.curHeroes});
+  /// The heroes that were on the screen. Each stand-in shows only if its hero
+  /// went away. The heroes of a flight under way are hidden, and a hero that
+  /// mounts while its tag flies hides until a switch decides about it.
+  @override
+  final List<_Hero> standIns;
+
+  /// The tags that may fly: those of [standIns].
+  final Set<Object> _tags;
+
+  /// [curHeroes] themselves, rather than heroes equal to them, which may have
+  /// mounted anew.
+  late final Set<_Hero> _stayed = Set.identity()..addAll(curHeroes);
+
+  /// The layers [standIns] last painted, kept from before the switch until
+  /// the stand-ins, which keep them while they show, have them.
+  late final Map<_Hero, LayerHandle<OffsetLayer>> _layers = Map.identity()
+    ..addAll({
+      for (final hero in standIns)
+        hero: LayerHandle<OffsetLayer>()..layer = hero.lastLayer,
+    });
+
+  factory _Switch(
+    _Switcher switcher, {
+    Set<_Hero>? prevSwitchHeroes,
+    required Set<_Hero> curHeroes,
+  }) {
+    final standIns = [
+      for (final hero in curHeroes)
+        if (hero.onstage) hero,
+    ];
+    return _Switch._(
+      switcher,
+      prevSwitchHeroes: prevSwitchHeroes,
+      curHeroes: curHeroes,
+      standIns: standIns,
+      tags: {for (final hero in standIns) hero.tag},
+    );
+  }
+
+  _Switch._(
+    super.switcher, {
+    super.prevSwitchHeroes,
+    required this.curHeroes,
+    required this.standIns,
+    required this._tags,
+  });
+
+  // The layers are kept now, while the heroes and their last frame's layers
+  // are as they were.
+  @override
+  void enter() {
+    _layers;
+    afterFrame(_switch);
+  }
 
   @override
-  void enter() => afterFrame(_switch);
+  void onBuild() => switcher.takeChild();
+
+  @override
+  bool hides(_Hero hero) => _tags.contains(hero.tag) && !_stayed.contains(hero);
+
+  @override
+  OffsetLayer? standInLayer(_Hero hero) => _layers[hero]?.layer;
+
+  @override
+  void dispose() => _releaseLayers();
+
+  void _releaseLayers() {
+    for (final layer in _layers.values) {
+      layer.layer = null;
+    }
+  }
 
   void _switch() {
-    switcher.flights.releaseLandings();
-
     final nextHeroes = switcher.findHeroes();
     final plan = _SwitchPlan(
       curHeroes: curHeroes,
@@ -475,23 +502,19 @@ class _Execute extends _SwitchingState {
       }
     }
 
-    switcher.setChildState(() {
-      switcher._childScreenshot?.image?.dispose();
-      switcher._childScreenshot = null;
-      switcher._childOffstage = false;
+    switcher.enter(_Idle(switcher, prevSwitchHeroes: nextHeroes));
 
-      // A build that brought a child or a key this switch didn't take runs
-      // another switch, unless its child shows in place.
-      final rebuilt =
-          !identical(switcher._child, switcher.widget.child) ||
-          switcher._switchKey != switcher.widget.switchKey;
-      if (rebuilt && switcher.switchesChild) {
-        switcher.enter(_Prepare(switcher, prevSwitchHeroes: nextHeroes));
-      } else {
-        switcher.takeChild();
-        switcher.enter(_Idle(switcher, prevSwitchHeroes: nextHeroes));
-      }
-    });
+    // The heroes it hid while it waited show again, unless the plan hid
+    // them, and the sky drops the stand-ins.
+    _repaintHeroesOf(nextHeroes);
+    switcher.flights.changed();
+    _releaseLayers();
+  }
+
+  void _repaintHeroesOf(Iterable<_Hero> heroes) {
+    for (final hero in heroes) {
+      if (_tags.contains(hero.tag)) hero.hidingChanged();
+    }
   }
 }
 
@@ -713,6 +736,27 @@ class _HeroHereState extends State<HeroHere> {
     _placeholder = rect == null ? null : _KeptRect(rect, _switcher?.childSize);
   }
 
+  /// The layer of the shuttle of a flight that just landed on the hero, kept
+  /// until the frame after it landed ends, by when the hero painted.
+  final _landedLayer = LayerHandle<OffsetLayer>();
+
+  /// What the hero last showed, as a layer: its own, or, if a flight just
+  /// landed on it, which it hasn't painted since, that flight's shuttle's.
+  OffsetLayer? get lastLayer =>
+      _landedLayer.layer ??
+      (_childKey.currentContext?.findRenderObject() as _RenderHeroLayer?)
+          ?.lastLayer;
+
+  /// Keeps [shuttleLayer], of a flight that landed on the hero, as what the
+  /// hero shows until it paints.
+  void landedFrom(OffsetLayer? shuttleLayer) {
+    if (shuttleLayer == null || !mounted) return;
+    _landedLayer.layer = shuttleLayer;
+    SchedulerBinding.instance.addPostFrameCallback(
+      (_) => _landedLayer.layer = null,
+    );
+  }
+
   /// Where the hero is in the switcher's child.
   Rect? computeRect() {
     final space = _switcher?.childBox;
@@ -726,12 +770,21 @@ class _HeroHereState extends State<HeroHere> {
     child: _Hide(
       hides: _hides,
       changes: _hiding,
-      child: KeyedSubtree(key: _childKey, child: widget.child),
+      child: KeyedSubtree(
+        key: _childKey,
+        child: _HeroLayer(child: widget.child),
+      ),
     ),
   );
 
   // A hero set offstage hides at once, not from its next build.
-  bool _hides() => offstage || (_switcher?.hidesOnMount(this) ?? false);
+  bool _hides() => offstage || (_switcher?.hides(this) ?? false);
+
+  /// Repaints the hero's [_Hide], since whether it hides changed other than
+  /// by its offstage.
+  void hidingChanged() {
+    if (mounted) _hiding.notify();
+  }
 
   @override
   bool operator ==(Object other) =>
@@ -747,6 +800,7 @@ class _HeroHereState extends State<HeroHere> {
   @override
   void dispose() {
     _hiding.dispose();
+    _landedLayer.layer = null;
     super.dispose();
   }
 
@@ -789,9 +843,9 @@ class _HeroOffstage extends Offstage {
 /// or show a child before the child's next build, even from layout.
 class _Hide extends SingleChildRenderObjectWidget {
   final bool Function() hides;
-  final Listenable changes;
+  final Listenable? changes;
 
-  const _Hide({required this.hides, required this.changes, super.child});
+  const _Hide({required this.hides, this.changes, super.child});
 
   @override
   _RenderHide createRenderObject(BuildContext context) =>
@@ -804,19 +858,19 @@ class _Hide extends SingleChildRenderObjectWidget {
 
 class _RenderHide extends RenderProxyBox {
   bool Function() hides;
-  final Listenable changes;
+  final Listenable? changes;
 
   _RenderHide(this.hides, this.changes);
 
   @override
   void attach(PipelineOwner owner) {
     super.attach(owner);
-    changes.addListener(_changed);
+    changes?.addListener(_changed);
   }
 
   @override
   void detach() {
-    changes.removeListener(_changed);
+    changes?.removeListener(_changed);
     super.detach();
   }
 
@@ -862,11 +916,159 @@ class _FlightWidget extends StatelessWidget {
           space: () => flight._registry.switcher.childBox,
           // The shuttle moves on each frame. In its own layer, it repaints
           // only when it changes, such as when it changes size.
-          child: IgnorePointer(child: RepaintBoundary(child: flight.shuttle)),
+          child: IgnorePointer(
+            child: _ShuttleLayer(flight: flight, child: flight.shuttle),
+          ),
         ),
       ),
     ),
   );
+}
+
+/// Shows [hero] where it was at a switch, as it last painted, while the
+/// switch waits to fly its tag, if the hero went away. It shows the hero's
+/// own [layer], kept from before the switch, so the hero isn't built or
+/// drawn again. The flight then starts where the stand-in is.
+class _StandIn extends StatelessWidget {
+  final _Hero hero;
+  final OffsetLayer? layer;
+
+  const _StandIn({super.key, required this.hero, required this.layer});
+
+  // Like a flight's, its place is worked out as it lays out, by the size the
+  // switcher's child has on this frame.
+  @override
+  Widget build(BuildContext context) => LayoutBuilder(
+    builder: (context, _) => _ShuttleRect(
+      rect: hero.placeholderRect ?? Rect.zero,
+      space: () => hero._switcher?.childBox,
+      // A hero that stays shows itself. Whether it stays is known by the
+      // time the frame paints, once the new child is built and laid out.
+      child: _KeptLayer(layer: layer, shows: () => !hero._active),
+    ),
+  );
+}
+
+/// Shows [layer] where it lays out, while [shows] says so when it paints.
+class _KeptLayer extends LeafRenderObjectWidget {
+  final OffsetLayer? layer;
+  final bool Function() shows;
+
+  const _KeptLayer({required this.layer, required this.shows});
+
+  @override
+  _RenderKeptLayer createRenderObject(BuildContext context) =>
+      _RenderKeptLayer(layer, shows);
+
+  @override
+  void updateRenderObject(
+    BuildContext context,
+    _RenderKeptLayer renderObject,
+  ) => renderObject
+    ..keptLayer = layer
+    ..shows = shows;
+}
+
+class _RenderKeptLayer extends RenderBox {
+  final _layer = LayerHandle<OffsetLayer>();
+  bool Function() shows;
+
+  _RenderKeptLayer(OffsetLayer? layer, this.shows) {
+    _layer.layer = layer;
+  }
+
+  set keptLayer(OffsetLayer? value) {
+    if (_layer.layer == value) return;
+    _layer.layer = value;
+    markNeedsCompositingBitsUpdate();
+    markNeedsPaint();
+  }
+
+  @override
+  bool get alwaysNeedsCompositing => _layer.layer != null;
+
+  @override
+  bool get sizedByParent => true;
+
+  @override
+  Size computeDryLayout(covariant BoxConstraints constraints) =>
+      constraints.biggest;
+
+  // Adding the layer takes it out of where it was, if it's still there.
+  @override
+  void paint(PaintingContext context, Offset offset) {
+    final layer = _layer.layer;
+    if (layer == null || !shows()) return;
+    layer.offset = offset;
+    context.addLayer(layer);
+  }
+
+  @override
+  void dispose() {
+    _layer.layer = null;
+    super.dispose();
+  }
+}
+
+/// The shuttle's own layer, which its flight knows, so the hero the flight
+/// lands on can show it until the hero paints.
+class _ShuttleLayer extends SingleChildRenderObjectWidget {
+  final _Flight flight;
+
+  const _ShuttleLayer({required this.flight, super.child});
+
+  @override
+  _RenderShuttleLayer createRenderObject(BuildContext context) =>
+      _RenderShuttleLayer(flight);
+
+  @override
+  void updateRenderObject(
+    BuildContext context,
+    _RenderShuttleLayer renderObject,
+  ) => renderObject.flight = flight;
+}
+
+class _RenderShuttleLayer extends RenderRepaintBoundary {
+  _Flight _flight;
+
+  _RenderShuttleLayer(this._flight);
+
+  set flight(_Flight value) {
+    if (identical(_flight, value)) return;
+    if (identical(_flight._shuttleLayer, this)) _flight._shuttleLayer = null;
+    _flight = value;
+    if (attached) _flight._shuttleLayer = this;
+  }
+
+  /// The layer this boundary last painted into, if it painted.
+  OffsetLayer? get lastLayer => layer as OffsetLayer?;
+
+  @override
+  void attach(PipelineOwner owner) {
+    super.attach(owner);
+    _flight._shuttleLayer = this;
+  }
+
+  @override
+  void detach() {
+    if (identical(_flight._shuttleLayer, this)) _flight._shuttleLayer = null;
+    super.detach();
+  }
+}
+
+/// Paints a hero's child into a layer of its own, so a switch can show that
+/// layer, as the hero last painted it, after the hero went away.
+class _HeroLayer extends SingleChildRenderObjectWidget {
+  const _HeroLayer({super.child});
+
+  @override
+  _RenderHeroLayer createRenderObject(BuildContext context) =>
+      _RenderHeroLayer();
+}
+
+class _RenderHeroLayer extends RenderRepaintBoundary {
+  /// The layer this boundary last painted into, if it painted.
+  OffsetLayer? get lastLayer => layer as OffsetLayer?;
 }
 
 /// Builds a flight's shuttle from the heroes it shows.
@@ -1052,6 +1254,9 @@ class _Flight extends ChangeNotifier {
 
   /// The shuttle as last made, by [shuttle].
   _Shuttle? _shuttle;
+
+  /// The layer the shuttle paints into, while it shows.
+  _RenderShuttleLayer? _shuttleLayer;
 
   /// The heroes with no part in this flight that mounted while it flew, with
   /// no switch since. They hide until it ends.
@@ -1354,7 +1559,7 @@ class _Flight extends ChangeNotifier {
     final run = ++_runs;
     _style
         .forwardAnimation(_controller, from: from)
-        .whenComplete(() => _registry.land(() => _landForward(run)));
+        .whenComplete(() => _landForward(run));
   }
 
   void _landForward(int run) {
@@ -1377,9 +1582,7 @@ class _Flight extends ChangeNotifier {
     _nextHero = null;
 
     final run = ++_runs;
-    _style
-        .reverseAnimation(_controller)
-        .whenComplete(() => _registry.land(() => _landBack(run)));
+    _style.reverseAnimation(_controller).whenComplete(() => _landBack(run));
   }
 
   void _landBack(int run) {
@@ -1400,6 +1603,7 @@ class _Flight extends ChangeNotifier {
   /// latecomers, and leaves the registry, which disposes it.
   void _end({_Hero? landedOn}) {
     _runs++;
+    landedOn?.landedFrom(_shuttleLayer?.lastLayer);
     landedOn?.offstage = false;
     for (final hero in _latecomers) {
       hero.offstage = false;
@@ -1433,28 +1637,8 @@ class _FlightRegistry extends ChangeNotifier {
     notifyListeners();
   }
 
-  /// The landings that wait for the switch under way to run.
-  List<VoidCallback>? _heldLandings;
-
-  /// Holds the flights' landings until [releaseLandings]. A switch's
-  /// snapshot shows the heroes the flights land on hidden, so a flight that
-  /// lands while it shows keeps its shuttle there instead.
-  void holdLandings() => _heldLandings ??= [];
-
-  /// Lands the flights that landed since [holdLandings].
-  void releaseLandings() {
-    final held = _heldLandings;
-    _heldLandings = null;
-    for (final land in held ?? const <VoidCallback>[]) {
-      land();
-    }
-  }
-
-  /// Runs [landing] now, or on [releaseLandings] while landings are held.
-  void land(VoidCallback landing) {
-    final held = _heldLandings;
-    held == null ? landing() : held.add(landing);
-  }
+  /// Tells the sky to build anew, such as when a switch drops its stand-ins.
+  void changed() => notifyListeners();
 
   @override
   void dispose() {
@@ -1619,9 +1803,6 @@ extension _RenderBox on RenderBox {
 
 extension _BuildContext on BuildContext {
   RenderBox? findRenderBox() => findRenderObject() as RenderBox?;
-
-  RenderRepaintBoundary? findRenderRepaintBoundary() =>
-      findRenderObject() as RenderRepaintBoundary?;
 
   Set<_Hero> findHeroes() {
     // ignore: prefer_collection_literals
