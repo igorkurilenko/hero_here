@@ -354,6 +354,94 @@ void main() {
     expect(find.byKey(const ValueKey('box1')), findsOneWidget);
   });
 
+  testWidgets('diverts a flight on the frame it lands, as on the web', (
+    tester,
+  ) async {
+    final slot = ValueNotifier(0);
+    addTearDown(slot.dispose);
+
+    await tester.pumpWidget(
+      _SlotSwitcher(slot: slot, redirect: HeroHereFlightRedirect.divert),
+    );
+    await tester.pumpAndSettle();
+
+    slot.value = 2;
+    await _pumpSwitch(tester);
+    const frame = Duration(milliseconds: 16);
+    await tester.pump(HeroHere.defaultFlightAnimationDuration - frame);
+
+    // Redirect the flight to the middle slot on the frame it lands.
+    slot.value = 1;
+    await tester.pump();
+    await _pumpWebFrame(tester, frame * 2);
+
+    // It flies on to the middle slot rather than landing on it at once.
+    final shuttle = find.byKey(_shuttleKey);
+    expect(shuttle, findsOneWidget);
+    expect(find.byKey(const ValueKey('box1')), findsNothing);
+    await tester.pumpAndSettle();
+    expect(shuttle, findsNothing);
+    expect(find.byKey(const ValueKey('box1')), findsOneWidget);
+  });
+
+  testWidgets('stops a flight on the frame it lands, as on the web', (
+    tester,
+  ) async {
+    final slot = ValueNotifier(0);
+    addTearDown(slot.dispose);
+
+    await tester.pumpWidget(_SlotSwitcher(slot: slot));
+    await tester.pumpAndSettle();
+
+    // A flight to the middle slot, then on to the third.
+    slot.value = 1;
+    await _pumpSwitch(tester);
+    slot.value = 2;
+    await _pumpSwitch(tester);
+    const frame = Duration(milliseconds: 16);
+    await tester.pump(HeroHere.defaultFlightAnimationDuration - frame);
+
+    // Take the hero away on the frame it lands on the middle slot.
+    slot.value = _noSlot;
+    await tester.pump();
+    await _pumpWebFrame(tester, frame * 2);
+
+    expect(find.byKey(_shuttleKey), findsNothing);
+    await tester.pumpAndSettle();
+    expect(find.byKey(_shuttleKey), findsNothing);
+  });
+
+  testWidgets('turns a flight around on the frame it lands back, as on the '
+      'web', (tester) async {
+    final slot = ValueNotifier(0);
+    addTearDown(slot.dispose);
+
+    await tester.pumpWidget(_SlotSwitcher(slot: slot));
+    await tester.pumpAndSettle();
+
+    slot.value = 1;
+    await _pumpSwitch(tester);
+    await tester.pump(HeroHere.defaultFlightAnimationDuration ~/ 2);
+
+    // Back to the first slot, which takes as long as it flew.
+    slot.value = 0;
+    await _pumpSwitch(tester);
+    const frame = Duration(milliseconds: 16);
+    await tester.pump(HeroHere.defaultFlightAnimationDuration ~/ 2 - frame);
+
+    // On to the middle slot again on the frame it lands back.
+    slot.value = 1;
+    await tester.pump();
+    await _pumpWebFrame(tester, frame * 2);
+
+    final shuttle = find.byKey(_shuttleKey);
+    expect(shuttle, findsOneWidget);
+    expect(find.byKey(const ValueKey('box1')), findsNothing);
+    await tester.pumpAndSettle();
+    expect(shuttle, findsNothing);
+    expect(find.byKey(const ValueKey('box1')), findsOneWidget);
+  });
+
   testWidgets('carries a diverted hero on at the speed its shuttle had', (
     tester,
   ) async {
@@ -1213,6 +1301,19 @@ double _opacityOf(WidgetTester tester, Finder finder) {
     return true;
   });
   return opacity;
+}
+
+/// Runs a frame [after] the last one as the web does: the microtasks that its
+/// start schedules, such as a flight's landing, run after the whole frame,
+/// so after a switch in it, rather than before its build.
+Future<void> _pumpWebFrame(WidgetTester tester, Duration after) async {
+  final binding = tester.binding;
+  await binding.delayed(after);
+  binding.handleBeginFrame(
+    Duration(microseconds: binding.clock.now().microsecondsSinceEpoch),
+  );
+  binding.handleDrawFrame();
+  await tester.pump();
 }
 
 /// Snapshots the old child, lays the new one out offstage, starts the flight.

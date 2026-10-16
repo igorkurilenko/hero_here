@@ -6,6 +6,7 @@
 
 ### Fixes
 
+* On the web, where a flight's landing runs after the rest of its frame, a switch on that frame that stops the flight no longer makes the landing fail with "A _Flight was used after being disposed".
 * Turn a flight back toward where the hero it left is now, rather than where that hero was when the flight left it, so that after a window resize the shuttle lands on the hero instead of jumping to it.
 
 ### Example

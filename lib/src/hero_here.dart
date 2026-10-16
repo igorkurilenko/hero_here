@@ -837,6 +837,12 @@ class _Flight extends ChangeNotifier {
   /// no switch since. They hide until it ends.
   final _latecomers = <_Hero>{};
 
+  /// Counts the runs of the flight's animation and the flight's end. A run's
+  /// completion that comes after a later run started or the flight ended does
+  /// nothing: on the web, it comes after the frame it landed on, so after a
+  /// switch on that frame that redirected or stopped the flight.
+  int _runs = 0;
+
   _Flight({
     required TickerProvider vsync,
     required this._registry,
@@ -1098,8 +1104,9 @@ class _Flight extends ChangeNotifier {
     _manifest.from.offstage = true;
     _manifest.to.offstage = true;
 
+    final run = ++_runs;
     _style.forwardAnimation(_controller, from: from).whenComplete(() {
-      if (_controller.status == AnimationStatus.reverse) return;
+      if (run != _runs) return;
 
       if (_nextHero != null) {
         // The next leg starts where the shuttle is.
@@ -1118,8 +1125,9 @@ class _Flight extends ChangeNotifier {
     _reversed = true;
     _nextHero = null;
 
+    final run = ++_runs;
     _style.reverseAnimation(_controller).whenComplete(() {
-      if (_controller.status == AnimationStatus.forward) return;
+      if (run != _runs) return;
 
       if (_nextHero != null) {
         // The next leg starts on the hero the shuttle landed back on.
@@ -1140,6 +1148,7 @@ class _Flight extends ChangeNotifier {
   /// Ends this flight: shows the hero it [landedOn], if any, and the
   /// latecomers, and leaves the registry, which disposes it.
   void _end({_Hero? landedOn}) {
+    _runs++;
     landedOn?.offstage = false;
     for (final hero in _latecomers) {
       hero.offstage = false;
