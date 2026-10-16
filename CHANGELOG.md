@@ -6,7 +6,7 @@
 
 ### Example
 
-* Add a button to the auto-switching example that switches its flights' redirects between `chain` and `divert`.
+* Add Chain and Divert tabs to the auto-switching example's top bar, which switch its flights' redirects, and place its heroes at random spots, so its flights go every way.
 
 ## 1.2.1
 
