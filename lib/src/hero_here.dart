@@ -110,18 +110,19 @@ typedef RectTweenFactory = HeroHereFlightRectTweenFactory;
 /// changes.
 ///
 /// Every rebuild of the switcher runs a switch, unless [switchKey] says
-/// otherwise: it takes a snapshot of the current child, lays the new child
-/// out offstage for a frame to find its heroes, then flies each tag whose
-/// [HeroHere] changed. The new child shows two frames after the rebuild. The
-/// first child shows on the first frame, and nothing flies. Keep frequently
-/// changing state, such as timers, streams or text being typed, below the
-/// switcher, so it rebuilds only when heroes may move.
+/// otherwise. The new child shows on the frame of the rebuild. On that frame,
+/// its heroes of the tags that may fly hide, the heroes that stay show as
+/// they are, and each hero that went away shows where it was, as it last
+/// showed, with the clips, fades and transforms around it. After that frame,
+/// once the new child is laid out, the switch flies each tag whose [HeroHere]
+/// changed, from where its hero showed. The first child shows on the first
+/// frame, and nothing flies.
 ///
-/// The same goes for sizes. A [LayoutBuilder] or a `MediaQuery.sizeOf` read
-/// above the switcher rebuilds it on each frame of a window resize, and each
-/// of those switches shows a snapshot of the old layout for a frame. Read
-/// sizes below the switcher instead, such as with a [LayoutBuilder] in its
-/// child. Where state or sizes can't be read below it, set [switchKey].
+/// A rebuild builds the switcher's child anew, and its switch looks for the
+/// heroes in it, so keep frequently changing state, such as timers, streams
+/// or text being typed, below the switcher, so it rebuilds only when heroes
+/// may move. Where such state, or sizes, such as from a [LayoutBuilder] or a
+/// `MediaQuery.sizeOf`, can't be read below it, set [switchKey].
 class HeroHereSwitcher extends StatefulWidget {
   /// The widget whose heroes fly when it changes.
   final Widget? child;
@@ -159,9 +160,7 @@ class HeroHereSwitcher extends StatefulWidget {
   /// A rebuild that keeps the key shows its child at once, in place of the
   /// current one, as a rebuild below the switcher would. Nothing flies, so
   /// heroes it adds or moves show where they are, and a flight under way
-  /// flies on, with its shuttle built anew from its heroes. A rebuild during
-  /// a switch that keeps the key the switch runs to shows its child once the
-  /// switch ends.
+  /// flies on, with its shuttle built anew from its heroes.
   final Object? switchKey;
 
   const HeroHereSwitcher({
@@ -602,6 +601,12 @@ class _SwitchPlan {
   }
 }
 
+/// A [child] that flies, when a [HeroHereSwitcher]'s child changes, from
+/// where the hero with its [tag] was to where it is now.
+///
+/// It paints [child] into a layer of its own, which a switch shows where the
+/// hero was, as it last showed, for the frame after the hero goes away,
+/// before its flight starts.
 class HeroHere extends StatefulWidget {
   static const defaultFlightAnimationCurve = Curves.easeInOut;
   static const defaultFlightAnimationDuration = Duration(milliseconds: 300);

@@ -213,11 +213,9 @@ HeroHereSwitcher(
 
 ## Performance
 
-Every rebuild of `HeroHereSwitcher` runs a switch: it takes a snapshot of the current child and lays the new child out offstage for a frame to find its heroes. Keep frequently changing state, such as timers, streams or text being typed, below the switcher, so it rebuilds only when heroes may move.
+Every rebuild of `HeroHereSwitcher` runs a switch, with no snapshot of the old child. The new child shows on the frame of the rebuild. On that frame, each hero that went away shows where it was, as it last showed, and after it, the switcher looks for the heroes in the new child and flies each tag whose hero changed. A rebuild still builds the switcher's child anew, so keep frequently changing state, such as timers, streams or text being typed, below the switcher, so it rebuilds only when heroes may move.
 
-The same goes for sizes. A `LayoutBuilder` or a `MediaQuery.sizeOf` read above the switcher rebuilds it on each frame of a window resize, and each of those switches shows a snapshot of the old layout for a frame. Read sizes below the switcher instead, such as with a `LayoutBuilder` in its child.
-
-Where such state or sizes can't be read below the switcher, set its `switchKey` to what the heroes' places depend on. Then only a rebuild that changes the key runs a switch. Any other rebuild shows its child at once, in place of the current one, and nothing flies:
+Where such state, or sizes, such as from a `LayoutBuilder` or a `MediaQuery.sizeOf`, can't be read below the switcher, set its `switchKey` to what the heroes' places depend on. Then only a rebuild that changes the key runs a switch. Any other rebuild shows its child at once, in place of the current one, and nothing flies:
 
 ```dart
 HeroHereSwitcher(
@@ -225,6 +223,8 @@ HeroHereSwitcher(
   child: child,
 )
 ```
+
+Each `HeroHere` paints its child into a layer of its own, which a switch keeps to show a hero that went away for that one frame.
 
 ## Support and Contact
 
