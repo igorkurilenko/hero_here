@@ -180,6 +180,88 @@ void main() {
     });
   }
 
+  testWidgets('turns a hero back to where the hero it left is now', (
+    tester,
+  ) async {
+    final slot = ValueNotifier(0);
+    final shift = ValueNotifier(0.0);
+    addTearDown(slot.dispose);
+    addTearDown(shift.dispose);
+
+    await tester.pumpWidget(
+      _SlotSwitcher(slot: slot, layoutBuilder: _shiftedLayoutBuilder(shift)),
+    );
+    await tester.pumpAndSettle();
+
+    slot.value = 2;
+    await _pumpSwitch(tester);
+    await tester.pump(HeroHere.defaultFlightAnimationDuration ~/ 2);
+
+    // The heroes move, as on a window resize, then the flight turns back.
+    const frame = Duration(milliseconds: 16);
+    shift.value = 100;
+    await tester.pump(frame);
+    await tester.pump(frame);
+    final shuttle = find.byKey(_shuttleKey);
+    final leftAtTurn = tester.getRect(shuttle).left;
+    slot.value = 0;
+    await _pumpSwitch(tester);
+
+    final lefts = <double>[];
+    for (var i = 0; i < 40 && tester.any(shuttle); i++) {
+      lefts.add(tester.getRect(shuttle).left);
+      await tester.pump(frame);
+    }
+
+    // It turns where it is and lands where the first hero is now.
+    final box0 = find.byKey(const ValueKey('box0'));
+    expect(lefts.first, leftAtTurn);
+    expect(lefts.last, closeTo(tester.getRect(box0).left, 1));
+    expect(tester.getRect(box0).left, _slotRects[0].left + 100);
+  });
+
+  testWidgets('turns a hero around again where its shuttle is', (tester) async {
+    final slot = ValueNotifier(0);
+    final shift = ValueNotifier(0.0);
+    addTearDown(slot.dispose);
+    addTearDown(shift.dispose);
+
+    await tester.pumpWidget(
+      _SlotSwitcher(slot: slot, layoutBuilder: _shiftedLayoutBuilder(shift)),
+    );
+    await tester.pumpAndSettle();
+
+    slot.value = 2;
+    await _pumpSwitch(tester);
+    await tester.pump(HeroHere.defaultFlightAnimationDuration ~/ 2);
+
+    // The heroes move, the flight turns back, then on again.
+    const frame = Duration(milliseconds: 16);
+    shift.value = 100;
+    await tester.pump(frame);
+    await tester.pump(frame);
+    slot.value = 0;
+    await _pumpSwitch(tester);
+    await tester.pump(HeroHere.defaultFlightAnimationDuration ~/ 4);
+
+    final shuttle = find.byKey(_shuttleKey);
+    final leftAtTurn = tester.getRect(shuttle).left;
+    slot.value = 2;
+    await _pumpSwitch(tester);
+
+    final lefts = <double>[];
+    for (var i = 0; i < 40 && tester.any(shuttle); i++) {
+      lefts.add(tester.getRect(shuttle).left);
+      await tester.pump(frame);
+    }
+
+    // It turns where it is and lands where the third hero is now.
+    final box2 = find.byKey(const ValueKey('box2'));
+    expect(lefts.first, leftAtTurn);
+    expect(lefts.last, closeTo(tester.getRect(box2).left, 1));
+    expect(tester.getRect(box2).left, _slotRects[2].left + 100);
+  });
+
   testWidgets('diverts a redirected hero straight from where its shuttle is', (
     tester,
   ) async {
@@ -274,22 +356,7 @@ void main() {
       _SlotSwitcher(
         slot: slot,
         redirect: HeroHereFlightRedirect.divert,
-        // Moves the heroes without a switch, as a window resize may.
-        layoutBuilder: (child, sky) => Material(
-          child: Stack(
-            children: [
-              ValueListenableBuilder(
-                valueListenable: shift,
-                builder: (context, shift, child) => Padding(
-                  padding: EdgeInsets.only(left: shift),
-                  child: child,
-                ),
-                child: child,
-              ),
-              sky,
-            ],
-          ),
-        ),
+        layoutBuilder: _shiftedLayoutBuilder(shift),
       ),
     );
     await tester.pumpAndSettle();
@@ -1067,6 +1134,27 @@ int Function() _trackLiveImages() {
   });
   return () => live;
 }
+
+/// Lays the switcher's child out [shift] to the right, so changing [shift]
+/// moves the heroes without a switch, as a window resize may.
+HeroHereSwitcherLayoutBuilder _shiftedLayoutBuilder(
+  ValueNotifier<double> shift,
+) =>
+    (child, sky) => Material(
+      child: Stack(
+        children: [
+          ValueListenableBuilder(
+            valueListenable: shift,
+            builder: (context, shift, child) => Padding(
+              padding: EdgeInsets.only(left: shift),
+              child: child,
+            ),
+            child: child,
+          ),
+          sky,
+        ],
+      ),
+    );
 
 /// How opaque the widget [finder] finds shows, through the fades above it.
 double _opacityOf(WidgetTester tester, Finder finder) {

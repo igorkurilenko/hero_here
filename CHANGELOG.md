@@ -4,6 +4,10 @@
 
 * Add `HeroHere.flightRedirect`, which says what a flight does when the hero it flies to changes mid-flight. `HeroHereFlightRedirect.chain`, the default, lands on that hero, then flies on to the new one, as before. `HeroHereFlightRedirect.divert` flies from where the shuttle is to the new hero, over the flight's whole duration. The shuttle sets off at the speed it had, so it turns toward the new hero rather than stops, and its shuttle's `fromHero` becomes a stand-in for the shuttle as it was, so the shuttle changes from what it showed. Until a flight diverts, sending it back to the hero it left turns it back, as with `chain`.
 
+### Fixes
+
+* Turn a flight back toward where the hero it left is now, rather than where that hero was when the flight left it, so that after a window resize the shuttle lands on the hero instead of jumping to it.
+
 ### Example
 
 * Add Chain and Divert tabs to the auto-switching example's top bar, which switch its flights' redirects, and place its heroes at random spots, so its flights go every way.

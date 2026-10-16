@@ -45,9 +45,11 @@ typedef HeroHereFlightAnimationStarter = TickerFuture Function(
 });
 
 /// Makes the tween of the rect a flight's shuttle takes, from where its leg
-/// [begin]s to where the hero it lands on is, its [end]. It's called on every
-/// frame of the flight with where that hero is on that frame, so the shuttle
-/// follows the hero when it moves.
+/// [begin]s to where the hero it lands on is, its [end]. Once the flight
+/// turns around, the rest of it takes a tween between where it turned and
+/// where the hero it heads for is, backward if it heads back. It's called on
+/// every frame of the flight with where that hero is on that frame, so the
+/// shuttle follows the hero when it moves.
 typedef HeroHereFlightRectTweenFactory = RectTween Function(
   Rect? begin,
   Rect? end,
@@ -815,6 +817,11 @@ class _Flight extends ChangeNotifier {
   /// The shuttle's [_velocity] when the flight last diverted.
   Rect _divertVelocity = Rect.zero;
 
+  /// Where the shuttle was when the flight last turned around on its leg,
+  /// and the value of the flight's animation then. The leg goes on from
+  /// there.
+  ({Rect rect, double value})? _turn;
+
   /// Whether this flight has diverted, so its leg started where the shuttle
   /// was rather than at the hero it left, and it can't turn back to that one.
   bool _diverted = false;
@@ -867,10 +874,12 @@ class _Flight extends ChangeNotifier {
 
     if (_shouldReverse(manifest)) {
       _manifest = manifest.reversed;
+      _turnHere();
       notifyListeners();
       _reverse();
     } else if (_shouldForward(manifest)) {
       _manifest = manifest;
+      _turnHere();
       notifyListeners();
       _forward();
     } else if (manifest.to == _target) {
@@ -953,12 +962,36 @@ class _Flight extends ChangeNotifier {
     return _rect ?? Rect.zero;
   }
 
-  /// Where the shuttle is on its leg's path, from where the leg began to
-  /// [end], at [value] of the flight's animation and [t] of its controller.
-  Rect _onPath(double value, double t, Rect end) => _style
-      .rectTweenFactory(_legBegin, end)
-      .transform(value)!
-      .plus(_momentum(t));
+  /// Where the shuttle is on its leg's path at [value] of the flight's
+  /// animation and [t] of its controller, given [end], where the hero it
+  /// lands on is. The path runs from where the leg began to [end]. Once the
+  /// flight turns around, the rest of it runs from where it turned to where
+  /// the hero it heads for is, so it lands on that hero even if it moved,
+  /// such as on a window resize.
+  Rect _onPath(double value, double t, Rect end) {
+    final tween = _style.rectTweenFactory;
+    final turn = _turn;
+    final Rect rect;
+    if (turn == null) {
+      rect = tween(_legBegin, end).transform(value)!;
+    } else if (_reversed) {
+      final begin =
+          _manifest.from.computeGlobalRect() ??
+          _manifest.from.placeholderRect ??
+          turn.rect;
+      rect = turn.value == 0
+          ? begin
+          : tween(begin, turn.rect).transform(value / turn.value)!;
+    } else {
+      rect = turn.value == 1
+          ? end
+          : tween(
+              turn.rect,
+              end,
+            ).transform((value - turn.value) / (1 - turn.value))!;
+    }
+    return rect.plus(_momentum(t));
+  }
 
   /// How far the shuttle is off its leg's path at [t] of the controller, for
   /// the speed it had when the flight diverted. It sets off at that speed, so
@@ -989,9 +1022,8 @@ class _Flight extends ChangeNotifier {
   /// from what it shows.
   void _divert(_Hero hero) {
     _diverted = true;
-    _legBegin = _rect;
     _divertVelocity = _velocity;
-    _rectFrame = null;
+    _beginLeg(_rect);
     _divertedFrom = _freezeShuttle();
     _manifest.to = hero;
     notifyListeners();
@@ -1015,6 +1047,19 @@ class _Flight extends ChangeNotifier {
     );
   }
 
+  /// Starts a new leg at [begin].
+  void _beginLeg(Rect? begin) {
+    _legBegin = begin;
+    _turn = null;
+    _rectFrame = null;
+  }
+
+  /// Turns the flight around where the shuttle is.
+  void _turnHere() {
+    final rect = _rect;
+    _turn = rect == null ? null : (rect: rect, value: animation.value);
+  }
+
   void _forward({double? from}) {
     _reversed = false;
     _nextHero = null;
@@ -1026,7 +1071,7 @@ class _Flight extends ChangeNotifier {
 
       if (_nextHero != null) {
         // The next leg starts where the shuttle is.
-        _legBegin = _rect;
+        _beginLeg(_rect);
         _manifest.from = _manifest.to;
         _manifest.to = _nextHero!;
         notifyListeners();
@@ -1045,6 +1090,12 @@ class _Flight extends ChangeNotifier {
       if (_controller.status == AnimationStatus.forward) return;
 
       if (_nextHero != null) {
+        // The next leg starts on the hero the shuttle landed back on.
+        _beginLeg(
+          _manifest.from.computeGlobalRect() ??
+              _manifest.from.placeholderRect ??
+              _rect,
+        );
         _manifest.to = _nextHero!;
         notifyListeners();
         _forward(from: 0);
