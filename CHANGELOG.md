@@ -1,3 +1,10 @@
+## 1.5.0
+
+### Features
+
+* Switch without a snapshot of the old child. A switch used to take one with `toImageSync`, show it while it laid the new child out offstage for a frame, and show the new child two frames after the rebuild. Now the new child shows on the frame of the rebuild, and its flights start a frame earlier. On that frame, the heroes of the tags that may fly hide, the heroes that stay show as they are, and each hero that went away shows where it was, as it last showed, with the clips, fades and transforms around it.
+* Each `HeroHere` paints its child into a layer of its own, which a switch keeps to show a hero that went away. This changes the layer tree, such as what `debugDumpLayerTree` shows, but not what shows.
+
 ## 1.4.3
 
 ### Performance

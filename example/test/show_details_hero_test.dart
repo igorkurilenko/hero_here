@@ -1,5 +1,3 @@
-import 'dart:ui' as ui;
-
 import 'package:example/show_details_hero/eight_thousander_details_hero.dart';
 import 'package:example/show_details_hero/main.dart';
 import 'package:flutter/material.dart';
@@ -7,12 +5,12 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:hero_here/hero_here.dart';
 
 void main() {
-  testWidgets('switches once to open the details', (tester) async {
+  testWidgets('enables the back button once the details have flown open', (
+    tester,
+  ) async {
     await tester.pumpWidget(const MaterialApp(home: ShowDetailsExample()));
     await tester.pumpAndSettle();
 
-    // Each switch takes one snapshot of the page.
-    final snapshots = _countNewSnapshots(tester);
     await tester.tap(find.text('K2'));
     await tester.pump();
 
@@ -22,7 +20,6 @@ void main() {
 
     await tester.pumpAndSettle();
 
-    expect(snapshots(), 1);
     expect(tester.widget<IconButton>(back).onPressed, isNotNull);
   });
 
@@ -161,29 +158,6 @@ void main() {
     );
   });
 
-  testWidgets('runs no switch on a window resize after the details close', (
-    tester,
-  ) async {
-    tester.view.devicePixelRatio = 1;
-    tester.view.physicalSize = const Size(800, 600);
-    addTearDown(tester.view.reset);
-
-    await tester.pumpWidget(const MaterialApp(home: ShowDetailsExample()));
-    await tester.pumpAndSettle();
-    await tester.tap(find.text('K2'));
-    await tester.pumpAndSettle();
-    await tester.tap(find.byIcon(Icons.chevron_left));
-    await tester.pumpAndSettle();
-
-    final snapshots = _countNewSnapshots(tester);
-    for (final width in [700.0, 600.0, 500.0]) {
-      tester.view.physicalSize = Size(width, 600);
-      await tester.pumpAndSettle();
-    }
-
-    expect(snapshots(), 0);
-  });
-
   testWidgets('shows the scrollbars at the window edge', (tester) async {
     await tester.pumpWidget(const MaterialApp(home: ShowDetailsExample()));
     await tester.pumpAndSettle();
@@ -205,23 +179,4 @@ void main() {
     // So do the details.
     expect(tester.getRect(find.byType(AspectRatio)).left, 120);
   }, variant: TargetPlatformVariant.only(TargetPlatform.macOS));
-}
-
-/// Counts the snapshots of the page that switches take from now until the end
-/// of the test: new images the size of the view, leaving out clones of them.
-/// The photos, which may still be loading from an earlier test, are smaller.
-int Function() _countNewSnapshots(WidgetTester tester) {
-  final images = <ui.Image>[];
-  final onCreate = ui.Image.onCreate;
-  ui.Image.onCreate = (image) {
-    final view = tester.view.physicalSize;
-    if (image.width == view.width.round() &&
-        image.height == view.height.round() &&
-        !images.any(image.isCloneOf)) {
-      images.add(image);
-    }
-    onCreate?.call(image);
-  };
-  addTearDown(() => ui.Image.onCreate = onCreate);
-  return () => images.length;
 }

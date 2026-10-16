@@ -1,3 +1,4 @@
+import 'dart:typed_data';
 import 'dart:ui' as ui;
 
 import 'package:flutter/material.dart';
@@ -869,12 +870,18 @@ void main() {
         extraHero.value = value;
         await tester.pump();
       }
+      final extraBox = find.byKey(
+        const ValueKey('box-extra'),
+        skipOffstage: false,
+      );
       expect(find.byKey(const ValueKey('box-extra')), findsNothing);
+      expect(_painted(tester, extraBox), isFalse);
 
       await tester.pumpAndSettle();
 
       expect(find.byKey(const ValueKey('box1')), findsOneWidget);
       expect(find.byKey(const ValueKey('box-extra')), findsOneWidget);
+      expect(_painted(tester, extraBox), isTrue);
     });
   }
 
@@ -967,7 +974,7 @@ void main() {
     }
   });
 
-  testWidgets('shows a hero whose child arrives during a switch', (
+  testWidgets('shows a hero whose child arrives as its switch flies', (
     tester,
   ) async {
     final slot = ValueNotifier(0);
@@ -977,15 +984,90 @@ void main() {
     await tester.pumpAndSettle();
 
     slot.value = 1;
-    await tester.pump(); // The switch to the second slot starts.
-    slot.value = 2; // The third slot arrives before that switch ends.
+    await tester.pump(); // The switch to the second slot flies after this.
+    slot.value = 2; // The third slot arrives as that flight starts.
     await tester.pumpAndSettle();
 
     expect(find.byKey(const ValueKey('box2')), findsOneWidget);
   });
 
-  testWidgets('disposes the snapshot when a switch ends', (tester) async {
-    final liveImages = _trackLiveImages();
+  testWidgets('shows the new child on the frame it rebuilds, with a stand-in '
+      'where the hero it leaves was', (tester) async {
+    final slot = ValueNotifier(0);
+    addTearDown(slot.dispose);
+
+    await tester.pumpWidget(_LabelSwitcher(slot: slot));
+    await tester.pumpAndSettle();
+    final leftLayer = _layerOf(tester, find.byKey(const ValueKey('box0')))!;
+
+    slot.value = 1;
+    await tester.pump();
+
+    // The new child shows, but not the hero the flight lands on, while the
+    // hero the flight leaves stands in where it was, as it last painted.
+    expect(find.text('label 1'), findsOneWidget);
+    expect(_painted(tester, find.byKey(const ValueKey('box1'))), isFalse);
+    expect(leftLayer.attached, isTrue);
+    expect(_paintedAt(leftLayer), _slotRects[0].topLeft);
+
+    // The flight starts where the stand-in was, and the stand-in goes.
+    await tester.pump();
+    expect(leftLayer.attached, isFalse);
+    expect(tester.getRect(find.byKey(_shuttleKey)), _slotRects[0]);
+
+    await tester.pumpAndSettle();
+    expect(_painted(tester, find.byKey(const ValueKey('box1'))), isTrue);
+  });
+
+  testWidgets('shows a stand-in where the hero it leaves was, in a child laid '
+      'out away from the sky', (tester) async {
+    final slot = ValueNotifier(0), shift = ValueNotifier(100.0);
+    addTearDown(slot.dispose);
+    addTearDown(shift.dispose);
+
+    await tester.pumpWidget(
+      _SlotSwitcher(slot: slot, layoutBuilder: _shiftedLayoutBuilder(shift)),
+    );
+    await tester.pumpAndSettle();
+    final box0 = find.byKey(const ValueKey('box0'));
+    final leftRect = tester.getRect(box0);
+    final leftLayer = _layerOf(tester, box0)!;
+
+    slot.value = 1;
+    await tester.pump();
+
+    // The sky is at the screen's origin, so the stand-in is where the hero
+    // was on the screen.
+    expect(leftLayer.attached, isTrue);
+    expect(_paintedAt(leftLayer), leftRect.topLeft);
+  });
+
+  testWidgets('stands in for a hero that a switch takes away as a flight '
+      'lands on it', (tester) async {
+    final slot = ValueNotifier(0);
+    addTearDown(slot.dispose);
+    const duration = HeroHere.defaultFlightAnimationDuration;
+
+    await tester.pumpWidget(_SlotSwitcher(slot: slot));
+    await tester.pumpAndSettle();
+
+    slot.value = 1;
+    await _pumpSwitch(tester);
+    await tester.pump(duration);
+    final shuttleLayer = _layerOf(tester, find.byKey(_shuttleKey))!;
+
+    // The flight lands at the start of the frame of the switch that takes the
+    // hero it lands on away, so that hero never painted, but stands in for
+    // itself all the same, as the flight's shuttle last showed it.
+    slot.value = 2;
+    await tester.pump(const Duration(milliseconds: 1));
+
+    expect(shuttleLayer.attached, isTrue);
+    expect(_paintedAt(shuttleLayer), _slotRects[1].topLeft);
+  });
+
+  testWidgets('hides the hero that a switch redirects a flight to from the '
+      'frame it rebuilds', (tester) async {
     final slot = ValueNotifier(0);
     addTearDown(slot.dispose);
 
@@ -993,15 +1075,20 @@ void main() {
     await tester.pumpAndSettle();
 
     slot.value = 1;
-    await tester.pumpAndSettle();
+    await _pumpSwitch(tester);
+    await tester.pump(HeroHere.defaultFlightAnimationDuration ~/ 2);
 
-    expect(liveImages(), 0);
+    slot.value = 2;
+    await tester.pump();
+
+    expect(
+      _painted(tester, find.byKey(const ValueKey('box2'), skipOffstage: false)),
+      isFalse,
+    );
   });
 
-  testWidgets('disposes the snapshot when unmounted during a switch', (
-    tester,
-  ) async {
-    final liveImages = _trackLiveImages();
+  testWidgets('stands in for a hero with its own layer once it paints after '
+      'a flight lands on it', (tester) async {
     final slot = ValueNotifier(0);
     addTearDown(slot.dispose);
 
@@ -1009,65 +1096,173 @@ void main() {
     await tester.pumpAndSettle();
 
     slot.value = 1;
-    await tester.pump(); // The snapshot is taken after this frame.
-    await tester.pumpWidget(const SizedBox());
+    await _pumpSwitch(tester);
+    await tester.pump(HeroHere.defaultFlightAnimationDuration);
+    final shuttleLayer = _layerOf(tester, find.byKey(_shuttleKey))!;
+    await tester.pumpAndSettle();
+    final box1 = find.byKey(const ValueKey('box1'));
+    final heroLayer = _layerOf(tester, box1)!;
 
-    expect(liveImages(), 0);
+    slot.value = 2;
+    await tester.pump();
+
+    expect(heroLayer.attached, isTrue);
+    expect(_paintedAt(heroLayer), _slotRects[1].topLeft);
+    expect(shuttleLayer.debugDisposed, isTrue);
   });
 
-  for (final (child, sameChild) in [
-    ('a new child', false),
-    ('the same child', true),
-  ]) {
-    testWidgets('runs a switch on every rebuild, with $child', (tester) async {
-      final rebuilds = ValueNotifier(0);
-      addTearDown(rebuilds.dispose);
+  for (final (how, inBoundary) in [('', false), (', in a layer', true)]) {
+    testWidgets('stands in for a hero with the clip around it$how', (
+      tester,
+    ) async {
+      tester.view.devicePixelRatio = 1;
+      tester.view.physicalSize = const Size(800, 600);
+      addTearDown(tester.view.reset);
+      final slot = ValueNotifier(0);
+      addTearDown(slot.dispose);
 
       await tester.pumpWidget(
-        _RebuildSwitcher(rebuilds: rebuilds, sameChild: sameChild),
+        _ClippedSwitcher(slot: slot, inBoundary: inBoundary),
       );
       await tester.pumpAndSettle();
-
-      // Each switch takes one snapshot of the child.
-      final snapshots = _countNewImages();
-      for (var rebuild = 0; rebuild < 3; rebuild++) {
-        rebuilds.value++;
-        await tester.pumpAndSettle();
-      }
-
-      expect(snapshots(), 3);
-    });
-
-    testWidgets('runs a switch only when its switch key changes, with '
-        '$child', (tester) async {
-      final rebuilds = ValueNotifier(0);
-      final switchKey = ValueNotifier<Object?>('a');
-      addTearDown(rebuilds.dispose);
-      addTearDown(switchKey.dispose);
-
-      await tester.pumpWidget(
-        _RebuildSwitcher(
-          rebuilds: rebuilds,
-          sameChild: sameChild,
-          switchKey: switchKey,
-        ),
+      const red = Color(0xFFFF0000);
+      expect(
+        await _pixelAt(tester, _clippedRect.topLeft + const Offset(4, 4)),
+        isNot(red),
       );
-      await tester.pumpAndSettle();
 
-      final snapshots = _countNewImages();
-      for (var rebuild = 0; rebuild < 3; rebuild++) {
-        rebuilds.value++;
-        await tester.pumpAndSettle();
-      }
+      slot.value = 1;
+      await tester.pump();
 
-      expect(snapshots(), 0);
-
-      switchKey.value = 'b';
-      await tester.pumpAndSettle();
-
-      expect(snapshots(), 1);
+      // The stand-in keeps the rounded corners the clip gave the hero.
+      expect(await _pixelAt(tester, _clippedRect.center), red);
+      expect(
+        await _pixelAt(tester, _clippedRect.topLeft + const Offset(4, 4)),
+        isNot(red),
+      );
     });
   }
+
+  testWidgets('disposes the layer a stand-in shows once it goes', (
+    tester,
+  ) async {
+    final slot = ValueNotifier(0);
+    addTearDown(slot.dispose);
+
+    await tester.pumpWidget(_SlotSwitcher(slot: slot));
+    await tester.pumpAndSettle();
+    final leftLayer = _layerOf(tester, find.byKey(const ValueKey('box0')))!;
+
+    slot.value = 1;
+    await tester.pumpAndSettle();
+
+    expect(leftLayer.debugDisposed, isTrue);
+  });
+
+  testWidgets('shows a hero that stays as it is, with no stand-in', (
+    tester,
+  ) async {
+    final slot = ValueNotifier(0), label = ValueNotifier(0);
+    addTearDown(slot.dispose);
+    addTearDown(label.dispose);
+
+    await tester.pumpWidget(_LabelSwitcher(slot: slot, label: label));
+    await tester.pumpAndSettle();
+
+    label.value = 1;
+    await tester.pump();
+
+    final box = find.byKey(const ValueKey('box0'));
+    expect(find.text('label 1'), findsOneWidget);
+    expect(_paintedInPlace(tester, box), isTrue);
+
+    await tester.pumpAndSettle();
+    expect(_paintedInPlace(tester, box), isTrue);
+    expect(find.byKey(_shuttleKey), findsNothing);
+  });
+
+  testWidgets('shows a hero that mounts anew with nowhere to fly once its '
+      'switch flies', (tester) async {
+    final moved = ValueNotifier(false), wrapped = ValueNotifier(false);
+    addTearDown(moved.dispose);
+    addTearDown(wrapped.dispose);
+
+    await tester.pumpWidget(_RemountSwitcher(moved: moved, wrapped: wrapped));
+    await tester.pumpAndSettle();
+    final box = find.byKey(const ValueKey('box0'));
+    final oldLayer = _layerOf(tester, box)!;
+
+    // The switch mounts the hero anew, in one more widget, in the same place,
+    // so the old one stands in for it.
+    wrapped.value = true;
+    await tester.pump();
+
+    expect(_painted(tester, box), isFalse);
+    expect(oldLayer.attached, isTrue);
+
+    // Nothing flies: the hero shows, and the stand-in goes.
+    await tester.pump();
+    expect(_painted(tester, box), isTrue);
+    expect(oldLayer.attached, isFalse);
+    expect(find.byKey(_shuttleKey), findsNothing);
+  });
+
+  testWidgets('flies a hero that a layout builder in its child builds', (
+    tester,
+  ) async {
+    final slot = ValueNotifier(0);
+    addTearDown(slot.dispose);
+
+    await tester.pumpWidget(_LabelSwitcher(slot: slot, inLayoutBuilder: true));
+    await tester.pumpAndSettle();
+    final leftLayer = _layerOf(tester, find.byKey(const ValueKey('box0')))!;
+
+    slot.value = 1;
+    await tester.pump();
+
+    // Built as the frame lays out, the hero hides on that frame all the same,
+    // and the hero it replaces, which went away as the frame laid out, stands
+    // in for it.
+    final box1 = find.byKey(const ValueKey('box1'));
+    expect(_painted(tester, box1), isFalse);
+    expect(leftLayer.attached, isTrue);
+
+    await tester.pump();
+    await tester.pump(HeroHere.defaultFlightAnimationDuration ~/ 2);
+    final shuttle = tester.getRect(find.byKey(_shuttleKey));
+    expect(shuttle, isNot(_slotRects[0]));
+    expect(shuttle, isNot(_slotRects[1]));
+
+    await tester.pumpAndSettle();
+    expect(_painted(tester, box1), isTrue);
+  });
+
+  testWidgets('moves a hero in place while its switch key stays, and flies '
+      'it when the key changes', (tester) async {
+    final slot = ValueNotifier(0);
+    final switchKey = ValueNotifier<Object?>('a');
+    addTearDown(slot.dispose);
+    addTearDown(switchKey.dispose);
+
+    await tester.pumpWidget(_LabelSwitcher(slot: slot, switchKey: switchKey));
+    await tester.pumpAndSettle();
+
+    slot.value = 1;
+    await tester.pump();
+
+    // It shows in its new place at once, and nothing flies.
+    final shuttle = find.byKey(_shuttleKey);
+    expect(_painted(tester, find.byKey(const ValueKey('box1'))), isTrue);
+    expect(shuttle, findsNothing);
+    await tester.pump();
+    expect(shuttle, findsNothing);
+
+    switchKey.value = 'b';
+    slot.value = 2;
+    await _pumpSwitch(tester);
+
+    expect(shuttle, findsOneWidget);
+  });
 
   testWidgets('shows a child with the same switch key on the frame it '
       'rebuilds', (tester) async {
@@ -1090,79 +1285,6 @@ void main() {
 
     expect(find.byKey(const ValueKey(1)), findsOneWidget);
   });
-
-  testWidgets('runs another switch for a child that arrives during a switch', (
-    tester,
-  ) async {
-    final rebuilds = ValueNotifier(0);
-    addTearDown(rebuilds.dispose);
-
-    await tester.pumpWidget(
-      _RebuildSwitcher(rebuilds: rebuilds, sameChild: false),
-    );
-    await tester.pumpAndSettle();
-
-    final snapshots = _countNewImages();
-    rebuilds.value++;
-    await tester.pump(); // The switch snapshots the child after this frame.
-    rebuilds.value++;
-    await tester.pumpAndSettle();
-
-    expect(snapshots(), 2);
-  });
-
-  testWidgets('runs no other switch for a child with the same switch key '
-      'that arrives during a switch', (tester) async {
-    final rebuilds = ValueNotifier(0);
-    final switchKey = ValueNotifier<Object?>('a');
-    addTearDown(rebuilds.dispose);
-    addTearDown(switchKey.dispose);
-
-    await tester.pumpWidget(
-      _RebuildSwitcher(
-        rebuilds: rebuilds,
-        sameChild: false,
-        switchKey: switchKey,
-      ),
-    );
-    await tester.pumpAndSettle();
-
-    final snapshots = _countNewImages();
-    switchKey.value = 'b';
-    await tester.pump(); // The switch snapshots the child after this frame.
-    rebuilds.value++;
-    await tester.pumpAndSettle();
-
-    expect(snapshots(), 1);
-    expect(find.byKey(const ValueKey(1)), findsOneWidget);
-  });
-
-  for (final (to, nextKey) in [('another key', 'c'), ('none', null)]) {
-    testWidgets('runs another switch when its switch key changes to $to '
-        'during a switch, with the same child', (tester) async {
-      final rebuilds = ValueNotifier(0);
-      final switchKey = ValueNotifier<Object?>('a');
-      addTearDown(rebuilds.dispose);
-      addTearDown(switchKey.dispose);
-
-      await tester.pumpWidget(
-        _RebuildSwitcher(
-          rebuilds: rebuilds,
-          sameChild: true,
-          switchKey: switchKey,
-        ),
-      );
-      await tester.pumpAndSettle();
-
-      final snapshots = _countNewImages();
-      switchKey.value = 'b';
-      await tester.pump(); // The switch snapshots the child after this frame.
-      switchKey.value = nextKey;
-      await tester.pumpAndSettle();
-
-      expect(snapshots(), 2);
-    });
-  }
 
   for (final (how, keyed, looksBelow) in [
     ('a switch', false, false),
@@ -1253,22 +1375,27 @@ void main() {
     expect(builds, 1);
   });
 
-  testWidgets('runs no switch on a window resize when sizes are read below '
-      'it', (tester) async {
+  testWidgets('shows its heroes on each frame of a window resize, even when '
+      'sizes are read above it', (tester) async {
     tester.view.devicePixelRatio = 1;
     tester.view.physicalSize = const Size(800, 600);
     addTearDown(tester.view.reset);
 
+    // Each frame of the resize rebuilds the switcher, so runs a switch.
     await tester.pumpWidget(
       MaterialApp(
-        home: HeroHereSwitcher(
-          child: LayoutBuilder(
-            builder: (context, constraints) => Align(
+        home: LayoutBuilder(
+          builder: (context, constraints) => HeroHereSwitcher(
+            child: Align(
               alignment: Alignment.topLeft,
               child: HeroHere(
                 key: const ValueKey('hero'),
                 tag: 'hero',
-                child: SizedBox(width: constraints.maxWidth / 2, height: 40),
+                child: SizedBox(
+                  key: const ValueKey('box'),
+                  width: constraints.maxWidth / 2,
+                  height: 40,
+                ),
               ),
             ),
           ),
@@ -1277,13 +1404,14 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    final snapshots = _countNewImages();
+    final box = find.byKey(const ValueKey('box'));
     for (final width in [700.0, 600.0, 500.0]) {
       tester.view.physicalSize = Size(width, 600);
-      await tester.pumpAndSettle();
-    }
+      await tester.pump();
 
-    expect(snapshots(), 0);
+      expect(_paintedInPlace(tester, box), isTrue);
+      expect(tester.getRect(box), Rect.fromLTWH(0, 0, width / 2, 40));
+    }
   });
 
   testWidgets('stops its flights when unmounted mid-flight', (tester) async {
@@ -1986,37 +2114,67 @@ void main() {
   }
 }
 
-/// Counts the `ui.Image`s created from now until the end of the test, leaving
-/// out clones of them.
-int Function() _countNewImages() {
-  final images = <ui.Image>[];
-  final onCreate = ui.Image.onCreate;
-  ui.Image.onCreate = (image) {
-    if (!images.any(image.isCloneOf)) images.add(image);
-    onCreate?.call(image);
-  };
-  addTearDown(() => ui.Image.onCreate = onCreate);
-  return () => images.length;
+/// The color of the pixel at [position] on the last frame, with a device
+/// pixel ratio of 1.
+Future<Color> _pixelAt(WidgetTester tester, Offset position) async {
+  final scene = tester.binding.renderViews.first.debugLayer! as OffsetLayer;
+  final size = tester.view.physicalSize;
+  late ByteData bytes;
+  await tester.runAsync(() async {
+    final image = await scene.toImage(Offset.zero & size);
+    bytes = (await image.toByteData(format: ui.ImageByteFormat.rawRgba))!;
+    image.dispose();
+  });
+  final i =
+      (position.dy.round() * size.width.round() + position.dx.round()) * 4;
+  return Color.fromARGB(
+    bytes.getUint8(i + 3),
+    bytes.getUint8(i),
+    bytes.getUint8(i + 1),
+    bytes.getUint8(i + 2),
+  );
 }
 
-/// Counts the `ui.Image` handles created and not yet disposed from now until
-/// the end of the test.
-int Function() _trackLiveImages() {
-  var live = 0;
-  final onCreate = ui.Image.onCreate, onDispose = ui.Image.onDispose;
-  ui.Image.onCreate = (image) {
-    live++;
-    onCreate?.call(image);
-  };
-  ui.Image.onDispose = (image) {
-    live--;
-    onDispose?.call(image);
-  };
-  addTearDown(() {
-    ui.Image.onCreate = onCreate;
-    ui.Image.onDispose = onDispose;
-  });
-  return () => live;
+/// The layer that the hero painting the widget [finder] finds paints into,
+/// if it painted: each hero paints into a layer of its own.
+OffsetLayer? _layerOf(WidgetTester tester, Finder finder) =>
+    _heroBoundaryOf(tester, finder)?.debugLayer as OffsetLayer?;
+
+/// Where [layer] was on the screen on the last frame, if it was in it.
+Offset? _paintedAt(Layer layer) {
+  if (!layer.attached) return null;
+  var offset = Offset.zero;
+  for (Layer? x = layer; x != null && x is! TransformLayer; x = x.parent) {
+    if (x is OffsetLayer) offset += x.offset;
+  }
+  return offset;
+}
+
+/// Whether the hero painting the widget [finder] finds was in the last frame:
+/// a hidden hero's layer isn't, and a hero that never painted has none.
+bool _painted(WidgetTester tester, Finder finder) =>
+    _layerOf(tester, finder)?.attached ?? false;
+
+/// Whether the hero painting the widget [finder] finds was in the last frame
+/// where it is, rather than in a stand-in.
+bool _paintedInPlace(WidgetTester tester, Finder finder) {
+  final boundary = _heroBoundaryOf(tester, finder);
+  RenderObject? parent = boundary?.parent;
+  while (parent != null && parent is! RenderRepaintBoundary) {
+    parent = parent.parent;
+  }
+  final layer = boundary?.debugLayer;
+  return layer != null &&
+      layer.attached &&
+      layer.parent == (parent as RenderRepaintBoundary?)?.debugLayer;
+}
+
+RenderRepaintBoundary? _heroBoundaryOf(WidgetTester tester, Finder finder) {
+  RenderObject? object = tester.renderObject(finder);
+  while (object != null && object is! RenderRepaintBoundary) {
+    object = object.parent;
+  }
+  return object as RenderRepaintBoundary?;
 }
 
 /// Lays the switcher's child out [shift] to the right, so changing [shift]
@@ -2510,6 +2668,115 @@ class _ShiftSwitcher extends StatelessWidget {
       },
     ),
   );
+}
+
+/// Shows one hero in the slot of [_slotRects] that [slot] picks, a box keyed
+/// by its slot, and a text of [label], or of the slot if no [label]. When
+/// [inLayoutBuilder], a layout builder in the switcher's child builds them.
+/// Its switch key is [switchKey]'s, if any. Its shuttle is a box with
+/// [_shuttleKey].
+class _LabelSwitcher extends StatelessWidget {
+  const _LabelSwitcher({
+    required this.slot,
+    this.label,
+    this.switchKey,
+    this.inLayoutBuilder = false,
+  });
+
+  final ValueNotifier<int> slot;
+  final ValueNotifier<int>? label;
+  final ValueNotifier<Object?>? switchKey;
+  final bool inLayoutBuilder;
+
+  @override
+  Widget build(BuildContext context) => MaterialApp(
+    home: ListenableBuilder(
+      listenable: Listenable.merge([slot, label, switchKey]),
+      builder: (context, _) {
+        final slot = this.slot.value;
+        final child = Stack(
+          children: [
+            Positioned(
+              left: 0,
+              top: 0,
+              child: Text('label ${label?.value ?? slot}'),
+            ),
+            Positioned.fromRect(
+              rect: _slotRects[slot],
+              child: HeroHere(
+                key: ValueKey(slot),
+                tag: 'hero',
+                flightShuttleBuilder: (_, _, _, _) =>
+                    const SizedBox.expand(key: _shuttleKey),
+                child: ColoredBox(
+                  key: ValueKey('box$slot'),
+                  color: const Color(0xFF2196F3),
+                ),
+              ),
+            ),
+          ],
+        );
+        return HeroHereSwitcher(
+          switchKey: switchKey?.value,
+          child: inLayoutBuilder
+              ? LayoutBuilder(builder: (context, _) => child)
+              : child,
+        );
+      },
+    ),
+  );
+}
+
+const _clippedRect = Rect.fromLTWH(100, 100, 200, 200);
+
+/// Shows a red hero at [_clippedRect], in a clip that rounds its corners from
+/// outside it, or, when [slot] is 1, a hero with its tag in the third slot of
+/// [_slotRects], with no clip. When [inBoundary], the clip is in a layer of
+/// its own, away from the switcher's origin.
+class _ClippedSwitcher extends StatelessWidget {
+  const _ClippedSwitcher({required this.slot, this.inBoundary = false});
+
+  final ValueNotifier<int> slot;
+  final bool inBoundary;
+
+  @override
+  Widget build(BuildContext context) => MaterialApp(
+    home: ValueListenableBuilder(
+      valueListenable: slot,
+      builder: (context, slot, _) => HeroHereSwitcher(
+        child: Stack(
+          children: [
+            if (slot == 0)
+              Positioned.fromRect(
+                rect: _clippedRect,
+                child: _maybeInBoundary(
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(50),
+                    child: const HeroHere(
+                      key: ValueKey(0),
+                      tag: 'hero',
+                      child: ColoredBox(color: Color(0xFFFF0000)),
+                    ),
+                  ),
+                ),
+              )
+            else
+              Positioned.fromRect(
+                rect: _slotRects[2],
+                child: const HeroHere(
+                  key: ValueKey(1),
+                  tag: 'hero',
+                  child: ColoredBox(color: Color(0xFFFF0000)),
+                ),
+              ),
+          ],
+        ),
+      ),
+    ),
+  );
+
+  Widget _maybeInBoundary(Widget child) =>
+      inBoundary ? RepaintBoundary(child: child) : child;
 }
 
 /// A [_SlotSwitcher] slot that shows no hero.
