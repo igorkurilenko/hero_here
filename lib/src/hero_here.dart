@@ -16,6 +16,7 @@ import 'dart:collection';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
+import 'package:flutter/scheduler.dart';
 
 typedef _Hero = _HeroHereState;
 typedef _Switcher = _HeroHereSwitcherState;
@@ -652,13 +653,23 @@ class _HeroHereState extends State<HeroHere> {
   _KeptRect? _placeholder;
   bool _active = true;
 
+  /// Tells the hero's [_Hide] when the hero hides or shows.
+  final _hiding = _Hiding();
+
   Key get key => widget.key!;
 
   Object get tag => widget.tag;
 
+  /// Hides or shows the hero. It hides or shows at once, through its
+  /// [_Hide], even while the frame builds or lays out; its [_HeroOffstage],
+  /// which tells finders whether it's offstage, follows on its next build.
   set offstage(bool value) {
     if (_offstage == value) return;
-    _setState(() => _offstage = value);
+    _offstage = value;
+    // A flight may still hide or show a hero that went away.
+    if (!mounted) return;
+    _hiding.notify();
+    _rebuild();
   }
 
   bool get offstage => _offstage;
@@ -714,6 +725,7 @@ class _HeroHereState extends State<HeroHere> {
     offstage: offstage,
     child: _Hide(
       hides: _hides,
+      changes: _hiding,
       child: KeyedSubtree(key: _childKey, child: widget.child),
     ),
   );
@@ -732,73 +744,58 @@ class _HeroHereState extends State<HeroHere> {
   String toString({DiagnosticLevel minLevel = DiagnosticLevel.info}) =>
       "_Hero(tag: '$tag', key: $key, offstage: $offstage)";
 
-  void _setState(VoidCallback cb) {
-    if (!mounted) return cb();
-    setState(cb);
+  @override
+  void dispose() {
+    _hiding.dispose();
+    super.dispose();
+  }
+
+  // While the frame builds or lays out, the hero may not be marked to build,
+  // so it builds after the frame.
+  void _rebuild() {
+    final scheduler = SchedulerBinding.instance;
+    if (scheduler.schedulerPhase == SchedulerPhase.persistentCallbacks) {
+      scheduler.addPostFrameCallback((_) {
+        if (mounted) setState(() {});
+      });
+    } else {
+      setState(() {});
+    }
   }
 }
 
-/// An [Offstage] that keeps its child's size while offstage. A hidden hero
-/// takes the space it would take showing, so a layout change, such as a
-/// window resize, moves and resizes it like a showing one, and a flight
-/// landing on it lands where it shows.
+class _Hiding extends ChangeNotifier {
+  void notify() => notifyListeners();
+}
+
+/// An [Offstage] that only tells finders whether a hero is offstage. It never
+/// hides its child itself, so a hidden hero takes the space it would take
+/// showing, and moves and resizes on a layout change, such as a window
+/// resize, like a showing one. The hero's [_Hide] hides it.
 class _HeroOffstage extends Offstage {
   const _HeroOffstage({required super.offstage, super.child});
 
   @override
   RenderOffstage createRenderObject(BuildContext context) =>
-      _RenderHeroOffstage(offstage: offstage);
+      RenderOffstage(offstage: false);
+
+  @override
+  void updateRenderObject(BuildContext context, RenderOffstage renderObject) {}
 }
 
-/// Lays out like a [RenderProxyBox] whether offstage or not.
-class _RenderHeroOffstage extends RenderOffstage {
-  _RenderHeroOffstage({super.offstage});
-
-  @override
-  bool get sizedByParent => false;
-
-  @override
-  double computeMinIntrinsicWidth(double height) =>
-      child?.getMinIntrinsicWidth(height) ?? 0;
-
-  @override
-  double computeMaxIntrinsicWidth(double height) =>
-      child?.getMaxIntrinsicWidth(height) ?? 0;
-
-  @override
-  double computeMinIntrinsicHeight(double width) =>
-      child?.getMinIntrinsicHeight(width) ?? 0;
-
-  @override
-  double computeMaxIntrinsicHeight(double width) =>
-      child?.getMaxIntrinsicHeight(width) ?? 0;
-
-  @override
-  Size computeDryLayout(covariant BoxConstraints constraints) =>
-      child?.getDryLayout(constraints) ?? constraints.smallest;
-
-  @override
-  void performLayout() {
-    final child = this.child;
-    if (child == null) {
-      size = constraints.smallest;
-      return;
-    }
-    child.layout(constraints, parentUsesSize: true);
-    size = child.size;
-  }
-}
-
-/// Doesn't paint or hit test its child while [hides] returns true, but keeps
-/// its size. Unlike [Offstage], it asks on every paint and hit test, so it
-/// can hide a child before the child's next build.
+/// Doesn't paint, hit test or describe to semantics its child while [hides]
+/// returns true, but keeps its size. Unlike [Offstage], it asks on every
+/// paint and hit test, and repaints when [changes] notifies, so it can hide
+/// or show a child before the child's next build, even from layout.
 class _Hide extends SingleChildRenderObjectWidget {
   final bool Function() hides;
+  final Listenable changes;
 
-  const _Hide({required this.hides, super.child});
+  const _Hide({required this.hides, required this.changes, super.child});
 
   @override
-  _RenderHide createRenderObject(BuildContext context) => _RenderHide(hides);
+  _RenderHide createRenderObject(BuildContext context) =>
+      _RenderHide(hides, changes);
 
   @override
   void updateRenderObject(BuildContext context, _RenderHide renderObject) =>
@@ -807,8 +804,26 @@ class _Hide extends SingleChildRenderObjectWidget {
 
 class _RenderHide extends RenderProxyBox {
   bool Function() hides;
+  final Listenable changes;
 
-  _RenderHide(this.hides);
+  _RenderHide(this.hides, this.changes);
+
+  @override
+  void attach(PipelineOwner owner) {
+    super.attach(owner);
+    changes.addListener(_changed);
+  }
+
+  @override
+  void detach() {
+    changes.removeListener(_changed);
+    super.detach();
+  }
+
+  void _changed() {
+    markNeedsPaint();
+    markNeedsSemanticsUpdate();
+  }
 
   @override
   void paint(PaintingContext context, Offset offset) {
@@ -819,6 +834,12 @@ class _RenderHide extends RenderProxyBox {
   @override
   bool hitTest(BoxHitTestResult result, {required Offset position}) =>
       !hides() && super.hitTest(result, position: position);
+
+  @override
+  void visitChildrenForSemantics(RenderObjectVisitor visitor) {
+    if (hides()) return;
+    super.visitChildrenForSemantics(visitor);
+  }
 }
 
 class _FlightWidget extends StatelessWidget {
@@ -1615,10 +1636,12 @@ extension _BuildContext on BuildContext {
           (widget is _FlightWidget)) {
         return;
       }
-      element.visitChildElements(findHeroes);
+      element.visitChildren(findHeroes);
     }
 
-    visitChildElements(findHeroes);
+    // Unlike visitChildElements, visitChildren may run while the tree builds
+    // or lays out, such as from a layout callback.
+    (this as Element).visitChildren(findHeroes);
 
     return result;
   }
