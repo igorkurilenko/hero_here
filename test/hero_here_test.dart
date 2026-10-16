@@ -1037,7 +1037,221 @@ void main() {
 
       expect(snapshots(), 3);
     });
+
+    testWidgets('runs a switch only when its switch key changes, with '
+        '$child', (tester) async {
+      final rebuilds = ValueNotifier(0);
+      final switchKey = ValueNotifier<Object?>('a');
+      addTearDown(rebuilds.dispose);
+      addTearDown(switchKey.dispose);
+
+      await tester.pumpWidget(
+        _RebuildSwitcher(
+          rebuilds: rebuilds,
+          sameChild: sameChild,
+          switchKey: switchKey,
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      final snapshots = _countNewImages();
+      for (var rebuild = 0; rebuild < 3; rebuild++) {
+        rebuilds.value++;
+        await tester.pumpAndSettle();
+      }
+
+      expect(snapshots(), 0);
+
+      switchKey.value = 'b';
+      await tester.pumpAndSettle();
+
+      expect(snapshots(), 1);
+    });
   }
+
+  testWidgets('shows a child with the same switch key on the frame it '
+      'rebuilds', (tester) async {
+    final rebuilds = ValueNotifier(0);
+    final switchKey = ValueNotifier<Object?>('a');
+    addTearDown(rebuilds.dispose);
+    addTearDown(switchKey.dispose);
+
+    await tester.pumpWidget(
+      _RebuildSwitcher(
+        rebuilds: rebuilds,
+        sameChild: false,
+        switchKey: switchKey,
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    rebuilds.value++;
+    await tester.pump();
+
+    expect(find.byKey(const ValueKey(1)), findsOneWidget);
+  });
+
+  testWidgets('runs another switch for a child that arrives during a switch', (
+    tester,
+  ) async {
+    final rebuilds = ValueNotifier(0);
+    addTearDown(rebuilds.dispose);
+
+    await tester.pumpWidget(
+      _RebuildSwitcher(rebuilds: rebuilds, sameChild: false),
+    );
+    await tester.pumpAndSettle();
+
+    final snapshots = _countNewImages();
+    rebuilds.value++;
+    await tester.pump(); // The switch snapshots the child after this frame.
+    rebuilds.value++;
+    await tester.pumpAndSettle();
+
+    expect(snapshots(), 2);
+  });
+
+  testWidgets('runs no other switch for a child with the same switch key '
+      'that arrives during a switch', (tester) async {
+    final rebuilds = ValueNotifier(0);
+    final switchKey = ValueNotifier<Object?>('a');
+    addTearDown(rebuilds.dispose);
+    addTearDown(switchKey.dispose);
+
+    await tester.pumpWidget(
+      _RebuildSwitcher(
+        rebuilds: rebuilds,
+        sameChild: false,
+        switchKey: switchKey,
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    final snapshots = _countNewImages();
+    switchKey.value = 'b';
+    await tester.pump(); // The switch snapshots the child after this frame.
+    rebuilds.value++;
+    await tester.pumpAndSettle();
+
+    expect(snapshots(), 1);
+    expect(find.byKey(const ValueKey(1)), findsOneWidget);
+  });
+
+  for (final (to, nextKey) in [('another key', 'c'), ('none', null)]) {
+    testWidgets('runs another switch when its switch key changes to $to '
+        'during a switch, with the same child', (tester) async {
+      final rebuilds = ValueNotifier(0);
+      final switchKey = ValueNotifier<Object?>('a');
+      addTearDown(rebuilds.dispose);
+      addTearDown(switchKey.dispose);
+
+      await tester.pumpWidget(
+        _RebuildSwitcher(
+          rebuilds: rebuilds,
+          sameChild: true,
+          switchKey: switchKey,
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      final snapshots = _countNewImages();
+      switchKey.value = 'b';
+      await tester.pump(); // The switch snapshots the child after this frame.
+      switchKey.value = nextKey;
+      await tester.pumpAndSettle();
+
+      expect(snapshots(), 2);
+    });
+  }
+
+  for (final (how, keyed, looksBelow) in [
+    ('a switch', false, false),
+    ('an update in place', true, false),
+    ('a rebuild below the switcher', false, true),
+  ]) {
+    testWidgets('shuttles the new child that $how gives a hero mid-flight', (
+      tester,
+    ) async {
+      final slot = ValueNotifier(0), look = ValueNotifier('a');
+      addTearDown(slot.dispose);
+      addTearDown(look.dispose);
+
+      await tester.pumpWidget(
+        _LookSwitcher(
+          slot: slot,
+          look: look,
+          keyed: keyed,
+          looksBelow: looksBelow,
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      slot.value = 1;
+      await _pumpSwitch(tester);
+      await tester.pump(const Duration(milliseconds: 100));
+      look.value = 'b';
+      // A switch shows the new child on its third frame, the others at once.
+      keyed || looksBelow ? await tester.pump() : await _pumpSwitch(tester);
+
+      Finder shuttled(String box) => find.descendant(
+        of: find.byKey(_shuttleKey),
+        matching: find.byKey(ValueKey(box)),
+      );
+      expect(shuttled('box1b'), findsOneWidget);
+      expect(shuttled('box1a'), findsNothing);
+    });
+  }
+
+  testWidgets('shuttles the new child that a rebuild below the switcher gives '
+      'the hero a flight leaves', (tester) async {
+    final split = ValueNotifier(false), look = ValueNotifier('a');
+    addTearDown(split.dispose);
+    addTearDown(look.dispose);
+
+    await tester.pumpWidget(_LeftLookSwitcher(split: split, look: look));
+    await tester.pumpAndSettle();
+
+    split.value = true;
+    await _pumpSwitch(tester);
+    await tester.pump(const Duration(milliseconds: 100));
+    look.value = 'b';
+    await tester.pump();
+
+    Finder shuttled(String box) => find.descendant(
+      of: find.byKey(_shuttleKey),
+      matching: find.byKey(ValueKey(box)),
+    );
+    expect(shuttled('boxb'), findsOneWidget);
+    expect(shuttled('boxa'), findsNothing);
+  });
+
+  testWidgets('builds the shuttle of a leg once, not on each frame', (
+    tester,
+  ) async {
+    final slot = ValueNotifier(0);
+    addTearDown(slot.dispose);
+    var builds = 0;
+
+    await tester.pumpWidget(
+      _SlotSwitcher(
+        slot: slot,
+        shuttleBuilder: (_, _, _, _) {
+          builds++;
+          return const SizedBox.expand(key: _shuttleKey);
+        },
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    slot.value = 1;
+    await _pumpSwitch(tester);
+    for (var frame = 0; frame < 10; frame++) {
+      await tester.pump(const Duration(milliseconds: 16));
+    }
+
+    expect(find.byKey(_shuttleKey), findsOneWidget);
+    expect(builds, 1);
+  });
 
   testWidgets('runs no switch on a window resize when sizes are read below '
       'it', (tester) async {
@@ -1340,6 +1554,57 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.byKey(_shuttleKey), findsNothing);
     expect(tester.getRect(switcher), centered);
+  });
+
+  testWidgets('clips its flights to it when its layout builder sizes the sky', (
+    tester,
+  ) async {
+    final moved = ValueNotifier(false);
+    addTearDown(moved.dispose);
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Center(
+          child: ValueListenableBuilder(
+            valueListenable: moved,
+            builder: (context, moved, _) => HeroHereSwitcher(
+              layoutBuilder: (child, sky) => Stack(
+                children: [
+                  child,
+                  Positioned.fill(child: ClipRect(child: sky)),
+                ],
+              ),
+              child: SizedBox(
+                width: 100,
+                height: 100,
+                child: Align(
+                  alignment: moved ? Alignment.topRight : Alignment.topLeft,
+                  child: HeroHere(
+                    key: ValueKey(moved),
+                    tag: 'hero',
+                    flightShuttleBuilder: (_, _, _, _) =>
+                        const SizedBox.expand(key: _shuttleKey),
+                    child: const SizedBox(width: 20, height: 20),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    moved.value = true;
+    await _pumpSwitch(tester);
+
+    final switcher = find.byType(HeroHereSwitcher);
+    final clip = find.descendant(of: switcher, matching: find.byType(ClipRect));
+    expect(tester.getRect(clip), tester.getRect(switcher));
+    expect(
+      tester.getRect(find.byKey(_shuttleKey)),
+      const Rect.fromLTWH(350, 250, 20, 20),
+    );
   });
 
   testWidgets('flies in a switcher of unbounded height', (tester) async {
@@ -1783,23 +2048,134 @@ class _ExtraSwitcher extends StatelessWidget {
   );
 }
 
-/// Rebuilds a switcher on each change of [rebuilds], with a new child each
-/// time, or with the same `const` child when [sameChild].
+/// Rebuilds a switcher on each change of [rebuilds] or [switchKey], with a new
+/// child keyed by [rebuilds] each time, or with the same `const` child when
+/// [sameChild]. The switcher's switch key is [switchKey]'s, if any.
 class _RebuildSwitcher extends StatelessWidget {
-  const _RebuildSwitcher({required this.rebuilds, required this.sameChild});
+  const _RebuildSwitcher({
+    required this.rebuilds,
+    required this.sameChild,
+    this.switchKey,
+  });
 
   final ValueNotifier<int> rebuilds;
   final bool sameChild;
+  final ValueNotifier<Object?>? switchKey;
+
+  @override
+  Widget build(BuildContext context) => MaterialApp(
+    home: ListenableBuilder(
+      listenable: Listenable.merge([rebuilds, switchKey]),
+      builder: (context, _) => HeroHereSwitcher(
+        switchKey: switchKey?.value,
+        child: sameChild
+            ? const SizedBox.square(dimension: 40)
+            : SizedBox.square(key: ValueKey(rebuilds.value), dimension: 40),
+      ),
+    ),
+  );
+}
+
+/// Shows one hero in the slot of [_slotRects] that [slot] picks, with a box
+/// keyed by the slot and [look] as its child. The switcher rebuilds on each
+/// change of [look], unless [looksBelow], when only a builder below it does.
+/// When [keyed], its switch key is the slot, so a new look alone shows in
+/// place. Its shuttle shows its `toHero`'s child, in a box with
+/// [_shuttleKey].
+class _LookSwitcher extends StatelessWidget {
+  const _LookSwitcher({
+    required this.slot,
+    required this.look,
+    required this.keyed,
+    required this.looksBelow,
+  });
+
+  final ValueNotifier<int> slot;
+  final ValueNotifier<String> look;
+  final bool keyed;
+  final bool looksBelow;
+
+  @override
+  Widget build(BuildContext context) => MaterialApp(
+    home: ListenableBuilder(
+      listenable: looksBelow ? slot : Listenable.merge([slot, look]),
+      builder: (context, _) => HeroHereSwitcher(
+        switchKey: keyed ? slot.value : null,
+        child: Stack(
+          children: [
+            Positioned.fromRect(
+              rect: _slotRects[slot.value],
+              child: looksBelow
+                  ? ValueListenableBuilder(
+                      valueListenable: look,
+                      builder: (context, look, _) => _hero(look),
+                    )
+                  : _hero(look.value),
+            ),
+          ],
+        ),
+      ),
+    ),
+  );
+
+  Widget _hero(String look) => HeroHere(
+    key: ValueKey(slot.value),
+    tag: 'hero',
+    flightShuttleBuilder: (_, _, _, toHero) =>
+        KeyedSubtree(key: _shuttleKey, child: toHero.child),
+    child: ColoredBox(
+      key: ValueKey('box${slot.value}$look'),
+      color: const Color(0xFF2196F3),
+    ),
+  );
+}
+
+/// Shows hero 'a' in the first slot of [_slotRects], with a box keyed by
+/// [look] as its child, which a builder below the switcher reads. When
+/// [split], it adds hero 'b' with the same tag in the second, so 'a' flies to
+/// 'b' and stays, hidden. Its shuttle shows its `fromHero`'s child, in a box
+/// with [_shuttleKey].
+class _LeftLookSwitcher extends StatelessWidget {
+  const _LeftLookSwitcher({required this.split, required this.look});
+
+  final ValueNotifier<bool> split;
+  final ValueNotifier<String> look;
 
   @override
   Widget build(BuildContext context) => MaterialApp(
     home: ValueListenableBuilder(
-      valueListenable: rebuilds,
-      builder: (context, rebuild, _) => HeroHereSwitcher(
-        child: sameChild
-            ? const SizedBox.square(dimension: 40)
-            : SizedBox.square(key: ValueKey(rebuild), dimension: 40),
-      ),
+      valueListenable: split,
+      builder: (context, split, _) {
+        Widget hero(String key, String look) => HeroHere(
+          key: ValueKey(key),
+          tag: 'hero',
+          flightShuttleBuilder: (_, _, fromHero, _) =>
+              KeyedSubtree(key: _shuttleKey, child: fromHero.child),
+          child: ColoredBox(
+            key: ValueKey('box$look'),
+            color: const Color(0xFF2196F3),
+          ),
+        );
+
+        return HeroHereSwitcher(
+          child: Stack(
+            children: [
+              Positioned.fromRect(
+                rect: _slotRects[0],
+                child: ValueListenableBuilder(
+                  valueListenable: look,
+                  builder: (context, look, _) => hero('a', look),
+                ),
+              ),
+              if (split)
+                Positioned.fromRect(
+                  rect: _slotRects[1],
+                  child: hero('b', 'other'),
+                ),
+            ],
+          ),
+        );
+      },
     ),
   );
 }

@@ -97,6 +97,9 @@ class _HeroHereExampleState extends State<HeroHereExample> {
       ),
     ),
     body: HeroHereSwitcher(
+      // Only a new hero runs a switch. Other rebuilds of the page, such as on
+      // a Chain or Divert tap, show the child in place.
+      switchKey: curHeroType,
       child: Stack(
         fit: StackFit.expand,
         children: [

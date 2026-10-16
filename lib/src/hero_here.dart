@@ -20,6 +20,8 @@ import 'package:flutter/rendering.dart';
 typedef _Hero = _HeroHereState;
 typedef _Switcher = _HeroHereSwitcherState;
 
+/// Lays out a [HeroHereSwitcher]'s `child` and its `sky`, the layer its
+/// flights fly in. See [HeroHereSwitcher.layoutBuilder].
 typedef HeroHereSwitcherLayoutBuilder = Widget Function(
   Widget child,
   Widget sky,
@@ -106,32 +108,72 @@ typedef RectTweenFactory = HeroHereFlightRectTweenFactory;
 /// Flies [HeroHere] widgets between their places in [child] when [child]
 /// changes.
 ///
-/// Every rebuild of the switcher runs a switch: it takes a snapshot of the
-/// current child, lays the new child out offstage for a frame to find its
-/// heroes, then flies each tag whose [HeroHere] changed. The new child shows
-/// two frames after the rebuild. The first child shows on the first frame,
-/// and nothing flies. Keep frequently changing state, such as timers, streams
-/// or text being typed, below the switcher, so it rebuilds only when heroes
-/// may move.
+/// Every rebuild of the switcher runs a switch, unless [switchKey] says
+/// otherwise: it takes a snapshot of the current child, lays the new child
+/// out offstage for a frame to find its heroes, then flies each tag whose
+/// [HeroHere] changed. The new child shows two frames after the rebuild. The
+/// first child shows on the first frame, and nothing flies. Keep frequently
+/// changing state, such as timers, streams or text being typed, below the
+/// switcher, so it rebuilds only when heroes may move.
 ///
 /// The same goes for sizes. A [LayoutBuilder] or a `MediaQuery.sizeOf` read
 /// above the switcher rebuilds it on each frame of a window resize, and each
 /// of those switches shows a snapshot of the old layout for a frame. Read
 /// sizes below the switcher instead, such as with a [LayoutBuilder] in its
-/// child.
+/// child. Where state or sizes can't be read below it, set [switchKey].
 class HeroHereSwitcher extends StatefulWidget {
+  /// The widget whose heroes fly when it changes.
   final Widget? child;
+
+  /// Lays out the switcher's [child] and its sky, the layer its flights fly
+  /// in. Defaults to [defaultLayoutBuilder].
+  ///
+  /// Put the sky after the child in a [Stack], as the default does. The stack
+  /// paints the sky over the child and lays it out after the child, so on
+  /// each frame a flight finds its heroes where that frame's layout puts
+  /// them. A sky laid out before the child, such as one before it in a stack
+  /// that doesn't position it, places its shuttles by the layout of the frame
+  /// before, so on a window resize they lag a frame behind their heroes.
+  ///
+  /// Shuttles fly where their heroes are on the screen, wherever the sky is.
+  /// The sky takes the smallest size its constraints allow, so it doesn't
+  /// size the switcher. To clip the flights to the switcher, give the sky the
+  /// switcher's size:
+  ///
+  /// ```dart
+  /// HeroHereSwitcher(
+  ///   layoutBuilder: (child, sky) => Stack(
+  ///     children: [child, Positioned.fill(child: ClipRect(child: sky))],
+  ///   ),
+  ///   child: child,
+  /// )
+  /// ```
   final HeroHereSwitcherLayoutBuilder layoutBuilder;
+
+  /// Which rebuilds of the switcher run a switch. Unset, every rebuild does.
+  /// Set, only a rebuild that changes it does, by `==`, so it may be a record
+  /// of what the heroes' places depend on, such as `(tab, expandedId)`. A key
+  /// set to null is unset.
+  ///
+  /// A rebuild that keeps the key shows its child at once, in place of the
+  /// current one, as a rebuild below the switcher would. Nothing flies, so
+  /// heroes it adds or moves show where they are, and a flight under way
+  /// flies on, with its shuttle built anew from its heroes. A rebuild during
+  /// a switch that keeps the key the switch runs to shows its child once the
+  /// switch ends.
+  final Object? switchKey;
 
   const HeroHereSwitcher({
     super.key,
     this.child,
     this.layoutBuilder = HeroHereSwitcher.defaultLayoutBuilder,
+    this.switchKey,
   });
 
   @override
   State<HeroHereSwitcher> createState() => _HeroHereSwitcherState();
 
+  /// Puts the sky over the child in a [Stack], in a [Material].
   static Widget defaultLayoutBuilder(Widget child, Widget sky) =>
       Material(child: Stack(children: [child, sky]));
 }
@@ -142,6 +184,10 @@ class _HeroHereSwitcherState extends State<HeroHereSwitcher>
   final flights = _FlightRegistry();
   late _SwitchingState _switchingState;
   Widget? _child;
+
+  /// The [HeroHereSwitcher.switchKey] that [_child] came with.
+  Object? _switchKey;
+
   StateSetter setChildState = (_) {};
   RawImage? _childScreenshot;
   bool _childOffstage = false;
@@ -169,6 +215,18 @@ class _HeroHereSwitcherState extends State<HeroHereSwitcher>
         ? _takeScreenshot(renderRepaintBoundary, pixelRatio: pixelRatio)
         : null;
   }
+
+  /// Takes the widget's child, with its switch key, as the one to show.
+  void takeChild() {
+    _child = widget.child;
+    _switchKey = widget.switchKey;
+  }
+
+  /// Whether the widget's child shows by a switch rather than in place of the
+  /// current one, as it does unless its switch key is set and is the current
+  /// child's.
+  bool get switchesChild =>
+      widget.switchKey == null || widget.switchKey != _switchKey;
 
   /// Moves to [state], the one way the switcher changes state.
   void enter(_SwitchingState state) {
@@ -248,9 +306,10 @@ class _HeroHereSwitcherState extends State<HeroHereSwitcher>
 
 /// A phase of the switcher's life. The switcher [enter]s a state once, then
 /// tells it about each of its builds; a state moves the switcher on by
-/// entering the next one. Every build of the switcher runs a switch: from
-/// [_Idle] it enters [_Prepare], and a build during a switch is taken up by
-/// that switch, or by the next one if its child arrived too late.
+/// entering the next one. A build of the switcher runs a switch, unless its
+/// switch key says its child shows in place: from [_Idle] it enters
+/// [_Prepare], and a build during a switch is taken up by that switch, or by
+/// the next one if its child arrived too late.
 abstract class _SwitchingState {
   final _Switcher switcher;
   final Set<_Hero>? prevSwitchHeroes;
@@ -290,7 +349,7 @@ class _Mount extends _SwitchingState {
   void enter() => afterFrame(_mount);
 
   @override
-  void onBuild() => switcher._child = switcher.widget.child;
+  void onBuild() => switcher.takeChild();
 
   void _mount() {
     final heroes = switcher.findHeroes();
@@ -314,8 +373,13 @@ class _Idle extends _SwitchingState {
   _Idle(super.switcher, {super.prevSwitchHeroes});
 
   @override
-  void onBuild() =>
+  void onBuild() {
+    if (switcher.switchesChild) {
       switcher.enter(_Prepare(switcher, prevSwitchHeroes: prevSwitchHeroes));
+    } else {
+      switcher.takeChild();
+    }
+  }
 }
 
 /// Snapshots the current child and lays the new one out offstage. Holds the
@@ -337,7 +401,7 @@ class _Prepare extends _SwitchingState {
       switcher._childScreenshot = switcher.takeChildScreenshot(
         pixelRatio: MediaQuery.devicePixelRatioOf(switcher.context),
       );
-      switcher._child = switcher.widget.child;
+      switcher.takeChild();
       switcher._childOffstage = true;
       switcher.enter(
         _Execute(
@@ -351,7 +415,8 @@ class _Prepare extends _SwitchingState {
 }
 
 /// Flies the heroes and shows the new child. A child that arrives while it
-/// waits gets a switch of its own after this one.
+/// waits gets a switch of its own after this one, or shows in place once
+/// this one ends.
 class _Execute extends _SwitchingState {
   final Set<_Hero> curHeroes;
 
@@ -400,11 +465,18 @@ class _Execute extends _SwitchingState {
       switcher._childScreenshot?.image?.dispose();
       switcher._childScreenshot = null;
       switcher._childOffstage = false;
-      switcher.enter(
-        identical(switcher._child, switcher.widget.child)
-            ? _Idle(switcher, prevSwitchHeroes: nextHeroes)
-            : _Prepare(switcher, prevSwitchHeroes: nextHeroes),
-      );
+
+      // A build that brought a child or a key this switch didn't take runs
+      // another switch, unless its child shows in place.
+      final rebuilt =
+          !identical(switcher._child, switcher.widget.child) ||
+          switcher._switchKey != switcher.widget.switchKey;
+      if (rebuilt && switcher.switchesChild) {
+        switcher.enter(_Prepare(switcher, prevSwitchHeroes: nextHeroes));
+      } else {
+        switcher.takeChild();
+        switcher.enter(_Idle(switcher, prevSwitchHeroes: nextHeroes));
+      }
     });
   }
 }
@@ -732,28 +804,42 @@ class _FlightWidget extends StatelessWidget {
   final _Flight flight;
   const _FlightWidget({super.key, required this.flight});
 
-  // A new leg flies between other heroes, so it builds its shuttle anew.
-  //
   // The layout builder builds what changes below it while it lays out, which
   // is after the switcher's child lays out, in the default layout. So the
   // flight finds its heroes where this frame's layout puts them, such as on
   // the frame of a window resize, rather than where they were on the last
-  // frame. It builds anew on a resize too, since that changes the sky's
-  // constraints.
+  // frame, and its shuttle shows what they are on this frame's build.
   @override
   Widget build(BuildContext context) => LayoutBuilder(
     builder: (context, _) => ListenableBuilder(
       listenable: flight,
       builder: (context, _) => AnimatedBuilder(
         animation: flight.animation,
-        builder: (context, child) => _GlobalRect(
+        builder: (context, _) => _GlobalRect(
           rect: flight.evaluateRect(),
-          child: IgnorePointer(child: child),
+          child: IgnorePointer(child: flight.shuttle),
         ),
-        child: flight.buildShuttle(context),
       ),
     ),
   );
+}
+
+/// Builds a flight's shuttle from the heroes it shows.
+class _Shuttle extends StatelessWidget {
+  final HeroHereFlightShuttleBuilder builder;
+  final Animation<double> animation;
+  final HeroHere from;
+  final HeroHere to;
+
+  const _Shuttle({
+    required this.builder,
+    required this.animation,
+    required this.from,
+    required this.to,
+  });
+
+  @override
+  Widget build(BuildContext context) => builder(context, animation, from, to);
 }
 
 /// Lays its child out with its own constraints and takes the smallest size
@@ -899,6 +985,9 @@ class _Flight extends ChangeNotifier {
   /// the shuttle as it was then.
   HeroHere? _divertedFrom;
 
+  /// The shuttle as last made, by [shuttle].
+  _Shuttle? _shuttle;
+
   /// The heroes with no part in this flight that mounted while it flew, with
   /// no switch since. They hide until it ends.
   final _latecomers = <_Hero>{};
@@ -1000,12 +1089,25 @@ class _Flight extends ChangeNotifier {
     return null;
   }
 
-  Widget buildShuttle(BuildContext context) => _style.shuttleBuilder(
-    context,
-    animation,
-    _divertedFrom ?? manifest.from.widget,
-    manifest.to.widget,
-  );
+  /// The shuttle, made anew only when a hero it shows has a new widget: on a
+  /// new leg, or when a switch or a rebuild gives a hero of the flight a new
+  /// widget mid-flight. So it builds then, and on no other frame.
+  Widget get shuttle {
+    final from = _divertedFrom ?? _manifest.from.widget;
+    final to = _manifest.to.widget;
+    final shuttle = _shuttle;
+    if (shuttle != null &&
+        identical(shuttle.from, from) &&
+        identical(shuttle.to, to)) {
+      return shuttle;
+    }
+    return _shuttle = _Shuttle(
+      builder: _style.shuttleBuilder,
+      animation: animation,
+      from: from,
+      to: to,
+    );
+  }
 
   /// Works out where the shuttle is on this frame: on its way from where its
   /// leg began to where the hero it flies to is. While that hero is nowhere,

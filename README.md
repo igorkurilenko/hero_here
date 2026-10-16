@@ -28,7 +28,7 @@ Add the following line to your `pubspec.yaml` file:
 
 ```yaml
 dependencies:
-  hero_here: ^1.3.1
+  hero_here: ^1.4.0
 ```
 
 Then, run:
@@ -196,12 +196,35 @@ When a flight diverts, its shuttle's `fromHero` becomes a stand-in for the shutt
 
 With `chain`, a flight sent back to the hero it left turns back from where it is. With `divert`, it swings around to that hero, as to any hero behind it.
 
+## Layout
+
+`HeroHereSwitcher` puts the layer its flights fly in, its sky, over its child in a `Stack`. To lay them out yourself, set `layoutBuilder`. Keep the sky after the child in the stack, so it paints over the child and lays out after it: then on each frame, such as on a window resize, flights find their heroes where that frame's layout puts them.
+
+Shuttles fly where their heroes are on the screen, wherever the sky is. The sky takes the smallest size it may, so it doesn't size the switcher. To clip the flights to the switcher, give the sky the switcher's size:
+
+```dart
+HeroHereSwitcher(
+  layoutBuilder: (child, sky) => Stack(
+    children: [child, Positioned.fill(child: ClipRect(child: sky))],
+  ),
+  child: child,
+)
+```
 
 ## Performance
 
 Every rebuild of `HeroHereSwitcher` runs a switch: it takes a snapshot of the current child and lays the new child out offstage for a frame to find its heroes. Keep frequently changing state, such as timers, streams or text being typed, below the switcher, so it rebuilds only when heroes may move.
 
 The same goes for sizes. A `LayoutBuilder` or a `MediaQuery.sizeOf` read above the switcher rebuilds it on each frame of a window resize, and each of those switches shows a snapshot of the old layout for a frame. Read sizes below the switcher instead, such as with a `LayoutBuilder` in its child.
+
+Where such state or sizes can't be read below the switcher, set its `switchKey` to what the heroes' places depend on. Then only a rebuild that changes the key runs a switch. Any other rebuild shows its child at once, in place of the current one, and nothing flies:
+
+```dart
+HeroHereSwitcher(
+  switchKey: (tab, expandedId),
+  child: child,
+)
+```
 
 ## Support and Contact
 
