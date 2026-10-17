@@ -3,6 +3,7 @@
 ### Example
 
 * Repaint only the auto-switching example's bottom bar when its buttons change, such as on each switch or after a tap, rather than the whole page with it.
+* Show the chat example's sent messages as text in the field's decoration rather than as read-only text fields, so each takes 9 elements rather than 44 for a switch to walk.
 
 ## 1.5.1
 

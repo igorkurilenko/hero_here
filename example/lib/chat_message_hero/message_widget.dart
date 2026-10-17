@@ -14,13 +14,13 @@
 
 import 'package:flutter/material.dart';
 
-class MessageWidget extends StatefulWidget {
+/// A message: a text field to type it in, or, once sent, its text where
+/// that field would show it.
+class MessageWidget extends StatelessWidget {
   final String? text;
   final FocusNode? focusNode;
   final ValueChanged<String>? onSubmitted;
   final InputDecoration? decoration;
-
-  bool get readOnly => onSubmitted == null;
 
   const MessageWidget.input({
     super.key,
@@ -37,19 +37,54 @@ class MessageWidget extends StatefulWidget {
        onSubmitted = null;
 
   @override
-  State<MessageWidget> createState() => _MessageWidgetState();
+  Widget build(BuildContext context) {
+    final text = this.text;
+    if (text == null) {
+      return _MessageInput(
+        focusNode: focusNode,
+        onSubmitted: onSubmitted!,
+        decoration: decoration,
+      );
+    }
+
+    // A sent message lays out and paints as a read-only text field would,
+    // in a few elements rather than a field's 44, which a switch walks.
+    final style = Theme.of(context).textTheme.bodyLarge!;
+    return InputDecorator(
+      decoration: decoration ?? const InputDecoration(),
+      isEmpty: text.isEmpty,
+      child: Text(
+        text,
+        style: style,
+        // The field's line height, as EditableText forces it, so glyphs taller
+        // than the line, as some scripts have, don't make the message taller.
+        strutStyle: StrutStyle.fromTextStyle(style, forceStrutHeight: true),
+        maxLines: 1,
+        softWrap: false,
+        overflow: TextOverflow.clip,
+      ),
+    );
+  }
 }
 
-class _MessageWidgetState extends State<MessageWidget> {
-  // Owned by the state, so a rebuild keeps what is typed.
-  late final _controller = TextEditingController(text: widget.text);
+class _MessageInput extends StatefulWidget {
+  final FocusNode? focusNode;
+  final ValueChanged<String> onSubmitted;
+  final InputDecoration? decoration;
+
+  const _MessageInput({
+    required this.focusNode,
+    required this.onSubmitted,
+    required this.decoration,
+  });
 
   @override
-  void didUpdateWidget(MessageWidget oldWidget) {
-    super.didUpdateWidget(oldWidget);
-    final text = widget.text;
-    if (text != null && text != _controller.text) _controller.text = text;
-  }
+  State<_MessageInput> createState() => _MessageInputState();
+}
+
+class _MessageInputState extends State<_MessageInput> {
+  // Owned by the state, so a rebuild keeps what is typed.
+  final _controller = TextEditingController();
 
   @override
   void dispose() {
@@ -59,7 +94,6 @@ class _MessageWidgetState extends State<MessageWidget> {
 
   @override
   Widget build(BuildContext context) => TextField(
-    readOnly: widget.readOnly,
     controller: _controller,
     focusNode: widget.focusNode,
     onSubmitted: widget.onSubmitted,
