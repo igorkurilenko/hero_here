@@ -1,6 +1,7 @@
-import 'dart:typed_data';
+import 'dart:math';
 import 'dart:ui' as ui;
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -307,6 +308,46 @@ void main() {
     expect(tester.getRect(box2).left, _slotRects[2].left + 100);
   });
 
+  for (final again in [false, true]) {
+    testWidgets('turns a hero ${again ? 'around again' : 'back'} to where the '
+        'hero it heads for moves once it turned', (tester) async {
+      final slot = ValueNotifier(0);
+      final nudge = ValueNotifier(0.0);
+      addTearDown(slot.dispose);
+      addTearDown(nudge.dispose);
+
+      await tester.pumpWidget(_SlotSwitcher(slot: slot, nudge: nudge));
+      await tester.pumpAndSettle();
+
+      slot.value = 2;
+      await _pumpSwitch(tester);
+      await tester.pump(HeroHere.defaultFlightAnimationDuration ~/ 2);
+      slot.value = 0;
+      await _pumpSwitch(tester);
+      if (again) {
+        await tester.pump(HeroHere.defaultFlightAnimationDuration ~/ 4);
+        slot.value = 2;
+        await _pumpSwitch(tester);
+      }
+
+      // The hero it heads for moves within the switcher, after it turned.
+      const frame = Duration(milliseconds: 16);
+      nudge.value = 100;
+      final shuttle = find.byKey(_shuttleKey);
+      final lefts = <double>[];
+      for (var i = 0; i < 40 && tester.any(shuttle); i++) {
+        await tester.pump(frame);
+        if (tester.any(shuttle)) lefts.add(tester.getRect(shuttle).left);
+      }
+
+      // It lands where that hero is now.
+      final box = find.byKey(ValueKey('box${again ? 2 : 0}'));
+      expect(tester.getRect(box).left, _slotRects[again ? 2 : 0].left + 100);
+      expect(lefts, isNotEmpty);
+      expect(lefts.last, closeTo(tester.getRect(box).left, 1));
+    });
+  }
+
   testWidgets('diverts a redirected hero straight from where its shuttle is', (
     tester,
   ) async {
@@ -611,6 +652,50 @@ void main() {
     expect(stepAfter, inExclusiveRange(stepBefore / 2, stepBefore * 2));
   });
 
+  for (final (edge, flipped) in [('bottom', false), ('right', true)]) {
+    testWidgets('keeps a diverted shuttle inside the switcher as it swings '
+        'toward its $edge edge', (tester) async {
+      tester.view.devicePixelRatio = 1;
+      tester.view.physicalSize = const Size(800, 600);
+      addTearDown(tester.view.reset);
+      final slot = ValueNotifier(0);
+      addTearDown(slot.dispose);
+      const size = Size(60, 60);
+
+      // Heroes near the edge. The flight along it diverts to a hero behind it
+      // and a bit nearer the edge, so it swings toward the edge.
+      Alignment along(double x, double y) =>
+          flipped ? Alignment(y, x) : Alignment(x, y);
+      await tester.pumpWidget(
+        _AlignSwitcher(
+          slot: slot,
+          redirect: HeroHereFlightRedirect.divert,
+          spots: [
+            (alignment: along(-0.7, 0.93), size: size),
+            (alignment: along(0.7, 0.93), size: size),
+            (alignment: along(-0.9, 1), size: size),
+          ],
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      slot.value = 1;
+      await _pumpSwitch(tester);
+      await tester.pump(HeroHere.defaultFlightAnimationDuration ~/ 2);
+      slot.value = 2;
+      await _pumpSwitch(tester);
+
+      final shuttle = find.byKey(_shuttleKey);
+      var farthest = 0.0;
+      while (tester.any(shuttle)) {
+        final rect = tester.getRect(shuttle);
+        farthest = max(farthest, flipped ? rect.right : rect.bottom);
+        await tester.pump(const Duration(milliseconds: 8));
+      }
+      expect(farthest, lessThanOrEqualTo(flipped ? 800 : 600));
+    });
+  }
+
   testWidgets('flies a diverted hero back straight from where its shuttle is', (
     tester,
   ) async {
@@ -791,6 +876,38 @@ void main() {
 
     expect(find.byKey(const ValueKey('a2')), findsOneWidget);
     expect(find.byKey(const ValueKey('a1')), findsNothing);
+  });
+
+  testWidgets('flies on to where the hero it flies to was when that one '
+      'mounts anew, then goes away', (tester) async {
+    final moved = ValueNotifier(false), b = ValueNotifier(0);
+    addTearDown(moved.dispose);
+    addTearDown(b.dispose);
+    const duration = HeroHere.defaultFlightAnimationDuration;
+
+    await tester.pumpWidget(_GoneSwitcher(moved: moved, b: b));
+    await tester.pumpAndSettle();
+
+    moved.value = true;
+    await _pumpSwitch(tester);
+    await tester.pump(duration ~/ 4);
+
+    // No switch: the hero the flight lands on mounts anew, then goes away.
+    b.value = 1;
+    await tester.pump();
+    b.value = 2;
+    await tester.pump();
+    final shuttle = find.byKey(_shuttleKey);
+    final gone = tester.getRect(shuttle);
+
+    await tester.pump(duration ~/ 2);
+
+    final to = _slotRects[1].center;
+    final now = tester.getRect(shuttle);
+    expect(
+      (now.center - to).distance,
+      lessThan((gone.center - to).distance / 2),
+    );
   });
 
   testWidgets('lands on a next hero that mounts anew without a switch', (
@@ -2779,21 +2896,72 @@ class _ClippedSwitcher extends StatelessWidget {
       inBoundary ? RepaintBoundary(child: child) : child;
 }
 
+/// Shows hero 'a' in the first slot of [_slotRects], or, when [moved], hero
+/// 'b' in the second. A builder below the switcher reads [b]: 0 shows 'b',
+/// 1 mounts it anew in one more widget, and 2 takes it away, none of which
+/// runs a switch. Its shuttle is a box with [_shuttleKey].
+class _GoneSwitcher extends StatelessWidget {
+  const _GoneSwitcher({required this.moved, required this.b});
+
+  final ValueNotifier<bool> moved;
+  final ValueNotifier<int> b;
+
+  @override
+  Widget build(BuildContext context) => MaterialApp(
+    home: ValueListenableBuilder(
+      valueListenable: moved,
+      builder: (context, moved, _) {
+        Widget hero(String key) => HeroHere(
+          key: ValueKey(key),
+          tag: 'hero',
+          flightShuttleBuilder: (_, _, _, _) =>
+              const SizedBox.expand(key: _shuttleKey),
+          child: const ColoredBox(color: Color(0xFF2196F3)),
+        );
+
+        return HeroHereSwitcher(
+          child: Stack(
+            children: [
+              if (!moved)
+                Positioned.fromRect(rect: _slotRects[0], child: hero('a'))
+              else
+                ValueListenableBuilder(
+                  valueListenable: b,
+                  builder: (context, b, _) => Positioned.fromRect(
+                    rect: _slotRects[1],
+                    child: switch (b) {
+                      0 => hero('b'),
+                      1 => KeyedSubtree(child: hero('b')),
+                      _ => const SizedBox(),
+                    },
+                  ),
+                ),
+            ],
+          ),
+        );
+      },
+    ),
+  );
+}
+
 /// A [_SlotSwitcher] slot that shows no hero.
 const _noSlot = -1;
 
 /// Shows one hero in the slot of [_slotRects] that [slot] picks, or none for
-/// [_noSlot]. Its shuttle is a box with [_shuttleKey], unless
-/// [shuttleBuilder] builds one.
+/// [_noSlot], [nudge] right of it, which a builder below the switcher reads.
+/// Its shuttle is a box with [_shuttleKey], unless [shuttleBuilder] builds
+/// one.
 class _SlotSwitcher extends StatelessWidget {
   const _SlotSwitcher({
     required this.slot,
+    this.nudge = const AlwaysStoppedAnimation(0.0),
     this.layoutBuilder = HeroHereSwitcher.defaultLayoutBuilder,
     this.redirect,
     this.shuttleBuilder,
   });
 
   final ValueNotifier<int> slot;
+  final ValueListenable<double> nudge;
   final HeroHereSwitcherLayoutBuilder layoutBuilder;
   final HeroHereFlightRedirect? redirect;
   final HeroHereFlightShuttleBuilder? shuttleBuilder;
@@ -2804,25 +2972,28 @@ class _SlotSwitcher extends StatelessWidget {
       valueListenable: slot,
       builder: (context, slot, _) => HeroHereSwitcher(
         layoutBuilder: layoutBuilder,
-        child: Stack(
-          children: [
-            if (slot != _noSlot)
-              Positioned.fromRect(
-                rect: _slotRects[slot],
-                child: HeroHere(
-                  key: ValueKey(slot),
-                  tag: 'hero',
-                  flightRedirect: redirect,
-                  flightShuttleBuilder:
-                      shuttleBuilder ??
-                      (_, _, _, _) => const SizedBox.expand(key: _shuttleKey),
-                  child: ColoredBox(
-                    key: ValueKey('box$slot'),
-                    color: const Color(0xFF2196F3),
+        child: ValueListenableBuilder(
+          valueListenable: nudge,
+          builder: (context, nudge, _) => Stack(
+            children: [
+              if (slot != _noSlot)
+                Positioned.fromRect(
+                  rect: _slotRects[slot].translate(nudge, 0),
+                  child: HeroHere(
+                    key: ValueKey(slot),
+                    tag: 'hero',
+                    flightRedirect: redirect,
+                    flightShuttleBuilder:
+                        shuttleBuilder ??
+                        (_, _, _, _) => const SizedBox.expand(key: _shuttleKey),
+                    child: ColoredBox(
+                      key: ValueKey('box$slot'),
+                      color: const Color(0xFF2196F3),
+                    ),
                   ),
                 ),
-              ),
-          ],
+            ],
+          ),
         ),
       ),
     ),

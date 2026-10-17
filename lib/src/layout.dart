@@ -1,0 +1,155 @@
+// Copyright 2024 Igor Kurilenko
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+part of 'hero_here.dart';
+
+/// Lays its child out with its own constraints and takes the smallest size
+/// they allow, so a layout below it, such as a flight's on each frame, lays
+/// out nothing above it.
+class _RelayoutBoundary extends SingleChildRenderObjectWidget {
+  const _RelayoutBoundary({super.child});
+
+  @override
+  _RenderRelayoutBoundary createRenderObject(BuildContext context) =>
+      _RenderRelayoutBoundary();
+}
+
+class _RenderRelayoutBoundary extends RenderProxyBox {
+  @override
+  bool get sizedByParent => true;
+
+  @override
+  Size computeDryLayout(covariant BoxConstraints constraints) =>
+      constraints.smallest;
+
+  // Its size doesn't depend on its child, so it doesn't ask its child, which
+  // a layout builder couldn't answer, such as in an IntrinsicHeight.
+  @override
+  double computeMinIntrinsicWidth(double height) => 0;
+
+  @override
+  double computeMaxIntrinsicWidth(double height) => 0;
+
+  @override
+  double computeMinIntrinsicHeight(double width) => 0;
+
+  @override
+  double computeMaxIntrinsicHeight(double width) => 0;
+
+  @override
+  double? computeDryBaseline(
+    covariant BoxConstraints constraints,
+    TextBaseline baseline,
+  ) => null;
+
+  @override
+  void performLayout() {
+    child?.layout(constraints);
+  }
+}
+
+/// A rect in the switcher's child kept from an earlier frame, with the size
+/// the child had then. When the child changes size, such as on a window
+/// resize, the rect keeps
+/// its size, and its place in the room the child has around it, as an
+/// [Align] keeps a child's: as far across that room, in proportion. So a rect
+/// at an edge stays there, and one in the middle stays in the middle. A rect
+/// outside that room, such as a hero's that was scrolled away, keeps its
+/// distance from it, so it stays outside.
+class _KeptRect {
+  final Rect rect;
+
+  /// The size of the switcher's child when the rect was kept.
+  final Size? size;
+
+  const _KeptRect(this.rect, this.size);
+
+  /// The rect, with the switcher's child of size [now].
+  Rect within(Size? now) {
+    final then = size;
+    if (then == null || now == null || now == then) return rect;
+    return Rect.fromLTWH(
+      _place(rect.left, then.width - rect.width, now.width - rect.width),
+      _place(rect.top, then.height - rect.height, now.height - rect.height),
+      rect.width,
+      rect.height,
+    );
+  }
+
+  /// Where a rect [offset] from the child's start goes along an axis, given
+  /// the room the child had around it, [room], and has now, [nowRoom].
+  static double _place(double offset, double room, double nowRoom) {
+    if (offset <= 0) return offset;
+    if (offset >= room) return nowRoom + (offset - room);
+    return offset / room * nowRoom;
+  }
+}
+
+/// Rects as the four numbers of their edges, such as the edges' speeds.
+extension _RectEdges on Rect {
+  Rect plus(Rect other) => Rect.fromLTRB(
+    left + other.left,
+    top + other.top,
+    right + other.right,
+    bottom + other.bottom,
+  );
+
+  Rect minus(Rect other) => plus(other.times(-1));
+
+  Rect times(double factor) => Rect.fromLTRB(
+    left * factor,
+    top * factor,
+    right * factor,
+    bottom * factor,
+  );
+}
+
+extension _Seconds on Duration {
+  double get seconds => inMicroseconds / Duration.microsecondsPerSecond;
+}
+
+extension _RenderBox on RenderBox {
+  /// Where this box is in [ancestor]'s space.
+  Rect? rectIn(RenderObject ancestor) {
+    if (!hasSize) return null;
+    return localToGlobal(Offset.zero, ancestor: ancestor) & size;
+  }
+}
+
+extension _BuildContext on BuildContext {
+  RenderBox? findRenderBox() => findRenderObject() as RenderBox?;
+
+  Set<_Hero> findHeroes() {
+    // ignore: prefer_collection_literals
+    final result = LinkedHashSet<_Hero>();
+
+    void findHeroes(Element element) {
+      final widget = element.widget;
+      if (widget is HeroHere && element is StatefulElement) {
+        result.add(element.state as _Hero);
+      } else if ((widget is HeroMode && !widget.enabled) ||
+          (widget is HeroHereSwitcher) ||
+          (widget is _FlightWidget)) {
+        return;
+      }
+      element.visitChildren(findHeroes);
+    }
+
+    // Unlike visitChildElements, visitChildren may run while the tree builds
+    // or lays out, such as from a layout callback.
+    (this as Element).visitChildren(findHeroes);
+
+    return result;
+  }
+}
