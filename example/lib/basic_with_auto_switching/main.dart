@@ -157,77 +157,81 @@ class _HeroHereExampleState extends State<HeroHereExample> {
         ],
       ),
     ),
-    bottomNavigationBar: BottomAppBar(
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-        children: [
-          Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              IconButton(
-                onPressed: () => paused = !paused,
-                icon: Icon(_paused ? Icons.play_arrow : Icons.pause),
-              ),
-            ],
-          ),
-          Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              IconButton(
-                onPressed: () {
-                  paused = true;
-                  curHeroType = HeroType.red;
-                },
-                icon: Icon(
-                  curHeroType == HeroType.red
-                      ? Icons.circle
-                      : Icons.radio_button_off,
+    // The buttons change on each switch, and paint for a while after a tap.
+    // In a layer of their own, they repaint without the page.
+    bottomNavigationBar: RepaintBoundary(
+      child: BottomAppBar(
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+          children: [
+            Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                IconButton(
+                  onPressed: () => paused = !paused,
+                  icon: Icon(_paused ? Icons.play_arrow : Icons.pause),
                 ),
-                color: curHeroType == HeroType.red
-                    ? Colors.red
-                    : Theme.of(context).colorScheme.secondary,
-              ),
-            ],
-          ),
-          Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              IconButton(
-                onPressed: () {
-                  paused = true;
-                  curHeroType = HeroType.green;
-                },
-                icon: Icon(
-                  curHeroType == HeroType.green
-                      ? Icons.circle
-                      : Icons.radio_button_off,
+              ],
+            ),
+            Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                IconButton(
+                  onPressed: () {
+                    paused = true;
+                    curHeroType = HeroType.red;
+                  },
+                  icon: Icon(
+                    curHeroType == HeroType.red
+                        ? Icons.circle
+                        : Icons.radio_button_off,
+                  ),
+                  color: curHeroType == HeroType.red
+                      ? Colors.red
+                      : Theme.of(context).colorScheme.secondary,
                 ),
-                color: curHeroType == HeroType.green
-                    ? Colors.green
-                    : Theme.of(context).colorScheme.secondary,
-              ),
-            ],
-          ),
-          Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              IconButton(
-                onPressed: () {
-                  paused = true;
-                  curHeroType = HeroType.blue;
-                },
-                icon: Icon(
-                  curHeroType == HeroType.blue
-                      ? Icons.circle
-                      : Icons.radio_button_off,
+              ],
+            ),
+            Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                IconButton(
+                  onPressed: () {
+                    paused = true;
+                    curHeroType = HeroType.green;
+                  },
+                  icon: Icon(
+                    curHeroType == HeroType.green
+                        ? Icons.circle
+                        : Icons.radio_button_off,
+                  ),
+                  color: curHeroType == HeroType.green
+                      ? Colors.green
+                      : Theme.of(context).colorScheme.secondary,
                 ),
-                color: curHeroType == HeroType.blue
-                    ? Colors.blue
-                    : Theme.of(context).colorScheme.secondary,
-              ),
-            ],
-          ),
-        ],
+              ],
+            ),
+            Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                IconButton(
+                  onPressed: () {
+                    paused = true;
+                    curHeroType = HeroType.blue;
+                  },
+                  icon: Icon(
+                    curHeroType == HeroType.blue
+                        ? Icons.circle
+                        : Icons.radio_button_off,
+                  ),
+                  color: curHeroType == HeroType.blue
+                      ? Colors.blue
+                      : Theme.of(context).colorScheme.secondary,
+                ),
+              ],
+            ),
+          ],
+        ),
       ),
     ),
   );
