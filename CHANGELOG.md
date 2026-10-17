@@ -1,3 +1,9 @@
+## Unreleased
+
+### Example
+
+* Repaint only the auto-switching example's bottom bar when its buttons change, such as on each switch or after a tap, rather than the whole page with it.
+
 ## 1.5.1
 
 ### Fixes

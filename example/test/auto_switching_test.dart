@@ -1,5 +1,6 @@
 import 'package:example/basic_with_auto_switching/main.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:hero_here/hero_here.dart';
 
@@ -40,5 +41,37 @@ void main() {
     expect({
       for (final center in centers) center.dy,
     }, hasLength(greaterThan(1)));
+  });
+
+  testWidgets('repaints nothing in its app bar as its bottom bar changes', (
+    tester,
+  ) async {
+    await tester.pumpWidget(const MaterialApp(home: HeroHereExample()));
+    await tester.pumpAndSettle();
+
+    // Count the paints of what's in the app bar.
+    final appBar = tester.renderObject(find.byType(AppBar));
+    var appBarPaints = 0;
+    debugOnProfilePaint = (object) {
+      for (RenderObject? o = object; o != null; o = o.parent) {
+        if (identical(o, appBar)) {
+          appBarPaints++;
+          return;
+        }
+      }
+    };
+    try {
+      // Show the green hero with its button, so the buttons change.
+      final buttons = find.descendant(
+        of: find.byType(BottomAppBar),
+        matching: find.byType(IconButton),
+      );
+      await tester.tap(buttons.at(1 + HeroType.green.index));
+      await tester.pumpAndSettle();
+    } finally {
+      debugOnProfilePaint = null;
+    }
+
+    expect(appBarPaints, 0);
   });
 }
