@@ -1,7 +1,7 @@
 import 'dart:math';
-import 'dart:typed_data';
 import 'dart:ui' as ui;
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -307,6 +307,46 @@ void main() {
     expect(lefts.last, closeTo(tester.getRect(box2).left, 1));
     expect(tester.getRect(box2).left, _slotRects[2].left + 100);
   });
+
+  for (final again in [false, true]) {
+    testWidgets('turns a hero ${again ? 'around again' : 'back'} to where the '
+        'hero it heads for moves once it turned', (tester) async {
+      final slot = ValueNotifier(0);
+      final nudge = ValueNotifier(0.0);
+      addTearDown(slot.dispose);
+      addTearDown(nudge.dispose);
+
+      await tester.pumpWidget(_SlotSwitcher(slot: slot, nudge: nudge));
+      await tester.pumpAndSettle();
+
+      slot.value = 2;
+      await _pumpSwitch(tester);
+      await tester.pump(HeroHere.defaultFlightAnimationDuration ~/ 2);
+      slot.value = 0;
+      await _pumpSwitch(tester);
+      if (again) {
+        await tester.pump(HeroHere.defaultFlightAnimationDuration ~/ 4);
+        slot.value = 2;
+        await _pumpSwitch(tester);
+      }
+
+      // The hero it heads for moves within the switcher, after it turned.
+      const frame = Duration(milliseconds: 16);
+      nudge.value = 100;
+      final shuttle = find.byKey(_shuttleKey);
+      final lefts = <double>[];
+      for (var i = 0; i < 40 && tester.any(shuttle); i++) {
+        await tester.pump(frame);
+        if (tester.any(shuttle)) lefts.add(tester.getRect(shuttle).left);
+      }
+
+      // It lands where that hero is now.
+      final box = find.byKey(ValueKey('box${again ? 2 : 0}'));
+      expect(tester.getRect(box).left, _slotRects[again ? 2 : 0].left + 100);
+      expect(lefts, isNotEmpty);
+      expect(lefts.last, closeTo(tester.getRect(box).left, 1));
+    });
+  }
 
   testWidgets('diverts a redirected hero straight from where its shuttle is', (
     tester,
@@ -2908,17 +2948,20 @@ class _GoneSwitcher extends StatelessWidget {
 const _noSlot = -1;
 
 /// Shows one hero in the slot of [_slotRects] that [slot] picks, or none for
-/// [_noSlot]. Its shuttle is a box with [_shuttleKey], unless
-/// [shuttleBuilder] builds one.
+/// [_noSlot], [nudge] right of it, which a builder below the switcher reads.
+/// Its shuttle is a box with [_shuttleKey], unless [shuttleBuilder] builds
+/// one.
 class _SlotSwitcher extends StatelessWidget {
   const _SlotSwitcher({
     required this.slot,
+    this.nudge = const AlwaysStoppedAnimation(0.0),
     this.layoutBuilder = HeroHereSwitcher.defaultLayoutBuilder,
     this.redirect,
     this.shuttleBuilder,
   });
 
   final ValueNotifier<int> slot;
+  final ValueListenable<double> nudge;
   final HeroHereSwitcherLayoutBuilder layoutBuilder;
   final HeroHereFlightRedirect? redirect;
   final HeroHereFlightShuttleBuilder? shuttleBuilder;
@@ -2929,25 +2972,28 @@ class _SlotSwitcher extends StatelessWidget {
       valueListenable: slot,
       builder: (context, slot, _) => HeroHereSwitcher(
         layoutBuilder: layoutBuilder,
-        child: Stack(
-          children: [
-            if (slot != _noSlot)
-              Positioned.fromRect(
-                rect: _slotRects[slot],
-                child: HeroHere(
-                  key: ValueKey(slot),
-                  tag: 'hero',
-                  flightRedirect: redirect,
-                  flightShuttleBuilder:
-                      shuttleBuilder ??
-                      (_, _, _, _) => const SizedBox.expand(key: _shuttleKey),
-                  child: ColoredBox(
-                    key: ValueKey('box$slot'),
-                    color: const Color(0xFF2196F3),
+        child: ValueListenableBuilder(
+          valueListenable: nudge,
+          builder: (context, nudge, _) => Stack(
+            children: [
+              if (slot != _noSlot)
+                Positioned.fromRect(
+                  rect: _slotRects[slot].translate(nudge, 0),
+                  child: HeroHere(
+                    key: ValueKey(slot),
+                    tag: 'hero',
+                    flightRedirect: redirect,
+                    flightShuttleBuilder:
+                        shuttleBuilder ??
+                        (_, _, _, _) => const SizedBox.expand(key: _shuttleKey),
+                    child: ColoredBox(
+                      key: ValueKey('box$slot'),
+                      color: const Color(0xFF2196F3),
+                    ),
                   ),
                 ),
-              ),
-          ],
+            ],
+          ),
         ),
       ),
     ),
