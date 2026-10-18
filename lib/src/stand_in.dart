@@ -19,18 +19,24 @@ part of 'hero_here.dart';
 /// before the switch, so the hero isn't built or drawn again. The flight then
 /// starts where the stand-in is.
 class _StandIn extends StatelessWidget {
+  final _Switcher switcher;
   final _Hero hero;
   final _KeptLook? look;
 
-  const _StandIn({super.key, required this.hero, required this.look});
+  const _StandIn({
+    super.key,
+    required this.switcher,
+    required this.hero,
+    required this.look,
+  });
 
   // Like a flight's, its place is worked out as it lays out, by the size the
   // switcher's child has on this frame.
   @override
   Widget build(BuildContext context) => LayoutBuilder(
     builder: (context, _) => _ShuttleRect(
-      rect: hero.placeholderRect ?? Rect.zero,
-      space: () => hero._switcher?.childBox,
+      rect: hero.placeholderRectIn(switcher) ?? Rect.zero,
+      space: () => switcher.childBox,
       // A hero that stays shows itself. Whether it stays is known by the
       // time the frame paints, once the new child is built and laid out.
       child: _KeptLayer(look: look, shows: () => !hero._active),

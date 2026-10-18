@@ -112,6 +112,7 @@ class _HeroHereSwitcherState extends State<HeroHereSwitcher>
           for (final hero in _switchingState.standIns)
             _StandIn(
               key: ValueKey((_StandIn, hero)),
+              switcher: this,
               hero: hero,
               look: _switchingState.standInLook(hero),
             ),
@@ -132,9 +133,10 @@ class _HeroScope extends InheritedWidget {
 
   final _Switcher? switcher;
 
-  /// The switcher of the hero with [context], if any.
+  /// The switcher of the hero with [context], if any, which the hero
+  /// depends on, so it learns of a global key moving it into another one.
   static _Switcher? of(BuildContext context) =>
-      context.getInheritedWidgetOfExactType<_HeroScope>()?.switcher;
+      context.dependOnInheritedWidgetOfExactType<_HeroScope>()?.switcher;
 
   @override
   bool updateShouldNotify(_HeroScope oldWidget) =>
@@ -178,7 +180,7 @@ abstract class _SwitchingState {
 
   void notifyWillSwitch(Iterable<_Hero> heroes) {
     for (final hero in heroes) {
-      hero.willSwitch();
+      hero.willSwitch(switcher);
     }
   }
 }

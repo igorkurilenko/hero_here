@@ -187,6 +187,184 @@ void main() {
     );
   });
 
+  testWidgets('flies from where a hero is once a global key moves it into '
+      'another switcher', (tester) async {
+    final moving = GlobalKey();
+    // 0: the hero in the left switcher; 1: moved into the right one, at the
+    // same place in it; 2: the right one swaps it for another hero.
+    Widget app(int stage) => MaterialApp(
+      home: Row(
+        children: [
+          for (final right in [false, true])
+            SizedBox(
+              width: 400,
+              height: 600,
+              child: HeroHereSwitcher(
+                child: Stack(
+                  children: [
+                    if (stage == (right ? 1 : 0))
+                      _heroAt(moving, _slotRects[0]),
+                    if (right && stage == 2)
+                      _heroAt(const ValueKey('other'), _slotRects[1]),
+                  ],
+                ),
+              ),
+            ),
+        ],
+      ),
+    );
+
+    await tester.pumpWidget(app(0));
+    await tester.pumpAndSettle();
+    await tester.pumpWidget(app(1));
+    await tester.pumpAndSettle();
+
+    await tester.pumpWidget(app(2));
+    await _pumpSwitch(tester);
+
+    expect(
+      tester.getRect(find.byKey(_shuttleKey)),
+      _slotRects[0].translate(400, 0),
+    );
+  });
+
+  testWidgets('hides a hero that a global key moves into a switcher while its '
+      'tag flies there, until the flight lands', (tester) async {
+    final moving = GlobalKey();
+    final slot = ValueNotifier(0);
+    final movedRight = ValueNotifier(false);
+    addTearDown(slot.dispose);
+    addTearDown(movedRight.dispose);
+    const movedRect = Rect.fromLTWH(100, 400, 60, 60);
+    // Moves the hero below both switchers, so neither runs a switch.
+    Widget moved({required bool right}) => ValueListenableBuilder(
+      valueListenable: movedRight,
+      builder: (context, movedRight, _) => Stack(
+        children: [if (movedRight == right) _heroAt(moving, movedRect)],
+      ),
+    );
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Row(
+          children: [
+            SizedBox(
+              width: 400,
+              height: 600,
+              child: HeroHereSwitcher(child: moved(right: false)),
+            ),
+            SizedBox(
+              width: 400,
+              height: 600,
+              child: ValueListenableBuilder(
+                valueListenable: slot,
+                builder: (context, slot, _) => HeroHereSwitcher(
+                  child: Stack(
+                    children: [
+                      _heroAt(ValueKey(slot), _slotRects[slot]),
+                      Positioned.fill(child: moved(right: true)),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    final movedBox = _boxOf(moving);
+
+    slot.value = 1;
+    await _pumpSwitch(tester);
+    await tester.pump(HeroHere.defaultFlightAnimationDuration ~/ 4);
+    movedRight.value = true;
+    await tester.pump();
+
+    // As a hero that mounts there while its tag flies.
+    expect(movedBox, findsNothing);
+    expect(_painted(tester, _boxOf(moving, skipOffstage: false)), isFalse);
+
+    await tester.pumpAndSettle();
+    expect(tester.getRect(movedBox), movedRect.translate(400, 0));
+  });
+
+  testWidgets('flies on to the hero it flies to once a global key moves that '
+      'one into another switcher', (tester) async {
+    final moving = GlobalKey();
+    final stage = ValueNotifier(0);
+    final movedRight = ValueNotifier(false);
+    addTearDown(stage.dispose);
+    addTearDown(movedRight.dispose);
+    const movedRect = Rect.fromLTWH(100, 400, 60, 60);
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Row(
+          children: [
+            SizedBox(
+              width: 400,
+              height: 600,
+              child: ValueListenableBuilder(
+                valueListenable: stage,
+                builder: (context, stage, _) => HeroHereSwitcher(
+                  child: Stack(
+                    children: [
+                      if (stage == 0)
+                        _heroAt(const ValueKey('left'), _slotRects[0]),
+                      // Moves the hero below both switchers, so neither
+                      // runs a switch.
+                      ValueListenableBuilder(
+                        valueListenable: movedRight,
+                        builder: (context, movedRight, _) => Stack(
+                          children: [
+                            if (stage == 1 && !movedRight)
+                              _heroAt(moving, _slotRects[1]),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+            SizedBox(
+              width: 400,
+              height: 600,
+              child: HeroHereSwitcher(
+                child: ValueListenableBuilder(
+                  valueListenable: movedRight,
+                  builder: (context, movedRight, _) => Stack(
+                    children: [if (movedRight) _heroAt(moving, movedRect)],
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    stage.value = 1;
+    await _pumpSwitch(tester);
+    await tester.pump(HeroHere.defaultFlightAnimationDuration ~/ 4);
+    movedRight.value = true;
+    await tester.pump();
+    await tester.pump(HeroHere.defaultFlightAnimationDuration * 0.6);
+
+    // Nearly there: where the hero is now, in the right switcher, rather
+    // than as far off as the switchers are apart.
+    final target = movedRect.translate(400, 0);
+    expect(
+      (tester.getRect(find.byKey(_shuttleKey)).center - target.center).distance,
+      lessThan(60),
+    );
+
+    await tester.pumpAndSettle();
+    expect(tester.getRect(_boxOf(moving)), target);
+  });
+
   testWidgets('flies a redirected hero on from where its shuttle is', (
     tester,
   ) async {
@@ -3760,3 +3938,24 @@ class _RenderMeasureCounter extends RenderProxyBox {
     super.applyPaintTransform(child, transform);
   }
 }
+
+/// A hero with [key] at [rect] in a stack, whose shuttle is a box with
+/// [_shuttleKey]. [_boxOf] finds its child.
+Widget _heroAt(Key key, Rect rect) => Positioned.fromRect(
+  rect: rect,
+  child: HeroHere(
+    key: key,
+    tag: 'hero',
+    flightShuttleBuilder: (_, _, _, _) =>
+        const SizedBox.expand(key: _shuttleKey),
+    child: const ColoredBox(color: Color(0xFF2196F3)),
+  ),
+);
+
+/// The child of the hero with [key] from [_heroAt], while it shows, or also
+/// while it hides unless [skipOffstage].
+Finder _boxOf(Key key, {bool skipOffstage = true}) => find.descendant(
+  of: find.byKey(key, skipOffstage: skipOffstage),
+  matching: find.byType(ColoredBox, skipOffstage: skipOffstage),
+  skipOffstage: skipOffstage,
+);
