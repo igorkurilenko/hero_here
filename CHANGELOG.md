@@ -2,6 +2,7 @@
 
 ### Example
 
+* Add an example whose photo cards flip over as they fly open on a bouncy spring, and back: `example/lib/flip_card_hero/`. Its heroes drive their flights with a `SpringSimulation` on an unbounded controller, so a card swings past its place and back, and a card closed mid-flight carries on a little before it turns back. Their shuttle builder turns the card about its upright axis. The card's back is laid out at the open card's size and scaled to the shuttle's, so its words keep their lines as it grows and shrinks in flight.
 * Decode the details example's grid thumbnails for the cells the device's display shows, rather than for the grid's largest cells. On a phone held upright the cells are smaller, so the 14 thumbnails take about 55 MiB at 3× rather than 111 MiB, within the image cache's 100 MiB, and scrolling no longer evicts and decodes them again. The size follows the wider of the window and the display, so a window's resize still decodes nothing anew, and a phone on its side still gets sharp thumbnails.
 
 ## 2.0.0
