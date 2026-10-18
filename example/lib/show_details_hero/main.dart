@@ -108,7 +108,7 @@ class _ShowDetailsExampleState extends State<ShowDetailsExample> {
                     clipBehavior: Clip.none,
                     padding:
                         centerColumnPadding(constraints.maxWidth) +
-                        const EdgeInsets.all(8),
+                        kGridViewPadding,
                     gridDelegate: kGridViewDelegate,
                     itemCount: kEightThousanders.length,
                     itemBuilder: _buildGridItem,

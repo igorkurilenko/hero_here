@@ -1737,6 +1737,56 @@ void main() {
     expect(shuttleRect.width, closeTo(heroRect.width, 2));
   });
 
+  testWidgets('shows the hero a flight leaves when the hero it flies to goes '
+      'away mid-flight', (tester) async {
+    final split = ValueNotifier(false), bGone = ValueNotifier(false);
+    addTearDown(split.dispose);
+    addTearDown(bGone.dispose);
+
+    await tester.pumpWidget(_LeftSwitcher(split: split, bGone: bGone));
+    await tester.pumpAndSettle();
+
+    split.value = true;
+    await _pumpSwitch(tester);
+    await tester.pump(HeroHere.defaultFlightAnimationDuration ~/ 2);
+    expect(find.byKey(_shuttleKey), findsOneWidget);
+
+    // 'b' goes away below the switcher, so no switch says which hero shows.
+    bGone.value = true;
+    await tester.pumpAndSettle();
+
+    expect(find.byKey(_shuttleKey), findsNothing);
+    final a = find.byKey(const ValueKey('box-a'), skipOffstage: false);
+    expect(_paintedInPlace(tester, a), isTrue);
+  });
+
+  testWidgets('shows the hero a flight left when the hero it turns back to '
+      'goes away mid-flight', (tester) async {
+    final order = ValueNotifier(0), aGone = ValueNotifier(false);
+    addTearDown(order.dispose);
+    addTearDown(aGone.dispose);
+
+    await tester.pumpWidget(_TurnSwitcher(order: order, aGone: aGone));
+    await tester.pumpAndSettle();
+
+    order.value = 1;
+    await _pumpSwitch(tester);
+    await tester.pump(HeroHere.defaultFlightAnimationDuration ~/ 2);
+
+    // 'a' is the last hero of the tag again, so the flight turns back to it.
+    order.value = 2;
+    await _pumpSwitch(tester);
+    expect(find.byKey(_shuttleKey), findsOneWidget);
+
+    // 'a' goes away below the switcher, so no switch says which hero shows.
+    aGone.value = true;
+    await tester.pumpAndSettle();
+
+    expect(find.byKey(_shuttleKey), findsNothing);
+    final b = find.byKey(const ValueKey('box-b'), skipOffstage: false);
+    expect(_paintedInPlace(tester, b), isTrue);
+  });
+
   testWidgets('flies on when a page view moves the page of the hero it '
       'flies to', (tester) async {
     final inPage = ValueNotifier(false);
@@ -3107,6 +3157,101 @@ class _StaySwitcher extends StatelessWidget {
                 Positioned.fromRect(rect: _slotRects[1], child: hero('b')),
             ],
           ),
+        );
+      },
+    ),
+  );
+}
+
+/// Shows hero 'a' in the first slot of [_slotRects], and, when [split], hero
+/// 'b' with the same tag in the second, so 'a' flies to 'b' and stays,
+/// hidden. A builder below the switcher reads [bGone], which takes 'b' away
+/// without a switch. Its shuttle is a box with [_shuttleKey].
+class _LeftSwitcher extends StatelessWidget {
+  const _LeftSwitcher({required this.split, required this.bGone});
+
+  final ValueNotifier<bool> split;
+  final ValueNotifier<bool> bGone;
+
+  @override
+  Widget build(BuildContext context) => MaterialApp(
+    home: ValueListenableBuilder(
+      valueListenable: split,
+      builder: (context, split, _) {
+        Widget hero(String key) => HeroHere(
+          key: ValueKey(key),
+          tag: 'hero',
+          flightShuttleBuilder: (_, _, _, _) =>
+              const SizedBox.expand(key: _shuttleKey),
+          child: ColoredBox(
+            key: ValueKey('box-$key'),
+            color: const Color(0xFF2196F3),
+          ),
+        );
+
+        return HeroHereSwitcher(
+          child: Stack(
+            children: [
+              Positioned.fromRect(rect: _slotRects[0], child: hero('a')),
+              if (split)
+                ValueListenableBuilder(
+                  valueListenable: bGone,
+                  builder: (context, bGone, _) => Positioned.fromRect(
+                    rect: _slotRects[1],
+                    child: bGone ? const SizedBox() : hero('b'),
+                  ),
+                ),
+            ],
+          ),
+        );
+      },
+    ),
+  );
+}
+
+/// Shows hero 'a' in the first slot of [_slotRects], and, from [order] 1,
+/// hero 'b' with the same tag in the second, after 'a', so 'a' flies to 'b'
+/// and stays, hidden. [order] 2 puts 'b' before 'a', so 'a' is the last hero
+/// of the tag again. A builder below the switcher reads [aGone], which takes
+/// 'a' away without a switch. Its shuttle is a box with [_shuttleKey].
+class _TurnSwitcher extends StatelessWidget {
+  const _TurnSwitcher({required this.order, required this.aGone});
+
+  final ValueNotifier<int> order;
+  final ValueNotifier<bool> aGone;
+
+  @override
+  Widget build(BuildContext context) => MaterialApp(
+    home: ValueListenableBuilder(
+      valueListenable: order,
+      builder: (context, order, _) {
+        Widget hero(String key) => HeroHere(
+          key: ValueKey(key),
+          tag: 'hero',
+          flightShuttleBuilder: (_, _, _, _) =>
+              const SizedBox.expand(key: _shuttleKey),
+          child: ColoredBox(
+            key: ValueKey('box-$key'),
+            color: const Color(0xFF2196F3),
+          ),
+        );
+        final a = Positioned.fromRect(
+          key: const ValueKey('slot-a'),
+          rect: _slotRects[0],
+          child: ValueListenableBuilder(
+            valueListenable: aGone,
+            builder: (context, aGone, _) =>
+                aGone ? const SizedBox() : hero('a'),
+          ),
+        );
+        final b = Positioned.fromRect(
+          key: const ValueKey('slot-b'),
+          rect: _slotRects[1],
+          child: hero('b'),
+        );
+
+        return HeroHereSwitcher(
+          child: Stack(children: [if (order == 2) b, a, if (order == 1) b]),
         );
       },
     ),
