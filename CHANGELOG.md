@@ -1,3 +1,9 @@
+## Unreleased
+
+### Example
+
+* Add a benchmark of the examples' frame times on a device. `integration_test/perf_test.dart` opens and closes the details, sends chat messages and switches heroes mid-flight, and `test_driver/perf_driver.dart` prints the build and raster times of each. The example's README says how to run it.
+
 ## 1.5.6
 
 ### Performance

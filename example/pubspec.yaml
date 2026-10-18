@@ -16,6 +16,9 @@ dependencies:
 dev_dependencies:
   flutter_test:
     sdk: flutter
+  # For the frame times on a device: integration_test/perf_test.dart.
+  integration_test:
+    sdk: flutter
   flutter_lints: ^6.0.0
 
 flutter:
