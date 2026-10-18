@@ -1,6 +1,7 @@
 import 'package:example/show_details_hero/eight_thousander_details_hero.dart';
 import 'package:example/show_details_hero/main.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:hero_here/hero_here.dart';
 
@@ -52,7 +53,7 @@ void main() {
     expect(find.byIcon(Icons.chevron_left), findsOneWidget);
   });
 
-  testWidgets('drags the details without rebuilding their text and image', (
+  testWidgets('drags the details without rebuilding their image', (
     tester,
   ) async {
     // Tall enough to build the title and the description.
@@ -65,6 +66,17 @@ void main() {
     await tester.pumpAndSettle();
 
     final imageWidth = tester.getSize(find.byType(AspectRatio)).width;
+    // The alpha of the title's and the description's color.
+    final texts = find.descendant(
+      of: find.byType(ListView),
+      matching: find.byType(RichText),
+    );
+    List<double> alphas() => [
+      for (final text in tester.renderObjectList<RenderParagraph>(texts))
+        text.text.style!.color!.a,
+    ];
+    final opaque = alphas();
+    expect(opaque, hasLength(2));
     final gesture = await tester.startGesture(
       tester.getCenter(find.byType(AspectRatio)),
     );
@@ -74,7 +86,7 @@ void main() {
     // Pull the details down past their top, slowly enough not to close.
     var rebuilds = 0;
     debugOnRebuildDirtyWidget = (element, _) {
-      if (element.widget is Text || element.widget is Image) rebuilds++;
+      if (element.widget is Image) rebuilds++;
     };
     for (var i = 0; i < 10; i++) {
       await gesture.moveBy(const Offset(0, 2));
@@ -88,18 +100,42 @@ void main() {
       tester.getSize(find.byType(AspectRatio)).width,
       lessThan(imageWidth),
     );
-    final opacities = find.descendant(
-      of: find.byType(ListView),
-      matching: find.byType(Opacity),
-    );
-    expect(opacities, findsNWidgets(2));
-    for (final opacity in tester.widgetList<Opacity>(opacities)) {
-      expect(opacity.opacity, lessThan(1));
+    final faded = alphas();
+    for (var i = 0; i < opaque.length; i++) {
+      expect(faded[i], lessThan(opaque[i]));
     }
 
     await gesture.up();
     await tester.pumpAndSettle();
   }, variant: TargetPlatformVariant.only(TargetPlatform.iOS));
+
+  testWidgets('paints the open details\' text without opacity layers', (
+    tester,
+  ) async {
+    // Tall enough to build the title and the description.
+    tester.view.physicalSize = const Size(2400, 4800);
+    addTearDown(tester.view.resetPhysicalSize);
+
+    await tester.pumpWidget(const MaterialApp(home: ShowDetailsExample()));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('K2'));
+    await tester.pumpAndSettle();
+
+    // On the web each opacity layer paints offscreen, even when opaque.
+    var opacityLayers = 0;
+    void visit(RenderObject object) {
+      if (object.debugLayer is OpacityLayer) opacityLayers++;
+      object.visitChildren(visit);
+    }
+
+    final details = find.byType(EightThousanderDetailsHero);
+    visit(tester.renderObject(details));
+    expect(
+      find.descendant(of: details, matching: find.text('K2')),
+      findsOneWidget,
+    );
+    expect(opacityLayers, 0);
+  });
 
   testWidgets('closes the details when flung down', (tester) async {
     // Tall enough to build the title and the description, so they fly too.

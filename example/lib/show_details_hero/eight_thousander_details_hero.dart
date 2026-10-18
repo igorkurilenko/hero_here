@@ -121,22 +121,19 @@ class _EightThousanderDetailsHeroState
             ),
           ),
         ),
+        // The text fades by its color, so a drag builds it anew.
         Padding(
           padding: const EdgeInsets.all(16.0),
-          child: _buildOnDrag(
-            Text(widget.eightThousander.name, style: titleStyle),
-            _buildTitleHero,
+          child: ValueListenableBuilder(
+            valueListenable: _factorToClose,
+            builder: (context, _, _) => _buildTitleHero(),
           ),
         ),
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 16),
-          child: _buildOnDrag(
-            Text(
-              widget.eightThousander.description,
-              softWrap: true,
-              maxLines: null,
-            ),
-            _buildDescriptionHero,
+          child: ValueListenableBuilder(
+            valueListenable: _factorToClose,
+            builder: (context, _, _) => _buildDescriptionHero(),
           ),
         ),
         const SizedBox(height: 32),
@@ -166,21 +163,35 @@ class _EightThousanderDetailsHeroState
     child: image,
   );
 
-  HeroHere _buildTitleHero(Widget title) => HeroHere(
+  HeroHere _buildTitleHero() => HeroHere(
     key: ValueKey('$kDetailsHeroKeyPrefix$kTitleHeroTagPrefix$tag'),
     tag: '$kTitleHeroTagPrefix$tag',
     rectTweenFactory: _createTitleOrDescriptionHeroRectTween,
     flightShuttleBuilder: _buildTitleOrDescriptionHeroFlightShuttle,
-    child: Opacity(opacity: titleOrDescriptionOpacity, child: title),
+    child: Text(
+      widget.eightThousander.name,
+      style: titleStyle.copyWith(color: _faded(titleStyle.color)),
+    ),
   );
 
-  HeroHere _buildDescriptionHero(Widget description) => HeroHere(
+  HeroHere _buildDescriptionHero() => HeroHere(
     key: ValueKey('$kDetailsHeroKeyPrefix$kDescriptionHeroTagPrefix$tag'),
     tag: '$kDescriptionHeroTagPrefix$tag',
     rectTweenFactory: _createTitleOrDescriptionHeroRectTween,
     flightShuttleBuilder: _buildTitleOrDescriptionHeroFlightShuttle,
-    child: Opacity(opacity: titleOrDescriptionOpacity, child: description),
+    child: Text(
+      widget.eightThousander.description,
+      softWrap: true,
+      maxLines: null,
+      style: TextStyle(color: _faded(DefaultTextStyle.of(context).style.color)),
+    ),
   );
+
+  /// [color] faded as a drag closes the details. Text faded by its color
+  /// paints without the offscreen layer an [Opacity] would take, which on the
+  /// web it takes even when opaque.
+  Color? _faded(Color? color) =>
+      color?.withValues(alpha: color.a * titleOrDescriptionOpacity);
 
   Widget _buildImageHeroFlightShuttle(
     BuildContext flightContext,

@@ -1,3 +1,13 @@
+## 1.5.3
+
+### Fixes
+
+* Don't crash when a flight measures a hero that a sliver list has just moved to a new index, as a `PageView` or `ListView` with `findChildIndexCallback` does when an item before it goes. Until the sliver lays the hero out again, the flight takes the hero as nowhere, as it does an inactive one, and flies to where it was.
+
+### Example
+
+* Fade the details' title and description by their color as a drag closes them, rather than with `Opacity`. On the web an opacity layer paints offscreen even when opaque, so the open details took two offscreen passes on every frame. A drag now builds the two texts anew on each tick.
+
 ## 1.5.2
 
 ### Example
