@@ -182,6 +182,128 @@ void main() {
       },
     );
   }
+
+  testWidgets('moves the input above the keyboard without running a switch', (
+    tester,
+  ) async {
+    await tester.pumpWidget(const MaterialApp(home: HeroHereExample()));
+    await tester.pumpAndSettle();
+    addTearDown(tester.view.resetViewInsets);
+    final screenHeight =
+        tester.view.physicalSize.height / tester.view.devicePixelRatio;
+
+    var switcherBuilds = 0;
+    debugOnRebuildDirtyWidget = (element, _) {
+      if (element.widget is HeroHereSwitcher) switcherBuilds++;
+    };
+    try {
+      // The keyboard slides up over a few frames.
+      for (final keyboard in [100.0, 200.0, 300.0]) {
+        _showKeyboard(tester, keyboard);
+        await tester.pump();
+        expect(
+          tester.getRect(_input).bottom,
+          lessThanOrEqualTo(screenHeight - keyboard),
+        );
+      }
+    } finally {
+      debugOnRebuildDirtyWidget = null;
+    }
+
+    expect(switcherBuilds, 0);
+  });
+
+  testWidgets('keeps the newest message in view as the keyboard opens', (
+    tester,
+  ) async {
+    await tester.pumpWidget(const MaterialApp(home: HeroHereExample()));
+    await _sendMessages(tester, 15);
+    addTearDown(tester.view.resetViewInsets);
+    final newest = find.descendant(
+      of: find.byType(ListView),
+      matching: find.text('Message 14'),
+    );
+
+    for (final keyboard in [100.0, 200.0, 300.0]) {
+      _showKeyboard(tester, keyboard);
+      await tester.pump();
+      expect(
+        tester.getRect(newest).bottom,
+        lessThanOrEqualTo(tester.getRect(_input).top),
+      );
+    }
+  });
+
+  testWidgets('scrolls to a sent message as it flies, rather than jumping', (
+    tester,
+  ) async {
+    await tester.pumpWidget(const MaterialApp(home: HeroHereExample()));
+    await _sendMessages(tester, 15);
+    final previous = find.descendant(
+      of: find.byType(ListView),
+      matching: find.text('Message 14'),
+    );
+    final before = tester.getRect(previous).top;
+
+    await tester.enterText(_input, 'Message 15');
+    await tester.testTextInput.receiveAction(TextInputAction.done);
+    await tester.pump();
+    await tester.pump();
+    expect(tester.getRect(previous).top, before);
+
+    // The scroll starts after the frame of the send, as the flight does.
+    await tester.pump();
+    await tester.pump(HeroHere.defaultFlightAnimationDuration ~/ 2);
+    final halfway = tester.getRect(previous).top;
+    expect(halfway, lessThan(before));
+
+    await tester.pumpAndSettle();
+    expect(tester.getRect(previous).top, lessThan(halfway));
+  });
+
+  testWidgets('ends the list at the input on a screen with a home indicator', (
+    tester,
+  ) async {
+    // How far the newest message ends above the input.
+    Future<double> gap() async {
+      await tester.pumpWidget(
+        MaterialApp(key: UniqueKey(), home: const HeroHereExample()),
+      );
+      await _sendMessages(tester, 15);
+      final newest = find.descendant(
+        of: find.byType(ListView),
+        matching: find.text('Message 14'),
+      );
+      return tester.getRect(_input).top - tester.getRect(newest).bottom;
+    }
+
+    final withoutIndicator = await gap();
+    tester.view.padding = FakeViewPadding(
+      bottom: 34 * tester.view.devicePixelRatio,
+    );
+    addTearDown(tester.view.resetPadding);
+
+    expect(await gap(), withoutIndicator);
+  });
+
+  testWidgets('keeps the messages in place as the keyboard opens while the '
+      'list shows older ones', (tester) async {
+    await tester.pumpWidget(const MaterialApp(home: HeroHereExample()));
+    await _sendMessages(tester, 15);
+    addTearDown(tester.view.resetViewInsets);
+    await tester.drag(find.byType(ListView), const Offset(0, 300));
+    await tester.pumpAndSettle();
+    final older = find.descendant(
+      of: find.byType(ListView),
+      matching: find.text('Message 5'),
+    );
+    final before = tester.getRect(older).top;
+
+    _showKeyboard(tester, 200);
+    await tester.pumpAndSettle();
+
+    expect(tester.getRect(older).top, before);
+  });
 }
 
 Future<Uint8List> _pixelsOf(WidgetTester tester, Finder boundary) async {
@@ -195,4 +317,19 @@ Future<Uint8List> _pixelsOf(WidgetTester tester, Finder boundary) async {
       image.dispose();
     }
   }))!;
+}
+
+/// Shows a keyboard [height] logical pixels tall over the test's view.
+void _showKeyboard(WidgetTester tester, double height) =>
+    tester.view.viewInsets = FakeViewPadding(
+      bottom: height * tester.view.devicePixelRatio,
+    );
+
+/// Sends [count] messages, "Message 0" first, and waits for them to land.
+Future<void> _sendMessages(WidgetTester tester, int count) async {
+  for (var i = 0; i < count; i++) {
+    await tester.enterText(_input, 'Message $i');
+    await tester.testTextInput.receiveAction(TextInputAction.done);
+    await tester.pumpAndSettle();
+  }
 }
