@@ -57,20 +57,36 @@ class _HeroHereExampleState extends State<HeroHereExample> {
   @override
   Widget build(BuildContext context) => HeroHereSwitcher(
     child: Scaffold(
-      extendBody: true,
       extendBodyBehindAppBar: true,
       appBar: AppBar(forceMaterialTransparency: true),
-      body: ListView.builder(
-        controller: _scrollController,
-        itemCount: _messages.length,
-        itemBuilder: (context, index) => Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 32),
-          child: _buildMessage(_messages[index]),
+      // The scaffold shrinks its body above the keyboard, so the input rides
+      // on the keyboard. It reads the keyboard's height below the switcher, so
+      // the keyboard sliding in doesn't rebuild the switcher and run a switch.
+      body: Builder(
+        builder: (context) => Column(
+          children: [
+            Expanded(
+              // The input below the list keeps it off the screen's bottom edge.
+              child: MediaQuery.removePadding(
+                context: context,
+                removeBottom: true,
+                child: ListView.builder(
+                  controller: _scrollController,
+                  physics: const _KeepNewestInView(),
+                  itemCount: _messages.length,
+                  itemBuilder: (context, index) => Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 32),
+                    child: _buildMessage(_messages[index]),
+                  ),
+                ),
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 32),
+              child: _buildMessageInput(),
+            ),
+          ],
         ),
-      ),
-      bottomNavigationBar: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 32),
-        child: _buildMessageInput(),
       ),
     ),
   );
@@ -148,6 +164,36 @@ class _HeroHereExampleState extends State<HeroHereExample> {
     duration: HeroHere.defaultFlightAnimationDuration,
     curve: HeroHere.defaultFlightAnimationCurve,
   );
+}
+
+/// Keeps a list that shows its newest message showing it when its viewport
+/// changes size, as when the keyboard opens or closes. A list scrolled back to
+/// older messages stays where it is.
+class _KeepNewestInView extends ScrollPhysics {
+  const _KeepNewestInView({super.parent});
+
+  @override
+  _KeepNewestInView applyTo(ScrollPhysics? ancestor) =>
+      _KeepNewestInView(parent: buildParent(ancestor));
+
+  @override
+  double adjustPositionForNewDimensions({
+    required ScrollMetrics oldPosition,
+    required ScrollMetrics newPosition,
+    required bool isScrolling,
+    required double velocity,
+  }) {
+    final showedNewest = oldPosition.extentAfter < 1;
+    final resized =
+        oldPosition.viewportDimension != newPosition.viewportDimension;
+    if (showedNewest && resized) return newPosition.maxScrollExtent;
+    return super.adjustPositionForNewDimensions(
+      oldPosition: oldPosition,
+      newPosition: newPosition,
+      isScrolling: isScrolling,
+      velocity: velocity,
+    );
+  }
 }
 
 extension _State on State {
