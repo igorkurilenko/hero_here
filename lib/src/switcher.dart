@@ -31,7 +31,21 @@ class _HeroHereSwitcherState extends State<HeroHereSwitcher>
     super.dispose();
   }
 
-  Set<_Hero> findHeroes() => _childKey.currentContext?.findHeroes() ?? const {};
+  /// The heroes in the switcher's child, by identity, as they come and go.
+  final _heroes = LinkedHashSet<_Hero>.identity();
+
+  void register(_Hero hero) => _heroes.add(hero);
+
+  void unregister(_Hero hero) => _heroes.remove(hero);
+
+  /// The heroes in the switcher's child, from the registry rather than a
+  /// walk of the child, in tree order. Of heroes equal by tag and key, the
+  /// first in the tree counts.
+  Set<_Hero> findHeroes() {
+    final child = _childKey.currentContext as Element?;
+    if (child == null) return const {};
+    return LinkedHashSet.of(_inTreeOrder(_heroes, child));
+  }
 
   /// The switcher's child. Flights work out their rects in its space, so the
   /// rects don't depend on where the switcher is on the screen, which may not
@@ -81,13 +95,19 @@ class _HeroHereSwitcherState extends State<HeroHereSwitcher>
   Widget build(BuildContext context) {
     _switchingState.onBuild();
 
-    final child = _Boundary(key: _childKey, child: _child);
+    final child = _HeroScope(
+      switcher: this,
+      child: _Boundary(key: _childKey, child: _child),
+    );
     final sky = ListenableBuilder(
       listenable: flights,
       builder: (context, _) => _buildSky(),
     );
 
-    return widget.layoutBuilder(child, sky);
+    // The heroes in the switcher's child are the switcher's. Any other hero
+    // in it, such as one a flight shows in the sky, a copy, or one the layout
+    // builder adds, belongs to no switcher.
+    return _HeroScope(switcher: null, child: widget.layoutBuilder(child, sky));
   }
 
   // Flights repaint on every frame. The boundary keeps those repaints off the
@@ -104,6 +124,7 @@ class _HeroHereSwitcherState extends State<HeroHereSwitcher>
           for (final hero in _switchingState.standIns)
             _StandIn(
               key: ValueKey((_StandIn, hero)),
+              switcher: this,
               hero: hero,
               look: _switchingState.standInLook(hero),
             ),
@@ -115,6 +136,23 @@ class _HeroHereSwitcherState extends State<HeroHereSwitcher>
       ),
     ),
   );
+}
+
+/// Tells the heroes below it which switcher they're in: the one whose child
+/// they're in, or none, in a switcher's sky.
+class _HeroScope extends InheritedWidget {
+  const _HeroScope({required this.switcher, required super.child});
+
+  final _Switcher? switcher;
+
+  /// The switcher of the hero with [context], if any, which the hero
+  /// depends on, so it learns of a global key moving it into another one.
+  static _Switcher? of(BuildContext context) =>
+      context.dependOnInheritedWidgetOfExactType<_HeroScope>()?.switcher;
+
+  @override
+  bool updateShouldNotify(_HeroScope oldWidget) =>
+      switcher != oldWidget.switcher;
 }
 
 /// A phase of the switcher's life. The switcher [enter]s a state once, then
@@ -154,7 +192,7 @@ abstract class _SwitchingState {
 
   void notifyWillSwitch(Iterable<_Hero> heroes) {
     for (final hero in heroes) {
-      hero.willSwitch();
+      hero.willSwitch(switcher);
     }
   }
 }

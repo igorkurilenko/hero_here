@@ -44,20 +44,27 @@ class _HeroHereState extends State<HeroHere> {
 
   bool get onstage => !offstage;
 
-  /// Where the hero was at the last switch, as it would be in the
-  /// switcher's child now.
-  Rect? get placeholderRect => _placeholder?.within(_switcher?.childSize);
+  /// Where the hero was at the last switch, as it would be in [switcher]'s
+  /// child now.
+  Rect? placeholderRectIn(_Switcher switcher) =>
+      _placeholder?.within(switcher.childSize);
 
+  // Runs once the hero mounts, and again when a global key moves it into
+  // another switcher, or out of one.
   @override
-  void initState() {
-    super.initState();
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final switcher = _HeroScope.of(context);
+    // Deactivating it, as a global key moves it, unregistered it.
+    switcher?.register(this);
+    if (switcher == _switcher) return;
+    _switcher?.unregister(this);
+    _switcher = switcher;
 
-    _switcher = context.findAncestorStateOfType<_Switcher>();
-
-    // A hero mounted while its tag flies hides. If it mounts anew a hero of
-    // the flight, it takes over that hero's part and placeholder; any other
-    // hero shows when the flight ends.
-    final flight = _switcher?.flights[tag];
+    // A hero that mounts, or moves in, while its tag flies hides. If it
+    // mounts anew a hero of the flight, it takes over that hero's part and
+    // placeholder; any other hero shows when the flight ends.
+    final flight = switcher?.flights[tag];
     if (flight != null) {
       _placeholder = flight.adopt(this)?._placeholder;
       _offstage = true;
@@ -74,11 +81,13 @@ class _HeroHereState extends State<HeroHere> {
   void deactivate() {
     super.deactivate();
     _active = false;
+    _switcher?.unregister(this);
   }
 
-  void willSwitch() {
-    final rect = computeRect();
-    _placeholder = rect == null ? null : _KeptRect(rect, _switcher?.childSize);
+  /// Keeps where the hero is in [switcher]'s child, as [switcher] switches.
+  void willSwitch(_Switcher switcher) {
+    final rect = computeRectIn(switcher);
+    _placeholder = rect == null ? null : _KeptRect(rect, switcher.childSize);
   }
 
   /// The layer of the shuttle of a flight that just landed on the hero, kept
@@ -102,9 +111,10 @@ class _HeroHereState extends State<HeroHere> {
     );
   }
 
-  /// Where the hero is in the switcher's child.
-  Rect? computeRect() {
-    final space = _switcher?.childBox;
+  /// Where the hero is in [switcher]'s child, so in that switcher's space,
+  /// even if a global key moved the hero into another one.
+  Rect? computeRectIn(_Switcher switcher) {
+    final space = switcher.childBox;
     if (!_active || space == null) return null;
     return _childKey.currentContext?.findRenderBox()?.rectIn(space);
   }

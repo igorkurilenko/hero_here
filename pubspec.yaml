@@ -1,6 +1,6 @@
 name: hero_here
 description: "Hero transitions on the same screen without the need for navigation."
-version: 1.5.6
+version: 1.5.7
 homepage: https://github.com/igorkurilenko/hero_here
 
 environment:

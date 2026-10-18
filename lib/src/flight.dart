@@ -328,8 +328,8 @@ class _Flight extends ChangeNotifier {
   /// leg began to where the hero it flies to is. While that hero is nowhere,
   /// the shuttle stays where it was.
   Rect evaluateRect() => _path.evaluate(
-    end: _manifest.to.computeRect() ?? _manifest.to.placeholderRect,
-    from: () => _manifest.from.computeRect() ?? _manifest.from.placeholderRect,
+    end: _rectOf(_manifest.to),
+    from: () => _rectOf(_manifest.from),
     reversed: _reversed,
     value: animation.value,
     t: _controller.value,
@@ -358,10 +358,7 @@ class _Flight extends ChangeNotifier {
   /// Flies on to [hero] from where the shuttle is, at the speed it has, and
   /// from what it shows.
   void _divert(_Hero hero) {
-    _path.divert(
-      to: hero.computeRect() ?? hero.placeholderRect,
-      size: _childSize,
-    );
+    _path.divert(to: _rectOf(hero), size: _childSize);
     _divertedFrom = _freezeShuttle();
     _manifest.to = hero;
     notifyListeners();
@@ -387,6 +384,13 @@ class _Flight extends ChangeNotifier {
 
   /// The size the switcher's child has now.
   Size? get _childSize => _registry.switcher.childSize;
+
+  /// Where [hero] is in the switcher's child, or was at the last switch if
+  /// it's nowhere now. A hero that a global key moved into another switcher
+  /// is measured where it is, in this flight's switcher's space.
+  Rect? _rectOf(_Hero hero) =>
+      hero.computeRectIn(_registry.switcher) ??
+      hero.placeholderRectIn(_registry.switcher);
 
   void _forward({double? from}) {
     _reversed = false;
