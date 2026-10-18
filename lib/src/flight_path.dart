@@ -76,11 +76,23 @@ class _FlightPath {
     required Size? size,
   }) {
     if (end != null) {
+      // Both paths below take the hero the flight leaves where it is on
+      // this frame, so it's measured once, and only if a path needs it.
+      var fromRead = false;
+      Rect? fromRect;
+      Rect? fromOnce() {
+        if (!fromRead) {
+          fromRect = from();
+          fromRead = true;
+        }
+        return fromRect;
+      }
+
       Rect onPath(double value, double t) => _onPath(
         value,
         t,
         end: end,
-        from: from,
+        from: fromOnce,
         reversed: reversed,
         duration: duration,
         size: size,

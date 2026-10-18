@@ -60,6 +60,41 @@ void main() {
     expect(tester.getRect(find.byKey(_shuttleKey)), _stayRect);
   });
 
+  testWidgets('measures the hero a flight leaves once a frame, and only '
+      'while its path starts there', (tester) async {
+    final split = ValueNotifier(false);
+    addTearDown(split.dispose);
+    var measures = 0;
+    Future<List<int>> measuresPerFrame() async {
+      final perFrame = <int>[];
+      for (var i = 0; i < 3; i++) {
+        measures = 0;
+        await tester.pump(const Duration(milliseconds: 16));
+        perFrame.add(measures);
+      }
+      return perFrame;
+    }
+
+    await tester.pumpWidget(
+      _StaySwitcher(split: split, onMeasureA: () => measures++),
+    );
+    await tester.pumpAndSettle();
+
+    split.value = true;
+    await _pumpSwitch(tester);
+    expect(await measuresPerFrame(), [1, 1, 1]);
+
+    // Turned back, it heads for where 'a' is.
+    split.value = false;
+    await _pumpSwitch(tester);
+    expect(await measuresPerFrame(), [1, 1, 1]);
+
+    // Turned around again, it heads from where it turned to 'b'.
+    split.value = true;
+    await _pumpSwitch(tester);
+    expect(await measuresPerFrame(), [0, 0, 0]);
+  });
+
   testWidgets('flies a redirected hero on from where its shuttle is', (
     tester,
   ) async {
@@ -3129,9 +3164,12 @@ const _stayRect = Rect.fromLTWH(0, 300, 40, 40);
 /// it to [_stayRect] and adds hero 'b' with the same tag in the second slot,
 /// so 'a' flies to 'b' and stays, hidden.
 class _StaySwitcher extends StatelessWidget {
-  const _StaySwitcher({required this.split});
+  const _StaySwitcher({required this.split, this.onMeasureA});
 
   final ValueNotifier<bool> split;
+
+  /// Called each time something measures where 'a' is on the screen.
+  final VoidCallback? onMeasureA;
 
   @override
   Widget build(BuildContext context) => MaterialApp(
@@ -3151,7 +3189,10 @@ class _StaySwitcher extends StatelessWidget {
             children: [
               Positioned.fromRect(
                 rect: split ? _stayRect : _slotRects[0],
-                child: hero('a'),
+                child: _MeasureCounter(
+                  onMeasure: onMeasureA ?? () {},
+                  child: hero('a'),
+                ),
               ),
               if (split)
                 Positioned.fromRect(rect: _slotRects[1], child: hero('b')),
@@ -3595,4 +3636,35 @@ class _PaintCounter extends CustomPainter {
 
   @override
   bool shouldRepaint(_PaintCounter oldDelegate) => false;
+}
+
+/// Calls [onMeasure] each time something maps a point of its child to the
+/// screen, or to another ancestor, through it, as a flight does to measure
+/// a hero.
+class _MeasureCounter extends SingleChildRenderObjectWidget {
+  const _MeasureCounter({required this.onMeasure, super.child});
+
+  final VoidCallback onMeasure;
+
+  @override
+  _RenderMeasureCounter createRenderObject(BuildContext context) =>
+      _RenderMeasureCounter(onMeasure);
+
+  @override
+  void updateRenderObject(
+    BuildContext context,
+    _RenderMeasureCounter renderObject,
+  ) => renderObject.onMeasure = onMeasure;
+}
+
+class _RenderMeasureCounter extends RenderProxyBox {
+  _RenderMeasureCounter(this.onMeasure);
+
+  VoidCallback onMeasure;
+
+  @override
+  void applyPaintTransform(RenderBox child, Matrix4 transform) {
+    onMeasure();
+    super.applyPaintTransform(child, transform);
+  }
 }

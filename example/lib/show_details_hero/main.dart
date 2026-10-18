@@ -62,24 +62,29 @@ class _ShowDetailsExampleState extends State<ShowDetailsExample> {
 
   AppBar _buildAppBar() => AppBar(
     forceMaterialTransparency: true,
-    leading: AnimatedSwitcher(
-      duration: HeroHere.defaultFlightAnimationDuration,
-      // A key that stays the same across builds keeps a rebuild from fading.
-      // No child while the details are closed, rather than an empty one,
-      // which the switcher's fade would keep in an opacity layer.
-      child: detailsVisible
-          ? Material(
-              key: const ValueKey('back'),
-              color: Colors.transparent,
-              child: ValueListenableBuilder(
-                valueListenable: _isHeroSwitching,
-                builder: (context, isHeroSwitching, _) => IconButton(
-                  icon: const Icon(Icons.chevron_left),
-                  onPressed: isHeroSwitching ? null : _closeDetails,
+    // The switcher's fade keeps the button in an opacity layer while the
+    // details are open, which on the web paints offscreen on every frame, as
+    // big as the clip around it: the button's, rather than the app bar's.
+    leading: ClipRect(
+      child: AnimatedSwitcher(
+        duration: HeroHere.defaultFlightAnimationDuration,
+        // A key that stays the same across builds keeps a rebuild from
+        // fading. No child while the details are closed, rather than an
+        // empty one, which the switcher's fade would keep in an opacity layer.
+        child: detailsVisible
+            ? Material(
+                key: const ValueKey('back'),
+                color: Colors.transparent,
+                child: ValueListenableBuilder(
+                  valueListenable: _isHeroSwitching,
+                  builder: (context, isHeroSwitching, _) => IconButton(
+                    icon: const Icon(Icons.chevron_left),
+                    onPressed: isHeroSwitching ? null : _closeDetails,
+                  ),
                 ),
-              ),
-            )
-          : null,
+              )
+            : null,
+      ),
     ),
   );
 

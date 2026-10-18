@@ -1,3 +1,14 @@
+## Unreleased
+
+### Performance
+
+* Measure where the hero a flight leaves is once a frame rather than twice, and only on legs that start there: a measure walks the render tree from the hero up to the switcher.
+
+### Example
+
+* Fade the details' title and description by their color as they fly, rather than with `FadeTransition`. Each flying text took an opacity layer, which on the web paints offscreen on every frame, across the whole screen since flights fly unclipped. Their heroes carry their text as a payload that builds it at an opacity.
+* Clip the details example's back button to its box. Its switcher's fade keeps it in an opacity layer while the details are open, which on the web paints offscreen on every frame as big as the clip around it, which was the whole app bar.
+
 ## 1.5.5
 
 ### Docs

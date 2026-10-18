@@ -67,6 +67,11 @@ const kTitleHeroTagPrefix = 'title-';
 const kDescriptionHeroTagPrefix = 'description-';
 const kDetailsHeroKeyPrefix = 'details-';
 
+/// The payload of the details' title and description heroes: their text at
+/// [opacity], faded by its color, so their flights fade them without an
+/// opacity layer, which on the web paints offscreen on every frame.
+typedef FadedText = Widget Function(double opacity);
+
 const kPreviewImageBorderRadius = 32.0;
 const kDragDistanceToClose = 50.0;
 const kDragVelocityToClose = 300.0;
