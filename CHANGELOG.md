@@ -5,6 +5,10 @@
 * Treat a hero that a shuttle shows as a copy that belongs to no switcher, as when a shuttle builder returns `toHero` or `fromHero` itself rather than its child. The copy used to take over the hero's part in the flight, so the shuttle showed nothing, and a flight to that hero left it hidden for good once it landed. Heroes outside a switcher's child, such as ones its layout builder adds, belong to no switcher either.
 * Fly from where a hero is once a global key moves it into another switcher, rather than from as far off as the two switchers are apart. A hero moved in while the switcher flies its tag hides until that flight lands, as a hero that mounts mid-flight does. A flight that the hero's old switcher has under way keeps flying to where the hero is.
 
+### Performance
+
+* Take a switch's heroes from a registry that they keep up to date as they mount, move and go, rather than walking the switcher's child twice on each switch. A switch no longer visits the child's other widgets, so its cost follows the number of heroes rather than the size of the child. Measured in debug mode with 15 heroes, finding them took about 80 µs rather than 650 µs in a child of 20,000 widgets, and about 75 µs rather than 30 µs with nothing else in the child.
+
 ### Example
 
 * Add a benchmark of the examples' frame times on a device. `integration_test/perf_test.dart` opens and closes the details, sends chat messages and switches heroes mid-flight, and `test_driver/perf_driver.dart` prints the build and raster times of each. The example's README says how to run it.

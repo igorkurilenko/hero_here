@@ -139,8 +139,8 @@ extension _RenderBox on RenderBox {
 }
 
 /// [heroes] that no disabled [HeroMode] below [root] leaves out, in the
-/// order a walk of the tree below [root] meets them, as
-/// [_BuildContext.findHeroes] does.
+/// order a depth-first walk of the tree below [root] would meet them: a hero
+/// before the heroes inside it, and children in their parent's order.
 List<_Hero> _inTreeOrder(Iterable<_Hero> heroes, Element root) {
   // The hero's element and its ancestors below root, from the top down, or
   // null if a disabled hero mode is among them.
@@ -161,6 +161,19 @@ List<_Hero> _inTreeOrder(Iterable<_Hero> heroes, Element root) {
     return leftOut ? null : path.reversed.toList();
   }
 
+  // Where each child is among its parent's children, for each parent where
+  // two paths part, worked out once, however many heroes are below it.
+  final childIndexes = Map<Element, Map<Element, int>>.identity();
+  int indexOf(Element parent, Element child) =>
+      childIndexes.putIfAbsent(parent, () {
+        final indexes = Map<Element, int>.identity();
+        // Unlike visitChildElements, visitChildren may run while the tree
+        // builds or lays out, such as from a layout callback.
+        parent.visitChildren((child) => indexes[child] = indexes.length);
+        return indexes;
+      })[child] ??
+      -1;
+
   int compare(List<Element> a, List<Element> b) {
     var i = 0;
     while (i < a.length && i < b.length && identical(a[i], b[i])) {
@@ -170,16 +183,8 @@ List<_Hero> _inTreeOrder(Iterable<_Hero> heroes, Element root) {
     // A walk meets a hero before the heroes inside it.
     if (i == a.length) return -1;
     if (i == b.length) return 1;
-    var order = 0;
-    (i == 0 ? root : a[i - 1]).visitChildren((child) {
-      if (order != 0) return;
-      if (identical(child, a[i])) {
-        order = -1;
-      } else if (identical(child, b[i])) {
-        order = 1;
-      }
-    });
-    return order;
+    final parent = i == 0 ? root : a[i - 1];
+    return indexOf(parent, a[i]).compareTo(indexOf(parent, b[i]));
   }
 
   final paths = [
@@ -191,27 +196,4 @@ List<_Hero> _inTreeOrder(Iterable<_Hero> heroes, Element root) {
 
 extension _BuildContext on BuildContext {
   RenderBox? findRenderBox() => findRenderObject() as RenderBox?;
-
-  Set<_Hero> findHeroes() {
-    // ignore: prefer_collection_literals
-    final result = LinkedHashSet<_Hero>();
-
-    void findHeroes(Element element) {
-      final widget = element.widget;
-      if (widget is HeroHere && element is StatefulElement) {
-        result.add(element.state as _Hero);
-      } else if ((widget is HeroMode && !widget.enabled) ||
-          (widget is HeroHereSwitcher) ||
-          (widget is _FlightWidget)) {
-        return;
-      }
-      element.visitChildren(findHeroes);
-    }
-
-    // Unlike visitChildElements, visitChildren may run while the tree builds
-    // or lays out, such as from a layout callback.
-    (this as Element).visitChildren(findHeroes);
-
-    return result;
-  }
 }

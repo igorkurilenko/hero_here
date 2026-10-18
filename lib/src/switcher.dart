@@ -38,32 +38,13 @@ class _HeroHereSwitcherState extends State<HeroHereSwitcher>
 
   void unregister(_Hero hero) => _heroes.remove(hero);
 
+  /// The heroes in the switcher's child, from the registry rather than a
+  /// walk of the child, in tree order. Of heroes equal by tag and key, the
+  /// first in the tree counts.
   Set<_Hero> findHeroes() {
     final child = _childKey.currentContext as Element?;
-    final heroes = child?.findHeroes() ?? const <_Hero>{};
-    assert(_registryAgrees(child, heroes));
-    return heroes;
-  }
-
-  /// Whether the registered heroes are [found], those a walk of [child]
-  /// found, in the same order. Until the registry replaces the walk.
-  bool _registryAgrees(Element? child, Set<_Hero> found) {
-    // As in a walk, the first of equal heroes counts.
-    final registered = LinkedHashSet<_Hero>.of(
-      child == null ? const <_Hero>[] : _inTreeOrder(_heroes, child),
-    ).toList();
-    final walked = found.toList();
-    var agrees = registered.length == walked.length;
-    for (var i = 0; agrees && i < walked.length; i++) {
-      agrees = identical(registered[i], walked[i]);
-    }
-    if (agrees) return true;
-    String describe(List<_Hero> heroes) =>
-        heroes.map((hero) => '${hero.tag}: ${hero.key}').join(', ');
-    throw FlutterError(
-      'The registered heroes [${describe(registered)}] differ from the '
-      'heroes a walk finds, [${describe(walked)}].',
-    );
+    if (child == null) return const {};
+    return LinkedHashSet.of(_inTreeOrder(_heroes, child));
   }
 
   /// The switcher's child. Flights work out their rects in its space, so the

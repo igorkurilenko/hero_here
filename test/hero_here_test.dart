@@ -454,14 +454,16 @@ void main() {
             child: Stack(
               children: [
                 // Under a padding, then not, so the hero moves to another
-                // parent.
+                // parent. Then another hero takes its place.
                 if (stage == 0)
                   Padding(
                     padding: EdgeInsets.zero,
                     child: Stack(children: [_heroAt(moving, _slotRects[0])]),
                   )
+                else if (stage == 1)
+                  _heroAt(moving, _slotRects[1])
                 else
-                  _heroAt(moving, _slotRects[1]),
+                  _heroAt(const ValueKey('other'), _slotRects[2]),
               ],
             ),
           ),
@@ -475,6 +477,12 @@ void main() {
 
     expect(find.byKey(_shuttleKey), findsNothing);
     expect(tester.getRect(_boxOf(moving)), _slotRects[1]);
+
+    // It's still one of the switcher's heroes, so the next switch flies it.
+    await tester.pumpAndSettle();
+    stage.value = 2;
+    await _pumpSwitch(tester);
+    expect(tester.getRect(find.byKey(_shuttleKey)), _slotRects[1]);
   });
 
   testWidgets('keeps a hero that mounts anew earlier in the tree, under '
@@ -514,6 +522,139 @@ void main() {
     expect(find.byKey(_shuttleKey), findsNothing);
     await tester.pumpAndSettle();
     expect(tester.getRect(_boxOf(const ValueKey('a'))), _slotRects[1]);
+  });
+
+  testWidgets('finds its heroes without visiting the rest of its child', (
+    tester,
+  ) async {
+    final slot = ValueNotifier(0);
+    addTearDown(slot.dispose);
+    var visits = 0;
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: ValueListenableBuilder(
+          valueListenable: slot,
+          builder: (context, slot, _) => HeroHereSwitcher(
+            child: Stack(
+              children: [
+                _heroAt(ValueKey(slot), _slotRects[slot]),
+                Column(
+                  children: [
+                    for (var i = 0; i < 100; i++)
+                      _VisitCounter(onVisit: () => visits++),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    visits = 0;
+    slot.value = 1;
+    await _pumpSwitch(tester);
+    // Read before any finder, which visits the tree itself.
+    final visitsBySwitch = visits;
+
+    expect(find.byKey(_shuttleKey), findsOneWidget);
+    expect(visitsBySwitch, 0);
+  });
+
+  testWidgets(
+    'flies to the first of heroes with the same tag and key',
+    (tester) async {
+      final stage = ValueNotifier(0);
+      addTearDown(stage.dispose);
+      await tester.pumpWidget(
+        MaterialApp(
+          home: ValueListenableBuilder(
+            valueListenable: stage,
+            builder: (context, stage, _) => HeroHereSwitcher(
+              child: Stack(
+                children: [
+                  if (stage == 0) _heroAt(const ValueKey('x'), _slotRects[0]),
+                  // Under different parents, so their keys don't clash.
+                  if (stage == 1) ...[
+                    Stack(
+                      children: [_heroAt(const ValueKey('a'), _slotRects[1])],
+                    ),
+                    Stack(
+                      children: [_heroAt(const ValueKey('a'), _slotRects[2])],
+                    ),
+                  ],
+                ],
+              ),
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      stage.value = 1;
+      await _pumpSwitch(tester);
+      await tester.pump(HeroHere.defaultFlightAnimationDuration * 0.99);
+
+      // The second, equal to the first, takes no part.
+      expect(
+        (tester.getRect(find.byKey(_shuttleKey)).center - _slotRects[1].center)
+            .distance,
+        lessThan(2),
+      );
+    },
+    // Equal heroes trip a semantics assertion, as the hero hiding by tag and
+    // key hides both, which this test isn't about.
+    semanticsEnabled: false,
+  );
+
+  testWidgets('starts the flights of a switch in tree order, so a hero flies '
+      'under the heroes inside it', (tester) async {
+    final slot = ValueNotifier(0);
+    addTearDown(slot.dispose);
+    HeroHere hero(String tag, int slot, Widget child) => HeroHere(
+      key: ValueKey('$tag$slot'),
+      tag: tag,
+      flightShuttleBuilder: (_, _, _, _) =>
+          SizedBox.expand(key: ValueKey('shuttle-$tag')),
+      child: child,
+    );
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: ValueListenableBuilder(
+          valueListenable: slot,
+          builder: (context, slot, _) => HeroHereSwitcher(
+            child: Stack(
+              children: [
+                Positioned.fromRect(
+                  rect: _slotRects[slot],
+                  child: hero(
+                    'outer',
+                    slot,
+                    hero('inner', slot, const SizedBox()),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    slot.value = 1;
+    await _pumpSwitch(tester);
+
+    // The sky paints its shuttles in the order their flights started.
+    final shuttles = find.byWidgetPredicate(
+      (widget) => '${widget.key}'.contains('shuttle-'),
+    );
+    expect(
+      [for (final element in shuttles.evaluate()) '${element.widget.key}'],
+      ["[<'shuttle-outer'>]", "[<'shuttle-inner'>]"],
+    );
   });
 
   testWidgets('flies a redirected hero on from where its shuttle is', (
@@ -4110,3 +4251,27 @@ Finder _boxOf(Key key, {bool skipOffstage = true}) => find.descendant(
   matching: find.byType(ColoredBox, skipOffstage: skipOffstage),
   skipOffstage: skipOffstage,
 );
+
+/// A widget whose element calls [onVisit] each time something visits its
+/// children, as a walk of the tree does.
+class _VisitCounter extends StatelessWidget {
+  const _VisitCounter({required this.onVisit});
+
+  final VoidCallback onVisit;
+
+  @override
+  StatelessElement createElement() => _VisitCountingElement(this);
+
+  @override
+  Widget build(BuildContext context) => const SizedBox(width: 1, height: 1);
+}
+
+class _VisitCountingElement extends StatelessElement {
+  _VisitCountingElement(_VisitCounter super.widget);
+
+  @override
+  void visitChildren(ElementVisitor visitor) {
+    (widget as _VisitCounter).onVisit();
+    super.visitChildren(visitor);
+  }
+}
