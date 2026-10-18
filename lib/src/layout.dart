@@ -120,9 +120,20 @@ extension _Seconds on Duration {
 }
 
 extension _RenderBox on RenderBox {
-  /// Where this box is in [ancestor]'s space.
+  /// Where this box is in [ancestor]'s space, or null while that isn't
+  /// known: before the box's first layout, or while a sliver on the way has
+  /// no offset for it, such as when a list moves it to a new index, until the
+  /// sliver lays it out again.
   Rect? rectIn(RenderObject ancestor) {
     if (!hasSize) return null;
+    RenderObject? node = this;
+    while (node != null && node != ancestor) {
+      final parent = node.parent;
+      if (parent is RenderSliver && parent.childScrollOffset(node) == null) {
+        return null;
+      }
+      node = parent;
+    }
     return localToGlobal(Offset.zero, ancestor: ancestor) & size;
   }
 }

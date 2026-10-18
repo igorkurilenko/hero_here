@@ -1,3 +1,9 @@
+## Unreleased
+
+### Fixes
+
+* Don't crash when a flight measures a hero that a sliver list has just moved to a new index, as a `PageView` or `ListView` with `findChildIndexCallback` does when an item before it goes. Until the sliver lays the hero out again, the flight takes the hero as nowhere, as it does an inactive one, and flies to where it was.
+
 ## 1.5.2
 
 ### Example

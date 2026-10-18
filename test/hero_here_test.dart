@@ -1737,6 +1737,46 @@ void main() {
     expect(shuttleRect.width, closeTo(heroRect.width, 2));
   });
 
+  testWidgets('flies on when a page view moves the page of the hero it '
+      'flies to', (tester) async {
+    final inPage = ValueNotifier(false);
+    addTearDown(inPage.dispose);
+    final pages = ValueNotifier(['a', 'b', 'c']);
+    addTearDown(pages.dispose);
+    final controller = PageController(initialPage: 2);
+    addTearDown(controller.dispose);
+
+    await tester.pumpWidget(
+      _PageSwitcher(inPage: inPage, pages: pages, controller: controller),
+    );
+    await tester.pumpAndSettle();
+
+    inPage.value = true;
+    await _pumpSwitch(tester);
+    await tester.pump(HeroHere.defaultFlightAnimationDuration ~/ 4);
+    expect(find.byKey(_shuttleKey), findsOneWidget);
+
+    // Page 'c' moves to an index no page was laid out at, so it has no
+    // offset in its sliver until the sliver lays it out, after the flight's
+    // next frame measures the hero.
+    pages.value = ['b', 'c'];
+
+    final shuttle = find.byKey(_shuttleKey);
+    final hero = find.byKey(const ValueKey('page'), skipOffstage: false);
+    late Rect shuttleRect, heroRect;
+    for (var frame = 0; frame < 40 && tester.any(shuttle); frame++) {
+      shuttleRect = tester.getRect(shuttle);
+      heroRect = tester.getRect(hero);
+      await tester.pump(const Duration(milliseconds: 16));
+    }
+    expect(shuttle, findsNothing);
+    expect(
+      (shuttleRect.topLeft - heroRect.topLeft).distance,
+      lessThan(2),
+      reason: 'The shuttle landed at $shuttleRect, the hero is at $heroRect.',
+    );
+  });
+
   testWidgets('flies to where its hero is on the frame of a window resize', (
     tester,
   ) async {
@@ -3265,6 +3305,66 @@ class _QuarterWidthSwitcher extends StatelessWidget {
         ),
       ),
     ),
+  );
+}
+
+/// Shows hero 'hero' above a page view of [pages] until [inPage], which
+/// moves it into page 'c'. The page view finds a page's new index by its key,
+/// so a page keeps its element when pages before it go. [pages] is read below
+/// the switcher, so changing it runs no switch.
+class _PageSwitcher extends StatelessWidget {
+  const _PageSwitcher({
+    required this.inPage,
+    required this.pages,
+    required this.controller,
+  });
+
+  final ValueNotifier<bool> inPage;
+  final ValueNotifier<List<String>> pages;
+  final PageController controller;
+
+  @override
+  Widget build(BuildContext context) => MaterialApp(
+    home: ValueListenableBuilder(
+      valueListenable: inPage,
+      builder: (context, inPage, _) => HeroHereSwitcher(
+        child: Column(
+          children: [
+            SizedBox(
+              height: 100,
+              child: inPage ? null : _hero(const ValueKey('top')),
+            ),
+            Expanded(
+              child: ValueListenableBuilder(
+                valueListenable: pages,
+                builder: (context, pages, _) => PageView.custom(
+                  controller: controller,
+                  childrenDelegate: SliverChildBuilderDelegate(
+                    (context, index) => Center(
+                      key: ValueKey(pages[index]),
+                      child: inPage && pages[index] == 'c'
+                          ? _hero(const ValueKey('page'))
+                          : null,
+                    ),
+                    childCount: pages.length,
+                    findChildIndexCallback: (key) =>
+                        pages.indexOf((key as ValueKey<String>).value),
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    ),
+  );
+
+  static Widget _hero(Key key) => HeroHere(
+    key: key,
+    tag: 'hero',
+    flightShuttleBuilder: (_, _, _, _) =>
+        const SizedBox.expand(key: _shuttleKey),
+    child: const SizedBox(width: 40, height: 40),
   );
 }
 
