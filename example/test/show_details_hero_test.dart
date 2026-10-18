@@ -1,5 +1,6 @@
 import 'package:example/show_details_hero/eight_thousander_details_hero.dart';
 import 'package:example/show_details_hero/config.dart';
+import 'package:example/show_details_hero/eight_thousander_preview_hero.dart';
 import 'package:example/show_details_hero/main.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
@@ -181,6 +182,76 @@ void main() {
     expect(dimming(), 0);
   });
 
+  testWidgets('decodes each grid thumbnail no taller than its cell', (
+    tester,
+  ) async {
+    await tester.pumpWidget(const MaterialApp(home: ShowDetailsExample()));
+    await tester.pumpAndSettle();
+    final ratio = tester.view.devicePixelRatio;
+
+    final cells = find.byType(EightThousanderPreviewHero);
+    expect(cells, findsWidgets);
+    for (final cell in tester.widgetList(cells)) {
+      final image = find.descendant(
+        of: find.byWidget(cell),
+        matching: find.byType(Image),
+      );
+      final provider = tester.widget<Image>(image).image;
+      expect(provider, isA<ResizeImage>());
+      final height = (provider as ResizeImage).height!;
+      // Tall enough to show sharp, and no taller than the cell.
+      expect(
+        height,
+        greaterThanOrEqualTo(tester.getSize(image).height * ratio),
+      );
+      expect(
+        height,
+        lessThanOrEqualTo(
+          tester.getSize(find.byWidget(cell)).height * ratio + 1,
+        ),
+      );
+    }
+  });
+
+  testWidgets('shows the cell\'s thumbnail in the details until their full '
+      'image loads', (tester) async {
+    PaintingBinding.instance.imageCache
+      ..clear()
+      ..clearLiveImages();
+    await tester.pumpWidget(const MaterialApp(home: ShowDetailsExample()));
+    await tester.pumpAndSettle();
+    final k2 = kEightThousanders.firstWhere((it) => it.name == 'K2');
+    final thumbnail = tester
+        .widget<Image>(
+          find.descendant(
+            of: find.ancestor(
+              of: find.text('K2'),
+              matching: find.byType(EightThousanderPreviewHero),
+            ),
+            matching: find.byType(Image),
+          ),
+        )
+        .image;
+
+    await tester.tap(find.text('K2'));
+    await tester.pumpAndSettle();
+    final details = find.byType(EightThousanderDetailsHero);
+    List<ImageProvider> shown() => [
+      for (final image in tester.widgetList<Image>(
+        find.descendant(of: details, matching: find.byType(Image)),
+      ))
+        image.image,
+    ];
+    expect(shown(), contains(thumbnail));
+
+    // The full image loads, as it would in time.
+    await tester.runAsync(
+      () => precacheImage(AssetImage(k2.image), tester.element(details)),
+    );
+    await tester.pump();
+    expect(shown(), isNot(contains(thumbnail)));
+  });
+
   testWidgets('closes the details when flung down', (tester) async {
     // Tall enough to build the title and the description, so they fly too.
     tester.view.physicalSize = const Size(2400, 4800);
@@ -213,10 +284,14 @@ void main() {
     await tester.tap(find.byIcon(Icons.chevron_left));
 
     // While the cell is hidden, the image showing is the flight's shuttle.
+    // It shows K2's image in full, or as the cell's thumbnail.
+    const k2 = AssetImage('assets/images/k2.jpeg');
     final image = find.byWidgetPredicate(
       (widget) =>
           widget is Image &&
-          widget.image == const AssetImage('assets/images/k2.jpeg'),
+          (widget.image == k2 ||
+              widget.image is ResizeImage &&
+                  (widget.image as ResizeImage).imageProvider == k2),
     );
     final cellImage = find.descendant(
       of: find.byType(GridView),
@@ -226,7 +301,7 @@ void main() {
     for (var frame = 0; frame < 40; frame++) {
       await tester.pump(const Duration(milliseconds: 16));
       if (tester.any(image) && !tester.any(cellImage)) {
-        shuttleRect = tester.getRect(image);
+        shuttleRect = tester.getRect(image.first);
       }
     }
 

@@ -102,6 +102,18 @@ class _EightThousanderDetailsHeroState
                 fit: BoxFit.cover,
                 alignment: Alignment.topCenter,
                 image: AssetImage(widget.eightThousander.image),
+                // The grid's thumbnail, already decoded, until the full image
+                // is, so the flight that opens the details never shows a gap.
+                frameBuilder: (context, child, frame, _) => frame != null
+                    ? child
+                    : Image(
+                        fit: BoxFit.cover,
+                        alignment: Alignment.topCenter,
+                        image: thumbnailOf(
+                          widget.eightThousander,
+                          MediaQuery.devicePixelRatioOf(context),
+                        ),
+                      ),
               ),
               (image) => SizedBox(
                 width: imageSize.width * imageScale,

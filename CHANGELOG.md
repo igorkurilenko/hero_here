@@ -6,6 +6,7 @@
 
 ### Example
 
+* Decode the details example's grid thumbnails no taller than a grid cell shows them, rather than at their full 2048 px, which took about 11 MB each and more than the image cache holds for the whole grid. The details show the cell's thumbnail, already decoded, until their full image is, so the flight that opens them never shows a gap.
 * Dim the details example's grid with a scrim in the canvas color while the details are open, rather than with `AnimatedOpacity`, which kept the whole grid in an opacity layer even when opaque. On the web that painted the grid offscreen on every frame. The scrim gives the same colors, in one rectangle. The back button's switcher also has no child while the details are closed, rather than an empty one in a fade layer.
 
 ## 1.5.3

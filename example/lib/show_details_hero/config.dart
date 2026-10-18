@@ -29,6 +29,30 @@ const kGridViewConstraints = BoxConstraints(maxWidth: 560);
 EdgeInsets centerColumnPadding(double width) => EdgeInsets.symmetric(
   horizontal: max(0, (width - kGridViewConstraints.maxWidth) / 2),
 );
+const kGridViewPadding = EdgeInsets.all(8);
+
+/// How tall a grid cell gets at most, with the grid as wide as
+/// [kGridViewConstraints] lets it be.
+final kGridViewCellMaxHeight =
+    (kGridViewConstraints.maxWidth -
+        kGridViewPadding.horizontal -
+        (kGridViewDelegate.crossAxisCount - 1) *
+            kGridViewDelegate.crossAxisSpacing) /
+    kGridViewDelegate.crossAxisCount /
+    kGridViewDelegate.childAspectRatio;
+
+/// [eightThousander]'s image decoded no taller than a grid cell shows it, at
+/// [devicePixelRatio], rather than at the full size the details show it at.
+/// The size doesn't follow the window's, so a resize doesn't decode it anew.
+ImageProvider thumbnailOf(
+  EightThousander eightThousander,
+  double devicePixelRatio,
+) => ResizeImage.resizeIfNeeded(
+  null,
+  (kGridViewCellMaxHeight * devicePixelRatio).ceil(),
+  AssetImage(eightThousander.image),
+);
+
 const kGridViewScaleWhenDetailsOpen = 1.2;
 const kGridViewOpacityOnOpen = 0.1;
 const kGridViewDelegate = SliverGridDelegateWithFixedCrossAxisCount(
