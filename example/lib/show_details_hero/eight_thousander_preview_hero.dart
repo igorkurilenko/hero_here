@@ -139,9 +139,10 @@ class _EightThousanderPreviewHeroState
     Animation<double> animation,
     HeroHere fromHero,
     HeroHere toHero,
-  ) => FadeTransition(
-    opacity: ReverseAnimation(animation),
-    child: fromHero.child,
+  ) => AnimatedBuilder(
+    animation: animation,
+    builder: (context, _) =>
+        (fromHero.payload! as FadedText)(1 - animation.value),
   );
 
   void _onTap() => widget.onTap?.call(context);

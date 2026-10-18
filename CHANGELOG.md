@@ -1,3 +1,9 @@
+## Unreleased
+
+### Example
+
+* Fade the details' title and description by their color as they fly, rather than with `FadeTransition`. Each flying text took an opacity layer, which on the web paints offscreen on every frame, across the whole screen since flights fly unclipped. Their heroes carry their text as a payload that builds it at an opacity.
+
 ## 1.5.5
 
 ### Docs

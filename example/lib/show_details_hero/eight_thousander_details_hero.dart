@@ -175,35 +175,53 @@ class _EightThousanderDetailsHeroState
     child: image,
   );
 
-  HeroHere _buildTitleHero() => HeroHere(
-    key: ValueKey('$kDetailsHeroKeyPrefix$kTitleHeroTagPrefix$tag'),
-    tag: '$kTitleHeroTagPrefix$tag',
-    rectTweenFactory: _createTitleOrDescriptionHeroRectTween,
-    flightShuttleBuilder: _buildTitleOrDescriptionHeroFlightShuttle,
-    child: Text(
-      widget.eightThousander.name,
-      style: titleStyle.copyWith(color: _faded(titleStyle.color)),
-    ),
-  );
+  // The texts are built from values read here, not from this state, since a
+  // flight that closes the details builds them after the details are gone.
+  HeroHere _buildTitleHero() {
+    final name = widget.eightThousander.name;
+    final style = titleStyle;
+    final opacity = titleOrDescriptionOpacity;
+    Widget title(double flight) => Text(
+      name,
+      style: style.copyWith(color: _faded(style.color, opacity * flight)),
+    );
 
-  HeroHere _buildDescriptionHero() => HeroHere(
-    key: ValueKey('$kDetailsHeroKeyPrefix$kDescriptionHeroTagPrefix$tag'),
-    tag: '$kDescriptionHeroTagPrefix$tag',
-    rectTweenFactory: _createTitleOrDescriptionHeroRectTween,
-    flightShuttleBuilder: _buildTitleOrDescriptionHeroFlightShuttle,
-    child: Text(
-      widget.eightThousander.description,
+    return HeroHere(
+      key: ValueKey('$kDetailsHeroKeyPrefix$kTitleHeroTagPrefix$tag'),
+      tag: '$kTitleHeroTagPrefix$tag',
+      rectTweenFactory: _createTitleOrDescriptionHeroRectTween,
+      flightShuttleBuilder: _buildTitleOrDescriptionHeroFlightShuttle,
+      payload: title,
+      child: title(1),
+    );
+  }
+
+  HeroHere _buildDescriptionHero() {
+    final description = widget.eightThousander.description;
+    final color = DefaultTextStyle.of(context).style.color;
+    final opacity = titleOrDescriptionOpacity;
+    Widget text(double flight) => Text(
+      description,
       softWrap: true,
       maxLines: null,
-      style: TextStyle(color: _faded(DefaultTextStyle.of(context).style.color)),
-    ),
-  );
+      style: TextStyle(color: _faded(color, opacity * flight)),
+    );
 
-  /// [color] faded as a drag closes the details. Text faded by its color
-  /// paints without the offscreen layer an [Opacity] would take, which on the
-  /// web it takes even when opaque.
-  Color? _faded(Color? color) =>
-      color?.withValues(alpha: color.a * titleOrDescriptionOpacity);
+    return HeroHere(
+      key: ValueKey('$kDetailsHeroKeyPrefix$kDescriptionHeroTagPrefix$tag'),
+      tag: '$kDescriptionHeroTagPrefix$tag',
+      rectTweenFactory: _createTitleOrDescriptionHeroRectTween,
+      flightShuttleBuilder: _buildTitleOrDescriptionHeroFlightShuttle,
+      payload: text,
+      child: text(1),
+    );
+  }
+
+  /// [color] faded by [opacity], as a drag closes the details or a flight
+  /// fades them. Text faded by its color paints without the offscreen layer
+  /// an [Opacity] would take, which on the web it takes even when opaque.
+  static Color? _faded(Color? color, double opacity) =>
+      color?.withValues(alpha: color.a * opacity);
 
   Widget _buildImageHeroFlightShuttle(
     BuildContext flightContext,
@@ -238,7 +256,10 @@ class _EightThousanderDetailsHeroState
     Animation<double> animation,
     HeroHere fromHero,
     HeroHere toHero,
-  ) => FadeTransition(opacity: animation, child: toHero.child);
+  ) => AnimatedBuilder(
+    animation: animation,
+    builder: (context, _) => (toHero.payload! as FadedText)(animation.value),
+  );
 
   void _handleScroll() {
     if (_scrollController.position.pixels > 0) return;

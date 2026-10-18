@@ -139,6 +139,49 @@ void main() {
     expect(opacityLayers, 0);
   });
 
+  testWidgets('fades the flying title and description without opacity '
+      'layers', (tester) async {
+    // Tall enough to build the title and the description, so they fly too.
+    tester.view.physicalSize = const Size(2400, 4800);
+    addTearDown(tester.view.resetPhysicalSize);
+
+    await tester.pumpWidget(const MaterialApp(home: ShowDetailsExample()));
+    await tester.pumpAndSettle();
+    final k2 = kEightThousanders.firstWhere((x) => x.name == 'K2');
+    final switcher = find.byType(HeroHereSwitcher);
+    // The alphas of the colors of the title and the description that are
+    // partway faded.
+    List<double> fading() => [
+      for (final text in tester.renderObjectList<RenderParagraph>(
+        find.descendant(of: switcher, matching: find.byType(RichText)),
+      ))
+        if ([k2.name, k2.description].contains(text.text.toPlainText()) &&
+            text.text.style!.color!.a > 0 &&
+            text.text.style!.color!.a < 1)
+          text.text.style!.color!.a,
+    ];
+
+    await tester.tap(find.text('K2'));
+    await tester.pump();
+    // The flights start after the frame of the switch.
+    await tester.pump();
+    await tester.pump(HeroHere.defaultFlightAnimationDuration ~/ 4);
+
+    // A quarter of the way, they've faded a little in.
+    expect(fading(), [for (var i = 0; i < 2; i++) lessThan(0.5)]);
+    expect(_opacityLayersIn(tester, switcher), 0);
+
+    await tester.pumpAndSettle();
+    await tester.tap(find.byIcon(Icons.chevron_left));
+    await tester.pump();
+    await tester.pump();
+    await tester.pump(HeroHere.defaultFlightAnimationDuration ~/ 4);
+
+    // And as they close, a little out.
+    expect(fading(), [for (var i = 0; i < 2; i++) greaterThan(0.5)]);
+    expect(_opacityLayersIn(tester, switcher), 0);
+  });
+
   testWidgets('paints the grid without opacity layers of its own while the '
       'details are closed', (tester) async {
     await tester.pumpWidget(const MaterialApp(home: ShowDetailsExample()));
