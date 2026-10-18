@@ -103,34 +103,6 @@ enum HeroHereFlightRedirect {
   divert,
 }
 
-/// The old name of [HeroHereFlightAnimationControllerFactory].
-@Deprecated(
-  'Use HeroHereFlightAnimationControllerFactory. '
-  'This name will be removed in 2.0.0.',
-)
-typedef AnimationControllerFactory = HeroHereFlightAnimationControllerFactory;
-
-/// The old name of [HeroHereFlightAnimationFactory], generic in the value of
-/// the animation.
-@Deprecated(
-  'Use HeroHereFlightAnimationFactory. This name will be removed in 2.0.0.',
-)
-typedef AnimationFactory<T> = Animation<T> Function(
-  AnimationController controller,
-);
-
-/// The old name of [HeroHereFlightAnimationStarter].
-@Deprecated(
-  'Use HeroHereFlightAnimationStarter. This name will be removed in 2.0.0.',
-)
-typedef StartAnimationCaller = HeroHereFlightAnimationStarter;
-
-/// The old name of [HeroHereFlightRectTweenFactory].
-@Deprecated(
-  'Use HeroHereFlightRectTweenFactory. This name will be removed in 2.0.0.',
-)
-typedef RectTweenFactory = HeroHereFlightRectTweenFactory;
-
 /// Flies [HeroHere] widgets between their places in [child] when [child]
 /// changes.
 ///
