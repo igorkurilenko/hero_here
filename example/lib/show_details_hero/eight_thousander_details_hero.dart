@@ -109,10 +109,7 @@ class _EightThousanderDetailsHeroState
                     : Image(
                         fit: BoxFit.cover,
                         alignment: Alignment.topCenter,
-                        image: thumbnailOf(
-                          widget.eightThousander,
-                          MediaQuery.devicePixelRatioOf(context),
-                        ),
+                        image: thumbnailOf(context, widget.eightThousander),
                       ),
               ),
               (image) => SizedBox(

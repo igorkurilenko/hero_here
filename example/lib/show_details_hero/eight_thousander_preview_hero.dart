@@ -80,10 +80,7 @@ class _EightThousanderPreviewHeroState
         width: double.infinity,
         fit: BoxFit.cover,
         alignment: Alignment.topCenter,
-        image: thumbnailOf(
-          widget.eightThousander,
-          MediaQuery.devicePixelRatioOf(context),
-        ),
+        image: thumbnailOf(context, widget.eightThousander),
       ),
     ),
   );

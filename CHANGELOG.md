@@ -1,3 +1,9 @@
+## Unreleased
+
+### Example
+
+* Decode the details example's grid thumbnails for the cells the device's display shows, rather than for the grid's largest cells. On a phone held upright the cells are smaller, so the 14 thumbnails take about 55 MiB at 3× rather than 111 MiB, within the image cache's 100 MiB, and scrolling no longer evicts and decodes them again. The size follows the wider of the window and the display, so a window's resize still decodes nothing anew, and a phone on its side still gets sharp thumbnails.
+
 ## 2.0.0
 
 ### Breaking changes
