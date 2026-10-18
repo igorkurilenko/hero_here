@@ -411,7 +411,7 @@ class _Flight extends ChangeNotifier {
       notifyListeners();
       _forward(from: 0);
     } else {
-      _end(landedOn: _manifest.to);
+      _end(landedOn: _manifest.to, left: _manifest.from);
     }
   }
 
@@ -433,16 +433,22 @@ class _Flight extends ChangeNotifier {
       notifyListeners();
       _forward(from: 0);
     } else {
-      _end(landedOn: _manifest.from);
+      _end(landedOn: _manifest.from, left: _manifest.to);
     }
   }
 
   /// Ends this flight: shows the hero it [landedOn], if any, and the
-  /// latecomers, and leaves the registry, which disposes it.
-  void _end({_Hero? landedOn}) {
+  /// latecomers, and leaves the registry, which disposes it. If the hero it
+  /// landed on went away mid-flight, with no switch since to say which hero
+  /// of the tag shows, it shows the hero it [left] instead, where that is.
+  void _end({_Hero? landedOn, _Hero? left}) {
     _runs++;
-    landedOn?.landedFrom(_shuttleLayer?.lastLayer);
-    landedOn?.offstage = false;
+    if (landedOn != null && !landedOn.mounted) {
+      left?.offstage = false;
+    } else {
+      landedOn?.landedFrom(_shuttleLayer?.lastLayer);
+      landedOn?.offstage = false;
+    }
     for (final hero in _latecomers) {
       hero.offstage = false;
     }
