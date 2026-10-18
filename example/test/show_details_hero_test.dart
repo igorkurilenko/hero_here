@@ -55,6 +55,38 @@ void main() {
     expect(find.byIcon(Icons.chevron_left), findsOneWidget);
   });
 
+  testWidgets('clips the back button\'s fade to the button', (tester) async {
+    await tester.pumpWidget(const MaterialApp(home: ShowDetailsExample()));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('K2'));
+    await tester.pumpAndSettle();
+
+    // On the web an opacity layer paints offscreen, even when opaque, as big
+    // as the clip around it.
+    final appBar = find.byType(AppBar);
+    final fade =
+        tester
+                .renderObject(
+                  find.descendant(
+                    of: appBar,
+                    matching: find.byType(FadeTransition),
+                  ),
+                )
+                .debugLayer!
+            as OpacityLayer;
+    var clip = fade.parent;
+    while (clip is! ClipRectLayer) {
+      clip = clip!.parent;
+    }
+
+    expect(
+      clip.clipRect!.size,
+      tester.getSize(
+        find.descendant(of: appBar, matching: find.byType(AnimatedSwitcher)),
+      ),
+    );
+  });
+
   testWidgets('drags the details without rebuilding their image', (
     tester,
   ) async {
