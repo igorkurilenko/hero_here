@@ -95,6 +95,98 @@ void main() {
     expect(await measuresPerFrame(), [0, 0, 0]);
   });
 
+  for (final (name, box, mount) in [
+    ('the hero it flies to', 'box1', (HeroHere from, HeroHere to) => to),
+    ('the hero it leaves', 'box0', (HeroHere from, HeroHere to) => from),
+  ]) {
+    testWidgets('flies and lands a shuttle that shows $name itself', (
+      tester,
+    ) async {
+      final slot = ValueNotifier(0);
+      addTearDown(slot.dispose);
+
+      await tester.pumpWidget(
+        _SlotSwitcher(
+          slot: slot,
+          shuttleBuilder: (_, _, fromHero, toHero) => mount(fromHero, toHero),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      slot.value = 1;
+      await _pumpSwitch(tester);
+      await tester.pump(HeroHere.defaultFlightAnimationDuration ~/ 2);
+
+      // The hero the shuttle shows is a copy, which takes no part in the
+      // flight, and shows.
+      expect(find.byKey(ValueKey(box)), findsOneWidget);
+
+      await tester.pumpAndSettle();
+      expect(tester.getRect(find.byKey(const ValueKey('box1'))), _slotRects[1]);
+    });
+  }
+
+  testWidgets('flies and lands shuttles that show their heroes themselves in '
+      'a switcher inside another one', (tester) async {
+    final slot = ValueNotifier(0);
+    addTearDown(slot.dispose);
+    Widget hero(String key, Rect rect) => Positioned.fromRect(
+      rect: rect,
+      child: HeroHere(
+        key: ValueKey(key),
+        tag: 'hero',
+        flightShuttleBuilder: (_, _, _, toHero) => toHero,
+        child: ColoredBox(
+          key: ValueKey('box-$key'),
+          color: const Color(0xFF2196F3),
+        ),
+      ),
+    );
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: ValueListenableBuilder(
+          valueListenable: slot,
+          builder: (context, slot, _) => HeroHereSwitcher(
+            child: Stack(
+              children: [
+                hero('outer$slot', _slotRects[slot]),
+                Positioned.fromRect(
+                  rect: const Rect.fromLTWH(0, 300, 800, 300),
+                  child: HeroHereSwitcher(
+                    child: Stack(
+                      children: [hero('inner$slot', _slotRects[slot])],
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    slot.value = 1;
+    await _pumpSwitch(tester);
+    await tester.pump(HeroHere.defaultFlightAnimationDuration ~/ 2);
+
+    // Each shuttle shows its copy, which belongs to neither switcher, though
+    // the outer one flies the same tag.
+    expect(find.byKey(const ValueKey('box-outer1')), findsOneWidget);
+    expect(find.byKey(const ValueKey('box-inner1')), findsOneWidget);
+
+    await tester.pumpAndSettle();
+    expect(
+      tester.getRect(find.byKey(const ValueKey('box-outer1'))),
+      _slotRects[1],
+    );
+    expect(
+      tester.getRect(find.byKey(const ValueKey('box-inner1'))),
+      _slotRects[1].translate(0, 300),
+    );
+  });
+
   testWidgets('flies a redirected hero on from where its shuttle is', (
     tester,
   ) async {

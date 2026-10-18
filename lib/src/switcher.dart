@@ -81,10 +81,18 @@ class _HeroHereSwitcherState extends State<HeroHereSwitcher>
   Widget build(BuildContext context) {
     _switchingState.onBuild();
 
-    final child = _Boundary(key: _childKey, child: _child);
-    final sky = ListenableBuilder(
-      listenable: flights,
-      builder: (context, _) => _buildSky(),
+    final child = _HeroScope(
+      switcher: this,
+      child: _Boundary(key: _childKey, child: _child),
+    );
+    // A hero that a flight shows in the sky, such as a shuttle that is a
+    // hero itself, is a copy, which belongs to no switcher.
+    final sky = _HeroScope(
+      switcher: null,
+      child: ListenableBuilder(
+        listenable: flights,
+        builder: (context, _) => _buildSky(),
+      ),
     );
 
     return widget.layoutBuilder(child, sky);
@@ -115,6 +123,22 @@ class _HeroHereSwitcherState extends State<HeroHereSwitcher>
       ),
     ),
   );
+}
+
+/// Tells the heroes below it which switcher they're in: the one whose child
+/// they're in, or none, in a switcher's sky.
+class _HeroScope extends InheritedWidget {
+  const _HeroScope({required this.switcher, required super.child});
+
+  final _Switcher? switcher;
+
+  /// The switcher of the hero with [context], if any.
+  static _Switcher? of(BuildContext context) =>
+      context.getInheritedWidgetOfExactType<_HeroScope>()?.switcher;
+
+  @override
+  bool updateShouldNotify(_HeroScope oldWidget) =>
+      switcher != oldWidget.switcher;
 }
 
 /// A phase of the switcher's life. The switcher [enter]s a state once, then

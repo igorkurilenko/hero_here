@@ -52,7 +52,7 @@ class _HeroHereState extends State<HeroHere> {
   void initState() {
     super.initState();
 
-    _switcher = context.findAncestorStateOfType<_Switcher>();
+    _switcher = _HeroScope.of(context);
 
     // A hero mounted while its tag flies hides. If it mounts anew a hero of
     // the flight, it takes over that hero's part and placeholder; any other

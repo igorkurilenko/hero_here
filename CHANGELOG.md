@@ -1,5 +1,9 @@
 ## Unreleased
 
+### Fixes
+
+* Treat a hero that a shuttle shows as a copy that belongs to no switcher, as when a shuttle builder returns `toHero` or `fromHero` itself rather than its child. The copy used to take over the hero's part in the flight, so the shuttle showed nothing, and a flight to that hero left it hidden for good once it landed. Heroes outside a switcher's child, such as ones its layout builder adds, belong to no switcher either.
+
 ### Example
 
 * Add a benchmark of the examples' frame times on a device. `integration_test/perf_test.dart` opens and closes the details, sends chat messages and switches heroes mid-flight, and `test_driver/perf_driver.dart` prints the build and raster times of each. The example's README says how to run it.
