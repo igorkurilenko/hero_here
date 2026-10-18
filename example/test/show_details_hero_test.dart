@@ -1,4 +1,5 @@
 import 'package:example/show_details_hero/eight_thousander_details_hero.dart';
+import 'package:example/show_details_hero/config.dart';
 import 'package:example/show_details_hero/main.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
@@ -137,6 +138,49 @@ void main() {
     expect(opacityLayers, 0);
   });
 
+  testWidgets('paints the grid without opacity layers of its own while the '
+      'details are closed', (tester) async {
+    await tester.pumpWidget(const MaterialApp(home: ShowDetailsExample()));
+    await tester.pumpAndSettle();
+    expect(_opacityLayersIn(tester, find.byType(ShowDetailsExample)), 0);
+
+    await tester.tap(find.text('K2'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byIcon(Icons.chevron_left));
+    await tester.pumpAndSettle();
+    expect(_opacityLayersIn(tester, find.byType(ShowDetailsExample)), 0);
+  });
+
+  testWidgets('dims the grid while the details are open', (tester) async {
+    await tester.pumpWidget(const MaterialApp(home: ShowDetailsExample()));
+    await tester.pumpAndSettle();
+    final background = Theme.of(tester.element(find.byType(HeroHereSwitcher)))
+        .canvasColor;
+    // How opaque the color over the grid is.
+    double dimming() => tester
+        .widgetList<DecoratedBox>(
+          find.descendant(
+            of: find.byType(HeroHereSwitcher),
+            matching: find.byType(DecoratedBox),
+          ),
+        )
+        .map((box) => box.decoration)
+        .whereType<BoxDecoration>()
+        .map((decoration) => decoration.color)
+        .where((color) => color?.withValues(alpha: 1) == background)
+        .fold(0.0, (dimming, color) => dimming + color!.a);
+
+    expect(dimming(), 0);
+
+    await tester.tap(find.text('K2'));
+    await tester.pumpAndSettle();
+    expect(dimming(), closeTo(1 - kGridViewOpacityOnOpen, 0.01));
+
+    await tester.tap(find.byIcon(Icons.chevron_left));
+    await tester.pumpAndSettle();
+    expect(dimming(), 0);
+  });
+
   testWidgets('closes the details when flung down', (tester) async {
     // Tall enough to build the title and the description, so they fly too.
     tester.view.physicalSize = const Size(2400, 4800);
@@ -215,4 +259,16 @@ void main() {
     // So do the details.
     expect(tester.getRect(find.byType(AspectRatio)).left, 120);
   }, variant: TargetPlatformVariant.only(TargetPlatform.macOS));
+}
+
+/// How many opacity layers the render objects below [finder] paint into.
+int _opacityLayersIn(WidgetTester tester, Finder finder) {
+  var count = 0;
+  void visit(RenderObject object) {
+    if (object.debugLayer is OpacityLayer) count++;
+    object.visitChildren(visit);
+  }
+
+  visit(tester.renderObject(finder));
+  return count;
 }

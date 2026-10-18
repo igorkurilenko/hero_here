@@ -1,3 +1,9 @@
+## Unreleased
+
+### Example
+
+* Dim the details example's grid with a scrim in the canvas color while the details are open, rather than with `AnimatedOpacity`, which kept the whole grid in an opacity layer even when opaque. On the web that painted the grid offscreen on every frame. The scrim gives the same colors, in one rectangle. The back button's switcher also has no child while the details are closed, rather than an empty one in a fade layer.
+
 ## 1.5.3
 
 ### Fixes

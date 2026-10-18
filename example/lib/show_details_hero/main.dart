@@ -64,8 +64,9 @@ class _ShowDetailsExampleState extends State<ShowDetailsExample> {
     forceMaterialTransparency: true,
     leading: AnimatedSwitcher(
       duration: HeroHere.defaultFlightAnimationDuration,
-      // Distinct keys let one child fade out while the other fades in. Keys
-      // that stay the same across builds keep a rebuild from fading at all.
+      // A key that stays the same across builds keeps a rebuild from fading.
+      // No child while the details are closed, rather than an empty one,
+      // which the switcher's fade would keep in an opacity layer.
       child: detailsVisible
           ? Material(
               key: const ValueKey('back'),
@@ -78,7 +79,7 @@ class _ShowDetailsExampleState extends State<ShowDetailsExample> {
                 ),
               ),
             )
-          : const SizedBox(key: ValueKey('no back')),
+          : null,
     ),
   );
 
@@ -94,30 +95,40 @@ class _ShowDetailsExampleState extends State<ShowDetailsExample> {
             scale: _gridViewScale,
             duration: HeroHere.defaultFlightAnimationDuration,
             curve: HeroHere.defaultFlightAnimationCurve,
-            child: AnimatedOpacity(
-              opacity: _gridViewOpacity,
-              duration: HeroHere.defaultFlightAnimationDuration,
-              curve: HeroHere.defaultFlightAnimationCurve,
-              child: ValueListenableBuilder(
-                valueListenable: _isHeroSwitching,
-                builder: (context, isHeroSwitching, child) =>
-                    IgnorePointer(ignoring: isHeroSwitching, child: child),
-                child: ScrollConfiguration(
-                  behavior: kScrollBehavior,
-                  // Measures the width below the switcher, so resizing the
-                  // window doesn't rebuild the page and run a switch.
-                  child: LayoutBuilder(
-                    builder: (context, constraints) => GridView.builder(
-                      clipBehavior: Clip.none,
-                      padding:
-                          centerColumnPadding(constraints.maxWidth) +
-                          const EdgeInsets.all(8),
-                      gridDelegate: kGridViewDelegate,
-                      itemCount: kEightThousanders.length,
-                      itemBuilder: _buildGridItem,
-                    ),
+            child: ValueListenableBuilder(
+              valueListenable: _isHeroSwitching,
+              builder: (context, isHeroSwitching, child) =>
+                  IgnorePointer(ignoring: isHeroSwitching, child: child),
+              child: ScrollConfiguration(
+                behavior: kScrollBehavior,
+                // Measures the width below the switcher, so resizing the
+                // window doesn't rebuild the page and run a switch.
+                child: LayoutBuilder(
+                  builder: (context, constraints) => GridView.builder(
+                    clipBehavior: Clip.none,
+                    padding:
+                        centerColumnPadding(constraints.maxWidth) +
+                        const EdgeInsets.all(8),
+                    gridDelegate: kGridViewDelegate,
+                    itemCount: kEightThousanders.length,
+                    itemBuilder: _buildGridItem,
                   ),
                 ),
+              ),
+            ),
+          ),
+        ),
+        // Dims the grid as an opacity of kGridViewOpacityOnOpen would over
+        // the canvas behind it, but in one rectangle rather than an opacity
+        // layer, which paints the whole grid offscreen, on the web even when
+        // opaque.
+        Positioned.fill(
+          child: IgnorePointer(
+            child: AnimatedContainer(
+              duration: HeroHere.defaultFlightAnimationDuration,
+              curve: HeroHere.defaultFlightAnimationCurve,
+              color: Theme.of(context).canvasColor.withValues(
+                alpha: detailsVisible ? 1 - kGridViewOpacityOnOpen : 0,
               ),
             ),
           ),
@@ -188,8 +199,6 @@ class _ShowDetailsExampleState extends State<ShowDetailsExample> {
 
   double get _gridViewScale =>
       detailsVisible ? kGridViewScaleWhenDetailsOpen : 1.0;
-
-  double get _gridViewOpacity => detailsVisible ? kGridViewOpacityOnOpen : 1.0;
 
   Offset _computeGridViewSlideOffset(int index, Offset begin) {
     // The page's size rather than MediaQuery's, which would make the page
