@@ -67,6 +67,15 @@ typedef HeroHereFlightRectTweenFactory = RectTween Function(
   Rect? end,
 );
 
+/// Builds a flight's shuttle, what it shows as it flies, from [animation],
+/// which runs from 0 at the hero the flight leaves, [fromHero], to 1 at the
+/// hero it flies to, [toHero]. A flight that turns back runs it in reverse,
+/// with the same two heroes. [flightContext] is the flight's context in the
+/// switcher's sky.
+///
+/// It's called when the flight starts, and again whenever its heroes change,
+/// such as on the next leg of a chain or when a rebuild gives one of them a
+/// new widget, but not on each frame.
 typedef HeroHereFlightShuttleBuilder = Widget Function(
   BuildContext flightContext,
   Animation<double> animation,
@@ -94,12 +103,15 @@ enum HeroHereFlightRedirect {
   divert,
 }
 
+/// The old name of [HeroHereFlightAnimationControllerFactory].
 @Deprecated(
   'Use HeroHereFlightAnimationControllerFactory. '
   'This name will be removed in 2.0.0.',
 )
 typedef AnimationControllerFactory = HeroHereFlightAnimationControllerFactory;
 
+/// The old name of [HeroHereFlightAnimationFactory], generic in the value of
+/// the animation.
 @Deprecated(
   'Use HeroHereFlightAnimationFactory. This name will be removed in 2.0.0.',
 )
@@ -107,11 +119,13 @@ typedef AnimationFactory<T> = Animation<T> Function(
   AnimationController controller,
 );
 
+/// The old name of [HeroHereFlightAnimationStarter].
 @Deprecated(
   'Use HeroHereFlightAnimationStarter. This name will be removed in 2.0.0.',
 )
 typedef StartAnimationCaller = HeroHereFlightAnimationStarter;
 
+/// The old name of [HeroHereFlightRectTweenFactory].
 @Deprecated(
   'Use HeroHereFlightRectTweenFactory. This name will be removed in 2.0.0.',
 )
@@ -174,6 +188,7 @@ class HeroHereSwitcher extends StatefulWidget {
   /// flies on, with its shuttle built anew from its heroes.
   final Object? switchKey;
 
+  /// Creates a switcher that flies the heroes in [child] when it changes.
   const HeroHereSwitcher({
     super.key,
     this.child,
@@ -195,20 +210,68 @@ class HeroHereSwitcher extends StatefulWidget {
 /// It paints [child] into a layer of its own, which a switch shows where the
 /// hero was, as it last showed, for the frame after the hero goes away,
 /// before its flight starts.
+///
+/// A flight takes each of its options, such as [flightAnimationDuration] or
+/// [flightShuttleBuilder], from the hero it flies to, or else from the hero
+/// it leaves, or else the default, once, when it starts. A flight that
+/// changes course keeps them.
 class HeroHere extends StatefulWidget {
+  /// The curve of [defaultFlightAnimationFactory]'s animation.
   static const defaultFlightAnimationCurve = Curves.easeInOut;
+
+  /// How long a flight takes when neither of its heroes sets
+  /// [flightAnimationDuration].
   static const defaultFlightAnimationDuration = Duration(milliseconds: 300);
+
+  /// What a flight does when the hero it flies to changes mid-flight, if
+  /// neither of its heroes sets [flightRedirect].
   static const defaultFlightRedirect = HeroHereFlightRedirect.chain;
 
+  /// What the hero flies by. When a switch brings a hero with this tag and
+  /// another key, it flies from where the hero with this tag was.
+  ///
+  /// Of the heroes with one tag in the switcher's child, only the last shows.
+  /// The others hide, keeping their space.
   final Object tag;
+
+  /// What the hero shows. The default shuttle shows the child of the hero a
+  /// flight flies to.
   final Widget child;
+
+  /// How long a flight takes. Defaults to [defaultFlightAnimationDuration].
   final Duration? flightAnimationDuration;
+
+  /// Makes the controller that drives a flight, from the flight's duration.
+  /// Defaults to [defaultFlightAnimationControllerFactory].
   final HeroHereFlightAnimationControllerFactory?
   flightAnimationControllerFactory;
+
+  /// Makes the animation a flight runs on, from its controller. Defaults to
+  /// [defaultFlightAnimationFactory], which curves it by
+  /// [defaultFlightAnimationCurve].
   final HeroHereFlightAnimationFactory? flightAnimationFactory;
+
+  /// Starts a flight's controller forward: when the flight starts, from 0 on
+  /// each leg after that, and from where it is when the flight turns around
+  /// again toward the hero it flies to. The flight lands once the future it
+  /// returns completes. It may drive the controller as it likes, such as
+  /// with `controller.fling(velocity: velocity)` to land a drag at its speed.
+  /// Defaults to [defaultForwardFlightAnimation].
   final HeroHereFlightAnimationStarter? forwardFlightAnimation;
+
+  /// Starts a flight's controller in reverse, when the flight turns back to
+  /// the hero it left, as a [HeroHereFlightRedirect.chain] flight does. The
+  /// flight lands back on that hero once the future it returns completes.
+  /// Defaults to [defaultReverseFlightAnimation].
   final HeroHereFlightAnimationStarter? reverseFlightAnimation;
+
+  /// Builds what a flight shows as it flies. Defaults to
+  /// [defaultFlightShuttleBuilder], which shows the child of the hero the
+  /// flight flies to.
   final HeroHereFlightShuttleBuilder? flightShuttleBuilder;
+
+  /// Makes the tween of the rect a flight's shuttle takes. Defaults to
+  /// [defaultFlightRectTweenFactory].
   final HeroHereFlightRectTweenFactory? rectTweenFactory;
 
   /// What a flight does when the hero it flies to changes mid-flight, or
@@ -216,8 +279,19 @@ class HeroHere extends StatefulWidget {
   /// leaves says. Like the other flight options, it's taken when the flight
   /// starts.
   final HeroHereFlightRedirect? flightRedirect;
+
+  /// Anything a [flightShuttleBuilder] needs to know about the hero, which it
+  /// reads from `fromHero` and `toHero`, such as each hero's corner radius to
+  /// tween between. A flight that diverts keeps the payload of the hero it
+  /// left on the stand-in it shows for it.
   final Object? payload;
 
+  /// Creates a hero with [tag] that shows [child].
+  ///
+  /// Its `key` tells a switch whether it's the hero with its tag that was
+  /// there before. A hero with another key flies from where that one was. One
+  /// with the same key is the same hero, and shows where it is now, with
+  /// nothing flying, even when it moved.
   const HeroHere({
     required super.key,
     required this.tag,
@@ -236,28 +310,36 @@ class HeroHere extends StatefulWidget {
   @override
   State<HeroHere> createState() => _HeroHereState();
 
+  /// Makes an [AnimationController] of [duration] that ticks with
+  /// [tickerProvider].
   static AnimationController defaultFlightAnimationControllerFactory(
     TickerProvider tickerProvider,
     Duration duration,
   ) => AnimationController(vsync: tickerProvider, duration: duration);
 
+  /// Curves [controller] by [defaultFlightAnimationCurve].
   static Animation<double> defaultFlightAnimationFactory(
     AnimationController controller,
   ) => CurvedAnimation(parent: controller, curve: defaultFlightAnimationCurve);
 
+  /// Runs [controller] forward, [from] a value if given.
   static TickerFuture defaultForwardFlightAnimation(
     AnimationController controller, {
     double? from,
   }) => controller.forward(from: from);
 
+  /// Runs [controller] in reverse, [from] a value if given.
   static TickerFuture defaultReverseFlightAnimation(
     AnimationController controller, {
     double? from,
   }) => controller.reverse(from: from);
 
+  /// A [RectTween] from [begin] to [end], which moves the shuttle's
+  /// corners along straight lines.
   static RectTween defaultFlightRectTweenFactory(Rect? begin, Rect? end) =>
       RectTween(begin: begin, end: end);
 
+  /// Shows the child of the hero the flight flies to, [toHero].
   static Widget defaultFlightShuttleBuilder(
     BuildContext flightContext,
     Animation<double> animation,

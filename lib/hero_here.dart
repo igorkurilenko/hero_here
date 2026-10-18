@@ -12,6 +12,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+/// Hero flights within one screen, with no navigation: a [HeroHereSwitcher]
+/// flies the [HeroHere] widgets in its child between their places whenever
+/// its child changes.
 library;
 
 export 'src/hero_here.dart';

@@ -1,5 +1,9 @@
 ## Unreleased
 
+### Docs
+
+* Document the rest of the public API: the library, `HeroHere`'s constructor, its tag, child, flight options, payload and defaults, `HeroHereSwitcher`'s constructor, the shuttle builder's type and the deprecated type names. Among other things, they say that a hero's key tells a switch whether it's a new hero, which flies, or the same one, which doesn't, and which of a flight's two heroes it takes each option from. The analyzer now flags public API without docs.
+
 ### Example
 
 * Ship the basic example's page, `example/example.md`, so pub.dev shows it on the package's Example tab. `.pubignore` left out the whole example folder, so pub.dev found no example. Its code is now the same as the example app's `lib/main.dart`.
