@@ -257,35 +257,68 @@ void main() {
     expect(dimming(), 0);
   });
 
-  testWidgets('decodes each grid thumbnail no taller than its cell', (
-    tester,
-  ) async {
+  for (final (where, window, display) in [
+    ('', null, null),
+    (' on a phone', const Size(402, 874), const Size(402, 874)),
+    // Its display may still give its upright size.
+    (' on a phone on its side', const Size(874, 402), const Size(402, 874)),
+  ]) {
+    testWidgets('decodes each grid thumbnail no taller than its cell$where', (
+      tester,
+    ) async {
+      if (window != null && display != null) {
+        tester.view.devicePixelRatio = 3;
+        tester.view.physicalSize = window * 3;
+        tester.view.display.devicePixelRatio = 3;
+        tester.view.display.size = display * 3;
+        addTearDown(tester.view.reset);
+        addTearDown(tester.view.display.reset);
+      }
+      await tester.pumpWidget(const MaterialApp(home: ShowDetailsExample()));
+      await tester.pumpAndSettle();
+      final ratio = tester.view.devicePixelRatio;
+
+      final cells = find.byType(EightThousanderPreviewHero);
+      expect(cells, findsWidgets);
+      for (final cell in tester.widgetList(cells)) {
+        final image = find.descendant(
+          of: find.byWidget(cell),
+          matching: find.byType(Image),
+        );
+        // Tall enough to show sharp, and no taller than the cell.
+        expect(
+          _decodedHeightOf(tester, image),
+          greaterThanOrEqualTo(tester.getSize(image).height * ratio),
+        );
+        expect(
+          _decodedHeightOf(tester, image),
+          lessThanOrEqualTo(
+            tester.getSize(find.byWidget(cell)).height * ratio + 1,
+          ),
+        );
+      }
+    });
+  }
+
+  testWidgets('decodes the grid thumbnails at one size as the window '
+      'resizes', (tester) async {
+    tester.view.devicePixelRatio = 2;
+    tester.view.physicalSize = const Size(1200, 800) * 2;
+    tester.view.display.devicePixelRatio = 2;
+    tester.view.display.size = const Size(1920, 1080) * 2;
+    addTearDown(tester.view.reset);
+    addTearDown(tester.view.display.reset);
     await tester.pumpWidget(const MaterialApp(home: ShowDetailsExample()));
     await tester.pumpAndSettle();
-    final ratio = tester.view.devicePixelRatio;
+    final image = find.byType(Image).first;
+    final wide = _decodedHeightOf(tester, image);
 
-    final cells = find.byType(EightThousanderPreviewHero);
-    expect(cells, findsWidgets);
-    for (final cell in tester.widgetList(cells)) {
-      final image = find.descendant(
-        of: find.byWidget(cell),
-        matching: find.byType(Image),
-      );
-      final provider = tester.widget<Image>(image).image;
-      expect(provider, isA<ResizeImage>());
-      final height = (provider as ResizeImage).height!;
-      // Tall enough to show sharp, and no taller than the cell.
-      expect(
-        height,
-        greaterThanOrEqualTo(tester.getSize(image).height * ratio),
-      );
-      expect(
-        height,
-        lessThanOrEqualTo(
-          tester.getSize(find.byWidget(cell)).height * ratio + 1,
-        ),
-      );
-    }
+    // Narrower than the grid at its widest, so its cells shrink.
+    tester.view.physicalSize = const Size(400, 800) * 2;
+    await tester.pumpAndSettle();
+
+    // So the window's resize decodes no thumbnail anew.
+    expect(_decodedHeightOf(tester, image), wide);
   });
 
   testWidgets('shows the cell\'s thumbnail in the details until their full '
@@ -421,4 +454,11 @@ int _opacityLayersIn(WidgetTester tester, Finder finder) {
 
   visit(tester.renderObject(finder));
   return count;
+}
+
+/// The height the image of [image], an [Image], is decoded at.
+int _decodedHeightOf(WidgetTester tester, Finder image) {
+  final provider = tester.widget<Image>(image).image;
+  expect(provider, isA<ResizeImage>());
+  return (provider as ResizeImage).height!;
 }
