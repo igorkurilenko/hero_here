@@ -2,6 +2,7 @@ import 'dart:math' as math;
 
 import 'package:example/flip_card_hero/main.dart';
 import 'package:example/show_details_hero/config.dart';
+import 'package:example/show_details_hero/eight_thousander.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -138,7 +139,11 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.byKey(card), findsNothing);
-    expect(find.byKey(cell), findsOneWidget);
+    // Its cell shows its photo again, rather than only keeping its place.
+    expect(
+      find.descendant(of: find.byKey(cell), matching: find.byType(Container)),
+      findsOneWidget,
+    );
   });
 
   testWidgets('turns a card back to its cell when closed mid-flight, after '
@@ -169,6 +174,47 @@ void main() {
     expect(tester.getRect(find.byKey(cell)), cellRect);
   });
 
+  testWidgets('dims a card on its way back to the grid along with the grid, '
+      'and brightens one that opens from it, as one card closes and another '
+      'opens', (tester) async {
+    await tester.pumpWidget(const MaterialApp(home: FlipCardExample()));
+    await tester.pumpAndSettle();
+    final k2 = kEightThousanders[1];
+    await tester.tap(find.byKey(cell));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byKey(card));
+    await tester.pump();
+    // Everest's card is past halfway back, and the grid half as dim.
+    await tester.pump(const Duration(milliseconds: 150));
+    final greyedK2 = _veilOf(tester, k2);
+    expect(greyedK2, greaterThan(.1));
+    await tester.tap(find.byKey(const ValueKey('cell-1')));
+    await tester.pump();
+    // The open card, which hides while it flies, tells finders so from its
+    // next frame.
+    await tester.pump();
+
+    var everestVeil = _veilOf(tester, everest);
+    var k2Veil = _veilOf(tester, k2);
+    expect(k2Veil, closeTo(greyedK2, .1));
+    for (var frame = 0; frame < 100 && _flying(); frame++) {
+      await tester.pump(const Duration(milliseconds: 16));
+      // As dim as it looked a frame before, give or take a frame's fade,
+      // where it flies and as it lands alike.
+      expect(_veilOf(tester, everest), closeTo(everestVeil, .1));
+      expect(_veilOf(tester, k2), closeTo(k2Veil, .1));
+      everestVeil = _veilOf(tester, everest);
+      k2Veil = _veilOf(tester, k2);
+    }
+    await tester.pumpAndSettle();
+
+    final grid = _veilOf(tester, kEightThousanders[2]);
+    expect(grid, greaterThan(.5));
+    expect(_veilOf(tester, everest), grid);
+    expect(_veilOf(tester, k2), 0);
+  });
+
   for (final (where, window) in [
     ('', null),
     (' on a phone', const Size(402, 874)),
@@ -186,7 +232,11 @@ void main() {
 
       final photos = find.descendant(
         of: find.byType(GridView),
-        matching: find.byType(DecoratedBox),
+        matching: find.byWidgetPredicate(
+          (widget) =>
+              widget is DecoratedBox &&
+              (widget.decoration as BoxDecoration).image != null,
+        ),
       );
       expect(photos, findsWidgets);
       for (final photo in tester.widgetList<DecoratedBox>(photos)) {
@@ -222,4 +272,37 @@ double _turn(WidgetTester tester) {
   final angle = math.atan2(transform.entry(0, 2), transform.entry(0, 0));
   // Past a half turn, atan2 gives the angle less a whole turn.
   return (angle < -math.pi / 2 ? angle + 2 * math.pi : angle) / math.pi;
+}
+
+/// How thick a veil of the canvas's color lies over the face of
+/// [eightThousander]'s card that shows, in its place or in flight.
+double _veilOf(WidgetTester tester, EightThousander eightThousander) {
+  final veiled = find.byWidgetPredicate(
+    (widget) => widget is Container && widget.foregroundDecoration != null,
+  );
+  final faces = [
+    ...find
+        .descendant(
+          of: veiled,
+          matching: find.byWidgetPredicate(
+            (widget) =>
+                widget is DecoratedBox &&
+                widget.decoration is BoxDecoration &&
+                (widget.decoration as BoxDecoration).image?.image ==
+                    ResizeImage(
+                      AssetImage(eightThousander.image),
+                      height: (kMaxCellExtent * tester.view.devicePixelRatio)
+                          .ceil(),
+                    ),
+          ),
+        )
+        .evaluate(),
+    ...find.text(eightThousander.name).evaluate(),
+  ];
+  expect(faces, hasLength(1));
+  final face = faces.single;
+  final container =
+      face.findAncestorWidgetOfExactType<Container>() ??
+      fail('$face is on no card face');
+  return (container.foregroundDecoration! as BoxDecoration).color!.a;
 }
