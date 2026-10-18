@@ -18,12 +18,14 @@ import 'package:flutter/material.dart';
 /// that field would show it.
 class MessageWidget extends StatelessWidget {
   final String? text;
+  final TextEditingController? controller;
   final FocusNode? focusNode;
   final ValueChanged<String>? onSubmitted;
   final InputDecoration? decoration;
 
   const MessageWidget.input({
     super.key,
+    required TextEditingController this.controller,
     required ValueChanged<String> this.onSubmitted,
     this.focusNode,
     this.decoration,
@@ -33,17 +35,22 @@ class MessageWidget extends StatelessWidget {
     super.key,
     required String this.text,
     this.decoration,
-  }) : focusNode = null,
+  }) : controller = null,
+       focusNode = null,
        onSubmitted = null;
 
   @override
   Widget build(BuildContext context) {
     final text = this.text;
     if (text == null) {
-      return _MessageInput(
+      return TextField(
+        controller: controller,
         focusNode: focusNode,
-        onSubmitted: onSubmitted!,
+        // Enter sends, and the field stays focused for the next message.
+        onEditingComplete: () {},
+        onSubmitted: onSubmitted,
         decoration: decoration,
+        textInputAction: TextInputAction.done,
       );
     }
 
@@ -65,39 +72,4 @@ class MessageWidget extends StatelessWidget {
       ),
     );
   }
-}
-
-class _MessageInput extends StatefulWidget {
-  final FocusNode? focusNode;
-  final ValueChanged<String> onSubmitted;
-  final InputDecoration? decoration;
-
-  const _MessageInput({
-    required this.focusNode,
-    required this.onSubmitted,
-    required this.decoration,
-  });
-
-  @override
-  State<_MessageInput> createState() => _MessageInputState();
-}
-
-class _MessageInputState extends State<_MessageInput> {
-  // Owned by the state, so a rebuild keeps what is typed.
-  final _controller = TextEditingController();
-
-  @override
-  void dispose() {
-    _controller.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) => TextField(
-    controller: _controller,
-    focusNode: widget.focusNode,
-    onSubmitted: widget.onSubmitted,
-    decoration: widget.decoration,
-    textInputAction: TextInputAction.done,
-  );
 }

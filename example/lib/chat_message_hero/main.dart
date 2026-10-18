@@ -40,8 +40,19 @@ class _HeroHereExampleState extends State<HeroHereExample> {
   // The message being typed. Sending it starts a new one, so the input's
   // hero hands its tag to the sent message, which flies into the list.
   var _draft = Message();
+  // The input stays the same field through every send, so it keeps its focus
+  // and what is typed. Only the hero over it changes with the draft.
+  final _inputController = TextEditingController();
   final _scrollController = ScrollController();
   final _focusNode = FocusNode();
+
+  @override
+  void dispose() {
+    _inputController.dispose();
+    _scrollController.dispose();
+    _focusNode.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) => HeroHereSwitcher(
@@ -82,20 +93,30 @@ class _HeroHereExampleState extends State<HeroHereExample> {
     ),
     child: Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16),
-      child: HeroHere(
-        tag: '$_draft',
-        key: ValueKey('$_draft'),
-        child: MessageWidget.input(
-          focusNode: _focusNode,
-          onSubmitted: _onMessageSubmitted,
-          decoration: const InputDecoration(
-            hintText: 'Message',
-            border: OutlineInputBorder(
-              borderSide: BorderSide.none,
-              borderRadius: BorderRadius.all(Radius.circular(32)),
+      child: Stack(
+        children: [
+          // Where the draft flies from once sent. It paints nothing: the
+          // field shows the text until the flight's shuttle does.
+          Positioned.fill(
+            child: HeroHere(
+              tag: '$_draft',
+              key: ValueKey('$_draft'),
+              child: const SizedBox.expand(),
             ),
           ),
-        ),
+          MessageWidget.input(
+            controller: _inputController,
+            focusNode: _focusNode,
+            onSubmitted: _onMessageSubmitted,
+            decoration: const InputDecoration(
+              hintText: 'Message',
+              border: OutlineInputBorder(
+                borderSide: BorderSide.none,
+                borderRadius: BorderRadius.all(Radius.circular(32)),
+              ),
+            ),
+          ),
+        ],
       ),
     ),
   );
@@ -103,17 +124,23 @@ class _HeroHereExampleState extends State<HeroHereExample> {
   void _onMessageSubmitted(String text) {
     if (text.isEmpty) return;
 
-    _focusNode.unfocus();
-
     setState(() {
       _messages.add(_draft..text = text);
       _draft = Message();
     });
 
-    afterBuild(() {
-      _focusNode.requestFocus();
-      _scrollToBottom();
+    // The message flies after this frame, so the field shows it until then,
+    // and keeps anything typed after it.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final value = _inputController.value;
+      if (!value.text.startsWith(text)) return;
+      _inputController.value = value.replaced(
+        TextRange(start: 0, end: text.length),
+        '',
+      );
     });
+
+    afterBuild(_scrollToBottom);
   }
 
   void _scrollToBottom() => _scrollController.animateTo(

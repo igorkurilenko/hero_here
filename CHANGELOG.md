@@ -4,6 +4,7 @@
 
 * Repaint only the auto-switching example's bottom bar when its buttons change, such as on each switch or after a tap, rather than the whole page with it.
 * Show the chat example's sent messages as text in the field's decoration rather than as read-only text fields, so each takes 9 elements rather than 44 for a switch to walk.
+* Keep the chat example's input focused as messages are sent, however quickly. An Enter with nothing typed no longer leaves the field, and what is typed right after a send is no longer lost. The field now stays the same through every send, under the hero the message flies from, and shows the message until its flight does.
 
 ## 1.5.1
 
