@@ -1,3 +1,9 @@
+## Unreleased
+
+### Breaking changes
+
+* Paint no background in `HeroHereSwitcher.defaultLayoutBuilder`. Its `Material` is now transparent, so what's behind the switcher shows through, such as a `Scaffold`'s background or an image, rather than the theme's canvas color covering it. The material still gives the child and the shuttles a default text style and a surface for ink, and the switcher still takes taps that land on its empty space. A switcher with nothing painted behind it now shows what's under it, such as black on a phone. To keep the old look, pass `layoutBuilder: (child, sky) => Material(child: Stack(children: [child, sky]))`.
+
 ## 1.5.7
 
 ### Fixes

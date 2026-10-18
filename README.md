@@ -198,7 +198,7 @@ With `chain`, a flight sent back to the hero it left turns back from where it is
 
 ## Layout
 
-`HeroHereSwitcher` puts the layer its flights fly in, its sky, over its child in a `Stack`. To lay them out yourself, set `layoutBuilder`. Keep the sky after the child in the stack, so it paints over the child and lays out after it: then on each frame, such as on a window resize, flights find their heroes where that frame's layout puts them.
+`HeroHereSwitcher` puts the layer its flights fly in, its sky, over its child in a `Stack`, in a transparent `Material`. The material gives them a default text style and a surface for ink, but paints no background, so what's behind the switcher shows through. To lay them out yourself, set `layoutBuilder`. Keep the sky after the child in the stack, so it paints over the child and lays out after it: then on each frame, such as on a window resize, flights find their heroes where that frame's layout puts them.
 
 Shuttles fly where their heroes are on the screen, wherever the sky is. The sky takes the smallest size it may, so it doesn't size the switcher. To clip the flights to the switcher, give the sky the switcher's size:
 

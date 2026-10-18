@@ -199,9 +199,19 @@ class HeroHereSwitcher extends StatefulWidget {
   @override
   State<HeroHereSwitcher> createState() => _HeroHereSwitcherState();
 
-  /// Puts the sky over the child in a [Stack], in a [Material].
-  static Widget defaultLayoutBuilder(Widget child, Widget sky) =>
-      Material(child: Stack(children: [child, sky]));
+  /// Puts the sky over the child in a [Stack], in a transparent [Material].
+  ///
+  /// The material gives the child and the shuttles a default text style and
+  /// a surface for ink, and the switcher takes the taps that land on neither,
+  /// as a material would. It paints no background, so what's behind the
+  /// switcher, such as a [Scaffold]'s, shows through.
+  static Widget defaultLayoutBuilder(Widget child, Widget sky) => Material(
+    type: MaterialType.transparency,
+    child: MetaData(
+      behavior: HitTestBehavior.opaque,
+      child: Stack(children: [child, sky]),
+    ),
+  );
 }
 
 /// A [child] that flies, when a [HeroHereSwitcher]'s child changes, from

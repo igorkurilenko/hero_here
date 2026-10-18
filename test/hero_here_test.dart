@@ -2704,6 +2704,67 @@ void main() {
     expect(tester.getRect(switcher), centered);
   });
 
+  testWidgets('lets what is behind it show through by default', (tester) async {
+    tester.view.devicePixelRatio = 1;
+    tester.view.physicalSize = const Size(800, 600);
+    addTearDown(tester.view.reset);
+    const green = Color(0xFF00FF00);
+
+    await tester.pumpWidget(
+      const MaterialApp(
+        home: ColoredBox(
+          color: green,
+          child: HeroHereSwitcher(child: SizedBox.expand()),
+        ),
+      ),
+    );
+
+    expect(await _pixelAt(tester, const Offset(400, 300)), green);
+  });
+
+  testWidgets('gives its child a material for ink by default', (tester) async {
+    var taps = 0;
+    await tester.pumpWidget(
+      Directionality(
+        textDirection: TextDirection.ltr,
+        child: HeroHereSwitcher(
+          child: Center(
+            // An ink well needs a material above it.
+            child: InkWell(onTap: () => taps++, child: const Text('ink')),
+          ),
+        ),
+      ),
+    );
+    await tester.tap(find.text('ink'));
+    await tester.pump();
+
+    expect(tester.takeException(), isNull);
+    expect(taps, 1);
+  });
+
+  testWidgets('keeps taps on its empty space from what is behind it by '
+      'default', (tester) async {
+    var behind = 0;
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Stack(
+          children: [
+            Positioned.fill(
+              child: GestureDetector(
+                behavior: HitTestBehavior.opaque,
+                onTap: () => behind++,
+              ),
+            ),
+            const HeroHereSwitcher(child: SizedBox.expand()),
+          ],
+        ),
+      ),
+    );
+    await tester.tapAt(const Offset(400, 300));
+
+    expect(behind, 0);
+  });
+
   testWidgets('clips its flights to it when its layout builder sizes the sky', (
     tester,
   ) async {
