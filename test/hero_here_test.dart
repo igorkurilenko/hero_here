@@ -365,6 +365,157 @@ void main() {
     expect(tester.getRect(_boxOf(moving)), target);
   });
 
+  testWidgets('shows the last of heroes that share a tag in the tree, though '
+      'it mounted first', (tester) async {
+    final stage = ValueNotifier(0);
+    addTearDown(stage.dispose);
+    await tester.pumpWidget(
+      MaterialApp(
+        home: ValueListenableBuilder(
+          valueListenable: stage,
+          builder: (context, stage, _) => HeroHereSwitcher(
+            child: Stack(
+              children: [
+                if (stage == 1) _heroAt(const ValueKey('b'), _slotRects[0]),
+                _heroAt(const ValueKey('a'), _slotRects[1]),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    // 'b' comes before 'a' in the tree, but mounts after it.
+    stage.value = 1;
+    await _pumpSwitch(tester);
+
+    expect(find.byKey(_shuttleKey), findsNothing);
+    expect(_boxOf(const ValueKey('b')), findsNothing);
+    expect(tester.getRect(_boxOf(const ValueKey('a'))), _slotRects[1]);
+  });
+
+  testWidgets('leaves a hero under a disabled hero mode out of switches until '
+      'the hero mode is enabled again', (tester) async {
+    // 0: 'a' in an enabled hero mode; 1: the hero mode disabled; 2: 'b' comes;
+    // 3: the hero mode enabled again, and 'b' goes.
+    final stage = ValueNotifier(0);
+    addTearDown(stage.dispose);
+    await tester.pumpWidget(
+      MaterialApp(
+        home: ValueListenableBuilder(
+          valueListenable: stage,
+          builder: (context, stage, _) => HeroHereSwitcher(
+            child: Stack(
+              children: [
+                HeroMode(
+                  enabled: stage != 1 && stage != 2,
+                  child: Stack(
+                    children: [_heroAt(const ValueKey('a'), _slotRects[0])],
+                  ),
+                ),
+                if (stage == 2) _heroAt(const ValueKey('b'), _slotRects[1]),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    final a = find.byType(HeroHere).first;
+    final aState = tester.state(a);
+
+    stage.value = 1;
+    await tester.pumpAndSettle();
+    // Nothing flies from 'a', which the disabled hero mode keeps out.
+    stage.value = 2;
+    await _pumpSwitch(tester);
+    expect(find.byKey(_shuttleKey), findsNothing);
+    await tester.pumpAndSettle();
+
+    // Enabled again, 'a' is in switches again, with no remount.
+    stage.value = 3;
+    await _pumpSwitch(tester);
+    expect(find.byKey(_shuttleKey), findsOneWidget);
+    await tester.pumpAndSettle();
+    expect(tester.state(find.byType(HeroHere).first), same(aState));
+  });
+
+  testWidgets('keeps a hero that a global key moves within its switcher, with '
+      'no flight', (tester) async {
+    final moving = GlobalKey();
+    final stage = ValueNotifier(0);
+    addTearDown(stage.dispose);
+    await tester.pumpWidget(
+      MaterialApp(
+        home: ValueListenableBuilder(
+          valueListenable: stage,
+          builder: (context, stage, _) => HeroHereSwitcher(
+            child: Stack(
+              children: [
+                // Under a padding, then not, so the hero moves to another
+                // parent.
+                if (stage == 0)
+                  Padding(
+                    padding: EdgeInsets.zero,
+                    child: Stack(children: [_heroAt(moving, _slotRects[0])]),
+                  )
+                else
+                  _heroAt(moving, _slotRects[1]),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    stage.value = 1;
+    await _pumpSwitch(tester);
+
+    expect(find.byKey(_shuttleKey), findsNothing);
+    expect(tester.getRect(_boxOf(moving)), _slotRects[1]);
+  });
+
+  testWidgets('keeps a hero that mounts anew earlier in the tree, under '
+      'another parent, with no flight', (tester) async {
+    final stage = ValueNotifier(0);
+    addTearDown(stage.dispose);
+    await tester.pumpWidget(
+      MaterialApp(
+        home: ValueListenableBuilder(
+          valueListenable: stage,
+          builder: (context, stage, _) => HeroHereSwitcher(
+            // The first stack builds the hero anew before the second one lets
+            // the old one go.
+            child: Stack(
+              children: [
+                Stack(
+                  children: [
+                    if (stage == 1) _heroAt(const ValueKey('a'), _slotRects[1]),
+                  ],
+                ),
+                Stack(
+                  children: [
+                    if (stage == 0) _heroAt(const ValueKey('a'), _slotRects[0]),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    stage.value = 1;
+    await _pumpSwitch(tester);
+
+    expect(find.byKey(_shuttleKey), findsNothing);
+    await tester.pumpAndSettle();
+    expect(tester.getRect(_boxOf(const ValueKey('a'))), _slotRects[1]);
+  });
+
   testWidgets('flies a redirected hero on from where its shuttle is', (
     tester,
   ) async {

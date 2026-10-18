@@ -31,7 +31,40 @@ class _HeroHereSwitcherState extends State<HeroHereSwitcher>
     super.dispose();
   }
 
-  Set<_Hero> findHeroes() => _childKey.currentContext?.findHeroes() ?? const {};
+  /// The heroes in the switcher's child, by identity, as they come and go.
+  final _heroes = LinkedHashSet<_Hero>.identity();
+
+  void register(_Hero hero) => _heroes.add(hero);
+
+  void unregister(_Hero hero) => _heroes.remove(hero);
+
+  Set<_Hero> findHeroes() {
+    final child = _childKey.currentContext as Element?;
+    final heroes = child?.findHeroes() ?? const <_Hero>{};
+    assert(_registryAgrees(child, heroes));
+    return heroes;
+  }
+
+  /// Whether the registered heroes are [found], those a walk of [child]
+  /// found, in the same order. Until the registry replaces the walk.
+  bool _registryAgrees(Element? child, Set<_Hero> found) {
+    // As in a walk, the first of equal heroes counts.
+    final registered = LinkedHashSet<_Hero>.of(
+      child == null ? const <_Hero>[] : _inTreeOrder(_heroes, child),
+    ).toList();
+    final walked = found.toList();
+    var agrees = registered.length == walked.length;
+    for (var i = 0; agrees && i < walked.length; i++) {
+      agrees = identical(registered[i], walked[i]);
+    }
+    if (agrees) return true;
+    String describe(List<_Hero> heroes) =>
+        heroes.map((hero) => '${hero.tag}: ${hero.key}').join(', ');
+    throw FlutterError(
+      'The registered heroes [${describe(registered)}] differ from the '
+      'heroes a walk finds, [${describe(walked)}].',
+    );
+  }
 
   /// The switcher's child. Flights work out their rects in its space, so the
   /// rects don't depend on where the switcher is on the screen, which may not
@@ -85,17 +118,15 @@ class _HeroHereSwitcherState extends State<HeroHereSwitcher>
       switcher: this,
       child: _Boundary(key: _childKey, child: _child),
     );
-    // A hero that a flight shows in the sky, such as a shuttle that is a
-    // hero itself, is a copy, which belongs to no switcher.
-    final sky = _HeroScope(
-      switcher: null,
-      child: ListenableBuilder(
-        listenable: flights,
-        builder: (context, _) => _buildSky(),
-      ),
+    final sky = ListenableBuilder(
+      listenable: flights,
+      builder: (context, _) => _buildSky(),
     );
 
-    return widget.layoutBuilder(child, sky);
+    // The heroes in the switcher's child are the switcher's. Any other hero
+    // in it, such as one a flight shows in the sky, a copy, or one the layout
+    // builder adds, belongs to no switcher.
+    return _HeroScope(switcher: null, child: widget.layoutBuilder(child, sky));
   }
 
   // Flights repaint on every frame. The boundary keeps those repaints off the

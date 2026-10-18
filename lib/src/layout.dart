@@ -138,6 +138,57 @@ extension _RenderBox on RenderBox {
   }
 }
 
+/// [heroes] that no disabled [HeroMode] below [root] leaves out, in the
+/// order a walk of the tree below [root] meets them, as
+/// [_BuildContext.findHeroes] does.
+List<_Hero> _inTreeOrder(Iterable<_Hero> heroes, Element root) {
+  // The hero's element and its ancestors below root, from the top down, or
+  // null if a disabled hero mode is among them.
+  List<Element>? pathOf(_Hero hero) {
+    final element = hero.context as Element;
+    final path = [element];
+    var leftOut = false;
+    element.visitAncestorElements((ancestor) {
+      if (identical(ancestor, root)) return false;
+      final widget = ancestor.widget;
+      if (widget is HeroMode && !widget.enabled) {
+        leftOut = true;
+        return false;
+      }
+      path.add(ancestor);
+      return true;
+    });
+    return leftOut ? null : path.reversed.toList();
+  }
+
+  int compare(List<Element> a, List<Element> b) {
+    var i = 0;
+    while (i < a.length && i < b.length && identical(a[i], b[i])) {
+      i++;
+    }
+    if (i == a.length && i == b.length) return 0;
+    // A walk meets a hero before the heroes inside it.
+    if (i == a.length) return -1;
+    if (i == b.length) return 1;
+    var order = 0;
+    (i == 0 ? root : a[i - 1]).visitChildren((child) {
+      if (order != 0) return;
+      if (identical(child, a[i])) {
+        order = -1;
+      } else if (identical(child, b[i])) {
+        order = 1;
+      }
+    });
+    return order;
+  }
+
+  final paths = [
+    for (final hero in heroes)
+      if (pathOf(hero) case final path?) (hero: hero, path: path),
+  ]..sort((a, b) => compare(a.path, b.path));
+  return [for (final entry in paths) entry.hero];
+}
+
 extension _BuildContext on BuildContext {
   RenderBox? findRenderBox() => findRenderObject() as RenderBox?;
 

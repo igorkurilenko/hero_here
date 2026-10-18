@@ -55,7 +55,10 @@ class _HeroHereState extends State<HeroHere> {
   void didChangeDependencies() {
     super.didChangeDependencies();
     final switcher = _HeroScope.of(context);
+    // Deactivating it, as a global key moves it, unregistered it.
+    switcher?.register(this);
     if (switcher == _switcher) return;
+    _switcher?.unregister(this);
     _switcher = switcher;
 
     // A hero that mounts, or moves in, while its tag flies hides. If it
@@ -78,6 +81,7 @@ class _HeroHereState extends State<HeroHere> {
   void deactivate() {
     super.deactivate();
     _active = false;
+    _switcher?.unregister(this);
   }
 
   /// Keeps where the hero is in [switcher]'s child, as [switcher] switches.
