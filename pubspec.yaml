@@ -1,7 +1,13 @@
 name: hero_here
-description: "Hero transitions on the same screen without the need for navigation."
-version: 1.5.7
-homepage: https://github.com/igorkurilenko/hero_here
+description: "Hero animation within the same page: tag a widget's old and new places alike, change state, and it flies from one to the other. No Navigator or routes."
+version: 2.0.0
+repository: https://github.com/igorkurilenko/hero_here
+topics:
+  - animation
+  - hero
+  - transition
+  - widget
+  - ui
 
 environment:
   sdk: ^3.13.0

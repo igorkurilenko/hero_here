@@ -2704,6 +2704,67 @@ void main() {
     expect(tester.getRect(switcher), centered);
   });
 
+  testWidgets('lets what is behind it show through by default', (tester) async {
+    tester.view.devicePixelRatio = 1;
+    tester.view.physicalSize = const Size(800, 600);
+    addTearDown(tester.view.reset);
+    const green = Color(0xFF00FF00);
+
+    await tester.pumpWidget(
+      const MaterialApp(
+        home: ColoredBox(
+          color: green,
+          child: HeroHereSwitcher(child: SizedBox.expand()),
+        ),
+      ),
+    );
+
+    expect(await _pixelAt(tester, const Offset(400, 300)), green);
+  });
+
+  testWidgets('gives its child a material for ink by default', (tester) async {
+    var taps = 0;
+    await tester.pumpWidget(
+      Directionality(
+        textDirection: TextDirection.ltr,
+        child: HeroHereSwitcher(
+          child: Center(
+            // An ink well needs a material above it.
+            child: InkWell(onTap: () => taps++, child: const Text('ink')),
+          ),
+        ),
+      ),
+    );
+    await tester.tap(find.text('ink'));
+    await tester.pump();
+
+    expect(tester.takeException(), isNull);
+    expect(taps, 1);
+  });
+
+  testWidgets('keeps taps on its empty space from what is behind it by '
+      'default', (tester) async {
+    var behind = 0;
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Stack(
+          children: [
+            Positioned.fill(
+              child: GestureDetector(
+                behavior: HitTestBehavior.opaque,
+                onTap: () => behind++,
+              ),
+            ),
+            const HeroHereSwitcher(child: SizedBox.expand()),
+          ],
+        ),
+      ),
+    );
+    await tester.tapAt(const Offset(400, 300));
+
+    expect(behind, 0);
+  });
+
   testWidgets('clips its flights to it when its layout builder sizes the sky', (
     tester,
   ) async {
@@ -2847,43 +2908,6 @@ void main() {
       expect(find.byKey(_shuttleKey), findsNothing);
     });
   }
-
-  test('takes flight options typed with the old or the new names', () {
-    // ignore: deprecated_member_use_from_same_package
-    const AnimationControllerFactory oldControllerFactory =
-        HeroHere.defaultFlightAnimationControllerFactory;
-    // ignore: deprecated_member_use_from_same_package
-    const AnimationFactory<double> oldAnimationFactory =
-        HeroHere.defaultFlightAnimationFactory;
-    // ignore: deprecated_member_use_from_same_package
-    const StartAnimationCaller oldStarter =
-        HeroHere.defaultForwardFlightAnimation;
-    // ignore: deprecated_member_use_from_same_package
-    const RectTweenFactory oldRectTweenFactory =
-        HeroHere.defaultFlightRectTweenFactory;
-
-    const HeroHereFlightAnimationControllerFactory controllerFactory =
-        oldControllerFactory;
-    const HeroHereFlightAnimationFactory animationFactory = oldAnimationFactory;
-    const HeroHereFlightAnimationStarter starter = oldStarter;
-    const HeroHereFlightRectTweenFactory rectTweenFactory = oldRectTweenFactory;
-
-    const hero = HeroHere(
-      key: ValueKey('hero'),
-      tag: 'hero',
-      flightAnimationControllerFactory: oldControllerFactory,
-      flightAnimationFactory: oldAnimationFactory,
-      forwardFlightAnimation: oldStarter,
-      reverseFlightAnimation: starter,
-      rectTweenFactory: oldRectTweenFactory,
-      child: SizedBox(),
-    );
-
-    expect(hero.flightAnimationControllerFactory, same(controllerFactory));
-    expect(hero.flightAnimationFactory, same(animationFactory));
-    expect(hero.forwardFlightAnimation, same(starter));
-    expect(hero.rectTweenFactory, same(rectTweenFactory));
-  });
 
   const left = ValueKey('left'), right = ValueKey('right');
   for (final (leftShuttle, rightShuttle, shuttle, from) in [

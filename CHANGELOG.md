@@ -1,3 +1,14 @@
+## 2.0.0
+
+### Breaking changes
+
+* Paint no background in `HeroHereSwitcher.defaultLayoutBuilder`. Its `Material` is now transparent, so what's behind the switcher shows through, such as a `Scaffold`'s background or an image, rather than the theme's canvas color covering it. The material still gives the child and the shuttles a default text style and a surface for ink, and the switcher still takes taps that land on its empty space. A switcher with nothing painted behind it now shows what's under it, such as black on a phone. To keep the old look, pass `layoutBuilder: (child, sky) => Material(child: Stack(children: [child, sky]))`.
+* Remove the type names deprecated in 1.2.0. Use `HeroHereFlightAnimationControllerFactory` for `AnimationControllerFactory`, `HeroHereFlightAnimationFactory` for `AnimationFactory`, which only makes an `Animation<double>`, `HeroHereFlightAnimationStarter` for `StartAnimationCaller` and `HeroHereFlightRectTweenFactory` for `RectTweenFactory`.
+
+### Docs
+
+* Describe the package in the words people search for. Its description now says it's a hero animation within the same page, with no Navigator or routes, and it has the topics animation, hero, transition, widget and ui. The pubspec now gives the GitHub repository as its `repository` rather than its `homepage`.
+
 ## 1.5.7
 
 ### Fixes

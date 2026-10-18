@@ -103,34 +103,6 @@ enum HeroHereFlightRedirect {
   divert,
 }
 
-/// The old name of [HeroHereFlightAnimationControllerFactory].
-@Deprecated(
-  'Use HeroHereFlightAnimationControllerFactory. '
-  'This name will be removed in 2.0.0.',
-)
-typedef AnimationControllerFactory = HeroHereFlightAnimationControllerFactory;
-
-/// The old name of [HeroHereFlightAnimationFactory], generic in the value of
-/// the animation.
-@Deprecated(
-  'Use HeroHereFlightAnimationFactory. This name will be removed in 2.0.0.',
-)
-typedef AnimationFactory<T> = Animation<T> Function(
-  AnimationController controller,
-);
-
-/// The old name of [HeroHereFlightAnimationStarter].
-@Deprecated(
-  'Use HeroHereFlightAnimationStarter. This name will be removed in 2.0.0.',
-)
-typedef StartAnimationCaller = HeroHereFlightAnimationStarter;
-
-/// The old name of [HeroHereFlightRectTweenFactory].
-@Deprecated(
-  'Use HeroHereFlightRectTweenFactory. This name will be removed in 2.0.0.',
-)
-typedef RectTweenFactory = HeroHereFlightRectTweenFactory;
-
 /// Flies [HeroHere] widgets between their places in [child] when [child]
 /// changes.
 ///
@@ -199,9 +171,19 @@ class HeroHereSwitcher extends StatefulWidget {
   @override
   State<HeroHereSwitcher> createState() => _HeroHereSwitcherState();
 
-  /// Puts the sky over the child in a [Stack], in a [Material].
-  static Widget defaultLayoutBuilder(Widget child, Widget sky) =>
-      Material(child: Stack(children: [child, sky]));
+  /// Puts the sky over the child in a [Stack], in a transparent [Material].
+  ///
+  /// The material gives the child and the shuttles a default text style and
+  /// a surface for ink, and the switcher takes the taps that land on neither,
+  /// as a material would. It paints no background, so what's behind the
+  /// switcher, such as a [Scaffold]'s, shows through.
+  static Widget defaultLayoutBuilder(Widget child, Widget sky) => Material(
+    type: MaterialType.transparency,
+    child: MetaData(
+      behavior: HitTestBehavior.opaque,
+      child: Stack(children: [child, sky]),
+    ),
+  );
 }
 
 /// A [child] that flies, when a [HeroHereSwitcher]'s child changes, from
