@@ -1,3 +1,9 @@
+## Unreleased
+
+### Example
+
+* Ship the basic example's page, `example/example.md`, so pub.dev shows it on the package's Example tab. `.pubignore` left out the whole example folder, so pub.dev found no example. Its code is now the same as the example app's `lib/main.dart`.
+
 ## 1.5.4
 
 ### Fixes

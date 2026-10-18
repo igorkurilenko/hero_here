@@ -177,7 +177,7 @@ class _HeroHereExampleState extends State<HeroHereExample> {
 }
 ```
 
-More advanced examples can be found in the `example` folder or by following [this link](https://github.com/igorkurilenko/hero_here/tree/main/example/lib).
+More advanced examples are in the repository's [example folder](https://github.com/igorkurilenko/hero_here/tree/main/example/lib).
 
 ## Redirected flights
 

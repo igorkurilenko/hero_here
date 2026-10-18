@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:example/main.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -15,5 +17,17 @@ void main() {
 
     expect(find.byKey(const ValueKey(HeroType.red)), findsNothing);
     expect(find.byKey(const ValueKey(HeroType.green)), findsOneWidget);
+  });
+
+  test('shows the code of lib/main.dart on its pub.dev page', () {
+    // pub.dev shows example.md on the package's Example tab.
+    final page = File('example.md').readAsStringSync();
+    final code = RegExp(
+      r'```dart\n(.*?)```',
+      dotAll: true,
+    ).firstMatch(page)?.group(1);
+    final main = File('lib/main.dart').readAsStringSync();
+
+    expect(code, main.substring(main.indexOf('import ')));
   });
 }

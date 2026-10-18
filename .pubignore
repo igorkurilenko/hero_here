@@ -11,6 +11,8 @@ build/
 ios/Flutter/Flutter.framework/
 android/app/build/
 
-# Uncomment the following line to exclude the example folder
-example/
+# The example ships only example.md, which pub.dev shows on the package's
+# Example tab. Its apps need photos that would make the package megabytes.
+example/*
+!example/example.md
 assets/
