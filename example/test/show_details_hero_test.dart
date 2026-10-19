@@ -9,6 +9,34 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:hero_here/hero_here.dart';
 
 void main() {
+  for (final (where, window, cell, slide) in [
+    // So far it would uncover the page's edge: its scale's margin across.
+    ('far across', const Size(800, 600), 'K2', const Offset(-.1, .0747)),
+    // Its scale's margin down, and across in proportion.
+    ('far down', const Size(1600, 600), 'K2', const Offset(-.067, .1)),
+    // Within its scale's margins it doesn't slide.
+    ('near the middle', const Size(1600, 1300), 'Lhotse', Offset.zero),
+  ]) {
+    testWidgets('slides the grid toward a cell $where as its details open', (
+      tester,
+    ) async {
+      tester.view.devicePixelRatio = 1;
+      tester.view.physicalSize = window;
+      addTearDown(tester.view.reset);
+      await _pumpExample(tester);
+
+      await tester.tap(find.text(cell));
+      await tester.pump();
+
+      expect(find.byType(EightThousanderDetailsHero), findsOneWidget);
+      final offset = tester
+          .widget<AnimatedSlide>(find.byType(AnimatedSlide))
+          .offset;
+      expect(offset.dx, closeTo(slide.dx, .001));
+      expect(offset.dy, closeTo(slide.dy, .001));
+    });
+  }
+
   testWidgets('enables the back button once the details have flown open', (
     tester,
   ) async {
