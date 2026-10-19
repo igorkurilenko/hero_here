@@ -150,7 +150,7 @@ class _ShowDetailsExampleState extends State<ShowDetailsExample> {
     return EightThousanderPreviewHero(
       tag: eightThousander.image,
       eightThousander: eightThousander,
-      onTap: (context) => _showDetails(context, index),
+      onTap: (cellContext) => _showDetails(cellContext, index),
       imageHeroFlightAnimationFactory: (controller) {
         final animation = _dragEndVelocityOnClose == null
             ? HeroHere.defaultFlightAnimationFactory(controller)
@@ -186,15 +186,16 @@ class _ShowDetailsExampleState extends State<ShowDetailsExample> {
     );
   }
 
-  void _showDetails(BuildContext context, int index) => setState(() {
-    final renderBox = context.findRenderObject() as RenderBox;
-    final itemPosition = renderBox.localToGlobal(Offset.zero);
-    final itemCenter = renderBox.size.center(itemPosition);
-    _gridViewOffset = _computeGridViewSlideOffset(itemCenter);
-    _showDetailsIndex = index;
-    _dragEndVelocityOnClose = null;
-    _isHeroSwitching.value = true;
-  });
+  void _showDetails(BuildContext cellContext, int index) {
+    final cell = cellContext.findRenderObject() as RenderBox;
+    final cellCenter = cell.size.center(cell.localToGlobal(Offset.zero));
+    setState(() {
+      _gridViewOffset = _computeGridViewSlideOffset(cellCenter);
+      _showDetailsIndex = index;
+      _dragEndVelocityOnClose = null;
+      _isHeroSwitching.value = true;
+    });
+  }
 
   void _closeDetails([Velocity? dragEndVelocity]) => setState(() {
     _gridViewOffset = Offset.zero;
@@ -206,31 +207,35 @@ class _ShowDetailsExampleState extends State<ShowDetailsExample> {
   double get _gridViewScale =>
       detailsVisible ? kGridViewScaleWhenDetailsOpen : 1.0;
 
-  Offset _computeGridViewSlideOffset(Offset begin) {
+  /// How far the grid slides, in fractions of the page's size, as the
+  /// details of the cell at [cellCenter] open. A cell farther from the
+  /// page's center, across or down, than the margin the grid's scale leaves
+  /// slides it toward the center, along the line from the cell, by that
+  /// margin, so the grid still covers the page. A nearer cell doesn't slide
+  /// it.
+  Offset _computeGridViewSlideOffset(Offset cellCenter) {
     // The page's size rather than MediaQuery's, which would make the page
     // depend on the window's size, so each resize would rebuild it and run a
     // switch.
-    final screenSize = context.size!;
-    final a = begin;
-    final b = Offset(screenSize.width / 2, screenSize.height / 2);
-    final xOffset = b.dx - a.dx;
-    final yOffset = b.dy - a.dy;
-    final maxXOffset =
-        screenSize.width * (kGridViewScaleWhenDetailsOpen - 1) / 2;
+    final pageSize = context.size!;
+    final pageCenter = pageSize.center(Offset.zero);
+    final xOffset = pageCenter.dx - cellCenter.dx;
+    final yOffset = pageCenter.dy - cellCenter.dy;
+    final maxXOffset = pageSize.width * (kGridViewScaleWhenDetailsOpen - 1) / 2;
     final maxYOffset =
-        screenSize.height * (kGridViewScaleWhenDetailsOpen - 1) / 2;
-    Offset e = a;
+        pageSize.height * (kGridViewScaleWhenDetailsOpen - 1) / 2;
+    var target = cellCenter;
 
     if (xOffset.abs() > maxXOffset) {
-      final x = a.dx + xOffset.sign * maxXOffset;
-      final y = (x - a.dx) * (b.dy - a.dy) / (b.dx - a.dx) + a.dy;
-      e = Offset(x, y);
+      final x = cellCenter.dx + xOffset.sign * maxXOffset;
+      final y = (x - cellCenter.dx) * yOffset / xOffset + cellCenter.dy;
+      target = Offset(x, y);
     } else if (yOffset.abs() > maxYOffset) {
-      final y = a.dy + yOffset.sign * maxYOffset;
-      final x = (y - a.dy) * (b.dx - a.dx) / (b.dy - a.dy) + a.dx;
-      e = Offset(x, y);
+      final y = cellCenter.dy + yOffset.sign * maxYOffset;
+      final x = (y - cellCenter.dy) * xOffset / yOffset + cellCenter.dx;
+      target = Offset(x, y);
     }
 
-    return (e - a).scale(1 / screenSize.width, 1 / screenSize.height);
+    return (target - cellCenter).scale(1 / pageSize.width, 1 / pageSize.height);
   }
 }
