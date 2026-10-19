@@ -45,7 +45,7 @@ void main() {
       );
       await _measure(binding, tester, 'switches', () async {
         for (var i = 0; i < 12; i++) {
-          await tester.tap(buttons.at(1 + (i + 1) % 3));
+          await tester.tap(buttons.at(1 + (i + 1) % HeroType.values.length));
           // Every other tap comes mid-flight, so the flight changes course.
           await _wait(i.isEven ? 150 : 600);
         }
