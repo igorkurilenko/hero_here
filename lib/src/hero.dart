@@ -44,6 +44,10 @@ class _HeroHereState extends State<HeroHere> {
 
   bool get onstage => !offstage;
 
+  /// Whether the hero went away: it left the tree, and no global key has
+  /// moved it back in.
+  bool get wentAway => !_active;
+
   /// Where the hero was at the last switch, as it would be in [switcher]'s
   /// child now.
   Rect? placeholderRectIn(_Switcher switcher) =>

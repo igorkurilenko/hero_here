@@ -27,15 +27,9 @@ void main() {
   ) async {
     await tester.pumpWidget(const MaterialApp(home: AutoSwitchingExample()));
     await tester.pumpAndSettle();
-    final play = find
-        .descendant(
-          of: find.byType(BottomAppBar),
-          matching: find.byType(IconButton),
-        )
-        .first;
     Key? hero() => tester.widget(find.byType(HeroHere)).key;
 
-    await tester.tap(play);
+    await tester.tap(_playButton);
     final shown = <Key?>{};
     for (var i = 0; i < 20; i++) {
       await tester.pump(kAutoHeroSwitchingDuration);
@@ -45,7 +39,7 @@ void main() {
 
     // Paused, it switches no more, and leaves no timer running once the test
     // ends, which would fail it.
-    await tester.tap(play);
+    await tester.tap(_playButton);
     await tester.pumpAndSettle();
     final last = hero();
     await tester.pump(kAutoHeroSwitchingDuration * 4);
@@ -56,14 +50,10 @@ void main() {
     await tester.pumpWidget(const MaterialApp(home: AutoSwitchingExample()));
     await tester.pumpAndSettle();
 
-    // Show each hero in turn with its button, which follows the play button.
-    final buttons = find.descendant(
-      of: find.byType(BottomAppBar),
-      matching: find.byType(IconButton),
-    );
+    // Show each hero in turn with its button.
     final centers = <Offset>[];
     for (final type in HeroType.values) {
-      await tester.tap(buttons.at(1 + type.index));
+      await tester.tap(_heroButton(type));
       await tester.pumpAndSettle();
       centers.add(tester.getCenter(find.byType(HeroHere)));
     }
@@ -92,11 +82,7 @@ void main() {
     };
     try {
       // Show the green hero with its button, so the buttons change.
-      final buttons = find.descendant(
-        of: find.byType(BottomAppBar),
-        matching: find.byType(IconButton),
-      );
-      await tester.tap(buttons.at(1 + HeroType.green.index));
+      await tester.tap(_heroButton(HeroType.green));
       await tester.pumpAndSettle();
     } finally {
       debugOnProfilePaint = null;
@@ -105,3 +91,14 @@ void main() {
     expect(appBarPaints, 0);
   });
 }
+
+/// The bottom bar's buttons: the play button, then one for each hero.
+final _buttons = find.descendant(
+  of: find.byType(BottomAppBar),
+  matching: find.byType(IconButton),
+);
+
+final _playButton = _buttons.first;
+
+/// The button that shows the [type] hero.
+Finder _heroButton(HeroType type) => _buttons.at(1 + type.index);

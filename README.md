@@ -21,6 +21,7 @@ A Flutter library that enables hero transitions on the same screen without the n
 - Similar widgets to `AnimatedSwitcher` and `Hero`: `HeroHereSwitcher` and `HeroHere`.
 - Customizable flight animations
 - Flights that change course mid-flight, either landing on each hero in turn or diverting straight to the new one
+- Ready-made shuttles: a crossfade, and a flip like a card's
 
 ## Getting Started
 
@@ -90,7 +91,7 @@ class _HeroHereExampleState extends State<HeroHereExample> {
                       ? HeroHere(
                           key: const ValueKey(HeroType.red),
                           tag: kHeroTag,
-                          flightShuttleBuilder: _flightShuttleBuilder,
+                          flightShuttleBuilder: HeroHereShuttles.crossfade(),
                           child: Container(
                             decoration: BoxDecoration(
                               color: Colors.red,
@@ -107,7 +108,7 @@ class _HeroHereExampleState extends State<HeroHereExample> {
                       ? HeroHere(
                           key: const ValueKey(HeroType.green),
                           tag: kHeroTag,
-                          flightShuttleBuilder: _flightShuttleBuilder,
+                          flightShuttleBuilder: HeroHereShuttles.crossfade(),
                           child: Container(
                             decoration: BoxDecoration(
                               color: Colors.green,
@@ -157,23 +158,6 @@ class _HeroHereExampleState extends State<HeroHereExample> {
           ),
         ),
       );
-
-  Widget _flightShuttleBuilder(
-    BuildContext flightContext,
-    Animation<double> animation,
-    HeroHere fromHero,
-    HeroHere toHero,
-  ) =>
-      Stack(
-        fit: StackFit.expand,
-        children: [
-          toHero.child,
-          FadeTransition(
-            opacity: ReverseAnimation(animation),
-            child: fromHero.child,
-          ),
-        ],
-      );
 }
 ```
 
@@ -195,6 +179,24 @@ HeroHere(
 When a flight diverts, its shuttle's `fromHero` becomes a stand-in for the shuttle as it was, so a shuttle that fades `fromHero` into `toHero` fades from what it showed.
 
 With `chain`, a flight sent back to the hero it left turns back from where it is. With `divert`, it swings around to that hero, as to any hero behind it.
+
+## Shuttles
+
+A flight shows a shuttle as it flies: by default, the child of the hero it flies to. `HeroHereShuttles` has ready-made ones for `flightShuttleBuilder`:
+
+- `HeroHereShuttles.crossfade()` fades the hero a flight leaves out over the hero it flies to.
+- `HeroHereShuttles.flip()` turns the shuttle over like a card, and shows the hero it flies to once it's edge on. Pass `axis: Axis.horizontal` to turn it top over bottom.
+
+```dart
+HeroHere(
+  key: ValueKey(side),
+  tag: 'card',
+  flightShuttleBuilder: HeroHereShuttles.flip(),
+  child: card,
+)
+```
+
+To build your own, wrap what changes in an `AnimatedBuilder` or a transition, such as a `FadeTransition`: a flight builds its shuttle once per leg, not on each frame.
 
 ## Layout
 

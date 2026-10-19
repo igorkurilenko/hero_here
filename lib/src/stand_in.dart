@@ -39,7 +39,7 @@ class _StandIn extends StatelessWidget {
       space: () => switcher.childBox,
       // A hero that stays shows itself. Whether it stays is known by the
       // time the frame paints, once the new child is built and laid out.
-      child: _KeptLayer(look: look, shows: () => !hero._active),
+      child: _KeptLayer(look: look, shows: () => hero.wentAway),
     ),
   );
 }
@@ -123,15 +123,16 @@ class _KeptLook {
     _handle.layer = layer;
   }
 
-  /// What [hero] last showed, if it painted, in the switcher's child, which
-  /// last painted into [childLayer].
-  static _KeptLook? of(_Hero hero, OffsetLayer? childLayer) {
+  /// What [hero] last showed, if it painted, in [switcher]'s child, as the
+  /// switcher switches.
+  static _KeptLook? of(_Hero hero, _Switcher switcher) {
     final layer = hero.lastLayer;
     if (layer == null) return null;
+    final childLayer = switcher.childLayer;
     final wrappers = <ContainerLayer Function()>[];
     for (var parent = layer.parent; parent != null; parent = parent.parent) {
       if (identical(parent, childLayer)) {
-        final origin = hero._placeholder?.rect.topLeft ?? Offset.zero;
+        final origin = hero.placeholderRectIn(switcher)?.topLeft ?? Offset.zero;
         return _KeptLook._(layer, origin, wrappers);
       }
       if (_wrapperLike(parent) case final wrapper?) wrappers.add(wrapper);

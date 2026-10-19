@@ -162,9 +162,8 @@ class _HeroScope extends InheritedWidget {
 /// [_Switch], which takes up the builds until it flies the heroes.
 abstract class _SwitchingState {
   final _Switcher switcher;
-  final Set<_Hero>? prevSwitchHeroes;
 
-  _SwitchingState(this.switcher, {this.prevSwitchHeroes});
+  _SwitchingState(this.switcher);
 
   /// Called once, when the switcher enters this state.
   void enter() {}
@@ -229,13 +228,16 @@ class _Mount extends _SwitchingState {
   }
 
   Set<_Hero> _findHiddenHeroes(Set<_Hero> heroes) {
-    final lastHeroesByTag = {for (final hero in heroes) hero.tag: hero};
-    return heroes.where((hero) => lastHeroesByTag[hero.tag] != hero).toSet();
+    final lastByTag = _lastByTag(heroes);
+    return heroes.where((hero) => lastByTag[hero.tag] != hero).toSet();
   }
 }
 
 class _Idle extends _SwitchingState {
-  _Idle(super.switcher, {super.prevSwitchHeroes});
+  /// The heroes of the last switch, or of the mount.
+  final Set<_Hero> prevSwitchHeroes;
+
+  _Idle(super.switcher, {required this.prevSwitchHeroes});
 
   @override
   void onBuild() {
@@ -269,6 +271,9 @@ class _Idle extends _SwitchingState {
 /// stand-in is. Builds while it waits need nothing: it takes the newest
 /// child.
 class _Switch extends _SwitchingState {
+  /// The heroes of the switch before this one, or of the mount.
+  final Set<_Hero> prevSwitchHeroes;
+
   final Set<_Hero> curHeroes;
 
   /// The heroes that were on the screen. Each stand-in shows only if its hero
@@ -291,7 +296,7 @@ class _Switch extends _SwitchingState {
 
   factory _Switch(
     _Switcher switcher, {
-    Set<_Hero>? prevSwitchHeroes,
+    required Set<_Hero> prevSwitchHeroes,
     required Set<_Hero> curHeroes,
   }) {
     final standIns = [
@@ -308,15 +313,14 @@ class _Switch extends _SwitchingState {
       // were.
       looks: Map.identity()
         ..addAll({
-          for (final hero in standIns)
-            hero: ?_KeptLook.of(hero, switcher.childLayer),
+          for (final hero in standIns) hero: ?_KeptLook.of(hero, switcher),
         }),
     );
   }
 
   _Switch._(
     super.switcher, {
-    super.prevSwitchHeroes,
+    required this.prevSwitchHeroes,
     required this.curHeroes,
     required this.standIns,
     required this._tags,
@@ -405,7 +409,11 @@ class _SwitchPlan {
   /// The next heroes that hide, since another hero with their tag shows.
   final Set<_Hero> hiddenHeroes;
 
-  _SwitchPlan._(this.flights, this.stoppedTags, this.hiddenHeroes);
+  _SwitchPlan._({
+    required this.flights,
+    required this.stoppedTags,
+    required this.hiddenHeroes,
+  });
 
   /// Plans the switch from [curHeroes] to [nextHeroes], given the heroes of
   /// the last switch and the manifests of the flights [flying], by tag.
@@ -418,53 +426,40 @@ class _SwitchPlan {
   factory _SwitchPlan({
     required Set<_Hero> curHeroes,
     required Set<_Hero> nextHeroes,
-    required Set<_Hero>? prevSwitchHeroes,
+    required Set<_Hero> prevSwitchHeroes,
     required Map<Object, _FlightManifest> flying,
   }) {
-    final manifests = <Object, _FlightManifest>{};
-
-    for (final x in nextHeroes) {
-      final manifest = manifests.putIfAbsent(
-        x.tag,
-        () => _FlightManifest(tag: x.tag, from: x, to: x),
-      );
-      manifest.to = x;
-    }
-
-    for (final manifest in manifests.values) {
-      final flight = flying[manifest.tag];
-      if (flight?.from == manifest.to) {
-        manifest.from = flight!.to;
-      } else if (flight != null) {
-        manifest.from = flight.from;
-      } else {
-        manifest.from =
-            curHeroes
-                .where((x) => x.tag == manifest.tag)
-                .where((x) => x.onstage)
-                .where((x) => prevSwitchHeroes?.contains(x) ?? false)
-                .firstOrNull ??
-            curHeroes
-                .where((x) => x.tag == manifest.tag)
-                .where((x) => x.onstage)
-                .firstOrNull ??
-            manifest.to;
+    // Where the tag of [to], the hero it flies to, flies from.
+    _Hero sourceOf(_Hero to) {
+      if (flying[to.tag] case final flight?) {
+        return flight.from == to ? flight.to : flight.from;
       }
+      final shown = curHeroes.where((x) => x.tag == to.tag && x.onstage);
+      return shown.where(prevSwitchHeroes.contains).firstOrNull ??
+          shown.firstOrNull ??
+          to;
     }
 
-    // A flight under way goes on while a next hero has its tag, even when it
-    // flies back to the hero it left, as a diverted flight may.
+    // In the order of each tag's first next hero, which is the order the
+    // flights start in, so the order they fly in, one over another.
+    final manifests = {
+      for (final to in _lastByTag(nextHeroes).values)
+        to.tag: _FlightManifest(tag: to.tag, from: sourceOf(to), to: to),
+    };
+
     return _SwitchPlan._(
-      {
+      // A flight under way goes on while a next hero has its tag, even when
+      // it flies back to the hero it left, as a diverted flight may.
+      flights: {
         for (final manifest in manifests.values)
           if (!manifest.isIdle || flying.containsKey(manifest.tag))
             manifest.tag: manifest,
       },
-      {
+      stoppedTags: {
         for (final tag in flying.keys)
           if (!manifests.containsKey(tag)) tag,
       },
-      {
+      hiddenHeroes: {
         for (final hero in nextHeroes)
           if (manifests[hero.tag]!.from != hero &&
               manifests[hero.tag]!.to != hero)
@@ -473,3 +468,9 @@ class _SwitchPlan {
     );
   }
 }
+
+/// The last of [heroes] with each tag, the one that shows, by tag, in the
+/// order of each tag's first hero.
+Map<Object, _Hero> _lastByTag(Iterable<_Hero> heroes) => {
+  for (final hero in heroes) hero.tag: hero,
+};

@@ -31,7 +31,7 @@ class _FlightWidget extends StatelessWidget {
         animation: flight.animation,
         builder: (context, _) => _ShuttleRect(
           rect: flight.evaluateRect(),
-          space: () => flight._registry.switcher.childBox,
+          space: () => flight.switcher.childBox,
           // The shuttle moves on each frame. In its own layer, it repaints
           // only when it changes, such as when it changes size.
           child: IgnorePointer(
@@ -223,6 +223,9 @@ class _Flight extends ChangeNotifier {
 
   Object get tag => manifest.tag;
 
+  /// The switcher whose flight this is.
+  _Switcher get switcher => _registry.switcher;
+
   _FlightManifest get manifest => _manifest;
 
   factory _Flight.start({
@@ -303,8 +306,7 @@ class _Flight extends ChangeNotifier {
   /// new leg, or when a switch or a rebuild gives a hero of the flight a new
   /// widget mid-flight. So it builds then, and on no other frame.
   Widget get shuttle {
-    final from = _divertedFrom ?? _manifest.from.widget;
-    final to = _manifest.to.widget;
+    final (from, to) = _shownHeroes;
     final shuttle = _shuttle;
     if (shuttle != null &&
         identical(shuttle.from, from) &&
@@ -318,6 +320,12 @@ class _Flight extends ChangeNotifier {
       to: to,
     );
   }
+
+  /// The heroes the shuttle shows: the hero the flight leaves, or the
+  /// stand-in for the shuttle as it was when the flight last diverted, and
+  /// the hero it flies to.
+  (HeroHere, HeroHere) get _shownHeroes =>
+      (_divertedFrom ?? _manifest.from.widget, _manifest.to.widget);
 
   /// Works out where the shuttle is on this frame: on its way from where its
   /// leg began to where the hero it flies to is. While that hero is nowhere,
@@ -363,8 +371,7 @@ class _Flight extends ChangeNotifier {
   /// A stand-in for the hero the flight leaves, with that hero's key, tag and
   /// payload, whose child is the shuttle as it is now, stopped.
   HeroHere _freezeShuttle() {
-    final from = _divertedFrom ?? _manifest.from.widget;
-    final to = _manifest.to.widget;
+    final (from, to) = _shownHeroes;
     final stopped = AlwaysStoppedAnimation(animation.value);
 
     return HeroHere(
@@ -378,14 +385,13 @@ class _Flight extends ChangeNotifier {
   }
 
   /// The size the switcher's child has now.
-  Size? get _childSize => _registry.switcher.childSize;
+  Size? get _childSize => switcher.childSize;
 
   /// Where [hero] is in the switcher's child, or was at the last switch if
   /// it's nowhere now. A hero that a global key moved into another switcher
   /// is measured where it is, in this flight's switcher's space.
   Rect? _rectOf(_Hero hero) =>
-      hero.computeRectIn(_registry.switcher) ??
-      hero.placeholderRectIn(_registry.switcher);
+      hero.computeRectIn(switcher) ?? hero.placeholderRectIn(switcher);
 
   void _forward({double? from}) {
     _reversed = false;
@@ -396,22 +402,7 @@ class _Flight extends ChangeNotifier {
     final run = ++_runs;
     _style
         .forwardAnimation(_controller, from: from)
-        .whenComplete(() => _landForward(run));
-  }
-
-  void _landForward(int run) {
-    if (run != _runs) return;
-
-    if (_nextHero != null) {
-      // The next leg starts on the hero the shuttle landed on.
-      _path.beginLeg(onHero: true, size: _childSize);
-      _manifest.from = _manifest.to;
-      _manifest.to = _nextHero!;
-      notifyListeners();
-      _forward(from: 0);
-    } else {
-      _end(landedOn: _manifest.to, left: _manifest.from);
-    }
+        .whenComplete(() => _land(run, back: false));
   }
 
   void _reverse() {
@@ -419,20 +410,30 @@ class _Flight extends ChangeNotifier {
     _nextHero = null;
 
     final run = ++_runs;
-    _style.reverseAnimation(_controller).whenComplete(() => _landBack(run));
+    _style
+        .reverseAnimation(_controller)
+        .whenComplete(() => _land(run, back: true));
   }
 
-  void _landBack(int run) {
+  /// Lands [run] of the flight's animation, unless a later run started or
+  /// the flight ended since: on the hero it flies to, or, [back], on the hero
+  /// it left. It flies on from there to the next hero, if any, or else ends.
+  void _land(int run, {required bool back}) {
     if (run != _runs) return;
 
-    if (_nextHero != null) {
-      // The next leg starts on the hero the shuttle landed back on.
+    final (landedOn, left) = back
+        ? (_manifest.from, _manifest.to)
+        : (_manifest.to, _manifest.from);
+    if (_nextHero case final next?) {
+      // The next leg starts on the hero the shuttle landed on.
       _path.beginLeg(onHero: true, size: _childSize);
-      _manifest.to = _nextHero!;
+      _manifest
+        ..from = landedOn
+        ..to = next;
       notifyListeners();
       _forward(from: 0);
     } else {
-      _end(landedOn: _manifest.from, left: _manifest.to);
+      _end(landedOn: landedOn, left: left);
     }
   }
 
