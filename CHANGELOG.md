@@ -7,6 +7,10 @@
 * Show a hero under a disabled `HeroMode` that mounts while a flight flies its tag. It hid until the flight ended, like a hero that takes part in switches, and for good if a switch came first.
 * Keep showing a hero once a disabled `HeroMode` leaves it out mid-flight, when the flight lands on it and flies on to the next hero. The next leg hid it again, as the hero it leaves, for good.
 
+### Docs
+
+* Document that a hero under a disabled `HeroMode` takes no part in the switches that find it there, and shows as it is.
+
 ## 2.1.0
 
 ### Features

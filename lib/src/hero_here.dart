@@ -196,6 +196,12 @@ class HeroHereSwitcher extends StatefulWidget {
 /// [flightShuttleBuilder], from the hero it flies to, or else from the hero
 /// it leaves, or else the default, once, when it starts. A flight that
 /// changes course keeps them.
+///
+/// A hero under a disabled [HeroMode] in the switcher's child takes no part
+/// in the switches that find it there: they send no flight to it, and hide
+/// it neither behind a later hero of its tag nor for a flight, so it shows
+/// as it is. A flight under way may still land on it. A hero mode that
+/// changes takes effect at the next switch.
 class HeroHere extends StatefulWidget {
   /// The curve of [defaultFlightAnimationFactory]'s animation.
   static const defaultFlightAnimationCurve = Curves.easeInOut;
