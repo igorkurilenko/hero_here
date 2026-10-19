@@ -400,22 +400,7 @@ class _Flight extends ChangeNotifier {
     final run = ++_runs;
     _style
         .forwardAnimation(_controller, from: from)
-        .whenComplete(() => _landForward(run));
-  }
-
-  void _landForward(int run) {
-    if (run != _runs) return;
-
-    if (_nextHero != null) {
-      // The next leg starts on the hero the shuttle landed on.
-      _path.beginLeg(onHero: true, size: _childSize);
-      _manifest.from = _manifest.to;
-      _manifest.to = _nextHero!;
-      notifyListeners();
-      _forward(from: 0);
-    } else {
-      _end(landedOn: _manifest.to, left: _manifest.from);
-    }
+        .whenComplete(() => _land(run, back: false));
   }
 
   void _reverse() {
@@ -423,20 +408,30 @@ class _Flight extends ChangeNotifier {
     _nextHero = null;
 
     final run = ++_runs;
-    _style.reverseAnimation(_controller).whenComplete(() => _landBack(run));
+    _style
+        .reverseAnimation(_controller)
+        .whenComplete(() => _land(run, back: true));
   }
 
-  void _landBack(int run) {
+  /// Lands [run] of the flight's animation, unless a later run started or
+  /// the flight ended since: on the hero it flies to, or, [back], on the hero
+  /// it left. It flies on from there to the next hero, if any, or else ends.
+  void _land(int run, {required bool back}) {
     if (run != _runs) return;
 
-    if (_nextHero != null) {
-      // The next leg starts on the hero the shuttle landed back on.
+    final (landedOn, left) = back
+        ? (_manifest.from, _manifest.to)
+        : (_manifest.to, _manifest.from);
+    if (_nextHero case final next?) {
+      // The next leg starts on the hero the shuttle landed on.
       _path.beginLeg(onHero: true, size: _childSize);
-      _manifest.to = _nextHero!;
+      _manifest
+        ..from = landedOn
+        ..to = next;
       notifyListeners();
       _forward(from: 0);
     } else {
-      _end(landedOn: _manifest.from, left: _manifest.to);
+      _end(landedOn: landedOn, left: left);
     }
   }
 
