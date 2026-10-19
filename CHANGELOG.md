@@ -11,6 +11,7 @@
 ### Docs
 
 * Document that a hero under a disabled `HeroMode` takes no part in the switches that find it there, and shows as it is.
+* Open the README with what the package is for, in the words people search for: a heading, why Flutter's `Hero` doesn't fly within a page and how hero_here does, and a quick start of about 20 lines in place of the whole example app, which the Example tab shows. Add a section for each example, a comparison with `Hero`, `AnimatedSwitcher`, heroine, local_hero and animated_to, and answers to common questions, such as why a hero moved with the same key doesn't fly.
 
 ## 2.1.0
 

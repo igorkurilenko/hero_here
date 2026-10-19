@@ -1,167 +1,141 @@
-A Flutter library that enables hero transitions on the same screen without the need for navigation.
+# hero_here: Hero animations on the same screen
+
+Like Flutter's `Hero`, but within the same page: no `Navigator`, no routes.
+
+Flutter's `Hero` flies a widget to its place on a new route, as the `Navigator` pushes or pops it. When the page you're on changes instead, such as when a grid item opens into its details in place, or a sent message joins the chat, the widget just jumps to its new place. hero_here makes it fly there, without navigation: as with `Hero`, give its old and new places the same tag, then change state.
 
 <p>
   <img src="https://github.com/igorkurilenko/hero_here/blob/main/assets/hero_here_basic.gif?raw=true"
-    alt="The hero_here basic example" width="180"/>
+    alt="A red circle flies across the screen and grows into a green one" width="180"/>
   &nbsp;
   <img src="https://github.com/igorkurilenko/hero_here/blob/main/assets/hero_here_chat_message.gif?raw=true"
-   alt="The hero_here chat message example" width="180"/>
+   alt="Sent chat messages fly from the input field up into the conversation" width="180"/>
   &nbsp;
   <img src="https://github.com/igorkurilenko/hero_here/blob/main/assets/hero_here_show_details.gif?raw=true"
-   alt="The hero_here show details example" width="180"/>
+   alt="A mountain's photo flies from a grid into its details on the same screen, and back" width="180"/>
 </p>
-
-## Purpose
-
-**hero_here** is designed to help developers create seamless and visually appealing transitions within a single screen using the hero animation pattern. It is inspired by Flutter's `AnimatedSwitcher` and `Hero` mechanics and provides a convenient way to achieve these transitions without requiring navigation.
 
 ## Features
 
-- Allows hero transitions within the same screen.
-- Similar widgets to `AnimatedSwitcher` and `Hero`: `HeroHereSwitcher` and `HeroHere`.
-- Customizable flight animations
-- Flights that change course mid-flight, either landing on each hero in turn or diverting straight to the new one
-- Ready-made shuttles: a crossfade, and a flip like a card's
+- Hero transitions within one page, with no `Navigator` or routes.
+- `HeroHereSwitcher` and `HeroHere`, which work like `AnimatedSwitcher` and `Hero`.
+- Customizable flights: their duration, curve, path and shuttle, and what drives them, such as a spring.
+- Flights that change course mid-flight, either landing on each hero in turn or diverting straight to the new one.
+- Ready-made shuttles: a crossfade, and a flip like a card's.
+- Flights that follow their heroes as they move, such as on a scroll or a window resize.
+- Android, iOS, web, macOS, Windows and Linux. Wasm-ready, with no dependencies beyond Flutter.
 
-## Getting Started
+## Quick start
 
-Add the following line to your `pubspec.yaml` file:
+Add hero_here to your `pubspec.yaml`:
 
 ```yaml
 dependencies:
   hero_here: ^2.1.0
 ```
 
-Then, run:
-
-```bash
-flutter pub get
-```
-
-## Usage
-
-Here’s a basic example of how to use **hero_here**:
+Wrap the part of the page whose widgets move in a `HeroHereSwitcher`. Put a `HeroHere` in each place the widget may be, with the same tag and a key of its own:
 
 ```dart
-import 'package:flutter/material.dart';
-import 'package:hero_here/hero_here.dart';
-
-const kHeroTag = 'hero';
-
-void main() => runApp(
-      MaterialApp(
-        title: 'HeroHere Example',
-        debugShowCheckedModeBanner: false,
-        theme: ThemeData(useMaterial3: true, brightness: Brightness.light),
-        darkTheme: ThemeData(useMaterial3: true, brightness: Brightness.dark),
-        home: const HeroHereExample(),
-      ),
-    );
-
-enum HeroType { red, green }
-
-class HeroHereExample extends StatefulWidget {
-  const HeroHereExample({super.key});
-
-  @override
-  State<HeroHereExample> createState() => _HeroHereExampleState();
-}
-
-class _HeroHereExampleState extends State<HeroHereExample> {
-  HeroType _curHeroType = HeroType.red;
-
-  HeroType get curHeroType => _curHeroType;
-
-  set curHeroType(HeroType value) {
-    if (_curHeroType == value) return;
-    setState(() => _curHeroType = value);
-  }
-
-  @override
-  Widget build(BuildContext context) => Scaffold(
-        body: HeroHereSwitcher(
-          child: Center(
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-              children: [
-                SizedBox(
-                  width: 100,
-                  height: 100,
-                  child: curHeroType == HeroType.red
-                      ? HeroHere(
-                          key: const ValueKey(HeroType.red),
-                          tag: kHeroTag,
-                          flightShuttleBuilder: HeroHereShuttles.crossfade(),
-                          child: Container(
-                            decoration: BoxDecoration(
-                              color: Colors.red,
-                              borderRadius: BorderRadius.circular(75),
-                            ),
-                          ),
-                        )
-                      : null,
-                ),
-                SizedBox(
-                  width: 150,
-                  height: 150,
-                  child: curHeroType == HeroType.green
-                      ? HeroHere(
-                          key: const ValueKey(HeroType.green),
-                          tag: kHeroTag,
-                          flightShuttleBuilder: HeroHereShuttles.crossfade(),
-                          child: Container(
-                            decoration: BoxDecoration(
-                              color: Colors.green,
-                              borderRadius: BorderRadius.circular(75),
-                            ),
-                          ),
-                        )
-                      : null,
-                ),
-              ],
-            ),
-          ),
+HeroHereSwitcher(
+  child: Row(
+    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+    children: [
+      for (final side in ['left', 'right'])
+        SizedBox.square(
+          dimension: 64,
+          child: side == _side
+              ? HeroHere(
+                  key: ValueKey(side), // Its own key in each place.
+                  tag: 'ball', // The same tag in both places.
+                  child: const CircleAvatar(),
+                )
+              : null,
         ),
-        bottomNavigationBar: BottomAppBar(
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-            children: [
-              Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  IconButton(
-                    onPressed: () => curHeroType = HeroType.red,
-                    icon: Icon(curHeroType == HeroType.red
-                        ? Icons.circle
-                        : Icons.radio_button_off),
-                    color: curHeroType == HeroType.red
-                        ? Colors.red
-                        : Theme.of(context).colorScheme.secondary,
-                  ),
-                ],
-              ),
-              Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  IconButton(
-                    onPressed: () => curHeroType = HeroType.green,
-                    icon: Icon(curHeroType == HeroType.green
-                        ? Icons.circle
-                        : Icons.radio_button_off),
-                    color: curHeroType == HeroType.green
-                        ? Colors.green
-                        : Theme.of(context).colorScheme.secondary,
-                  ),
-                ],
-              ),
-            ],
-          ),
-        ),
-      );
-}
+    ],
+  ),
+)
 ```
 
-More advanced examples are in the repository's [example folder](https://github.com/igorkurilenko/hero_here/tree/main/example/lib).
+Then change `_side`, a field of your `State`, and the ball flies there from where it was:
+
+```dart
+setState(() => _side = _side == 'left' ? 'right' : 'left');
+```
+
+A switch flies a tag when it brings a hero with that tag and another key. A hero with the same key is the same hero: it shows where it is now, and nothing flies.
+
+The [Example tab](https://pub.dev/packages/hero_here/example) has a whole app, and the repository's [example folder](https://github.com/igorkurilenko/hero_here/tree/main/example/lib) has the examples below.
+
+## Examples
+
+### Grid to details on one screen (container transform without a route)
+
+In the [details example](https://github.com/igorkurilenko/hero_here/tree/main/example/lib/show_details_hero), a tapped mountain in a grid opens into its details on the same page: its photo, name and description each fly to their places in the details, and back when they close. Each is a hero of its own, whose tag the grid's cell and the details share.
+
+### A chat message that flies from the input into the list
+
+In the [chat example](https://github.com/igorkurilenko/hero_here/tree/main/example/lib/chat_message_hero), a sent message flies from the text field up into the chat. The field's hero and the list's share the message's tag, with keys of their own.
+
+### A card flip animation as a card flies open
+
+In the [flip card example](https://github.com/igorkurilenko/hero_here/tree/main/example/lib/flip_card_hero), a tapped photo in a grid flies to the middle on a bouncy spring, flipping over to show the mountain's name and description. Tap it again, or beside it, and it flies back. `HeroHereShuttles.flip()` turns the card over in flight, and its heroes run their flights on a `SpringSimulation`.
+
+### Heroes that change course mid-flight
+
+In the [auto-switching example](https://github.com/igorkurilenko/hero_here/tree/main/example/lib/basic_with_auto_switching), heroes switch places on a timer, and a flight whose hero changes mid-flight chains or diverts to the new one. See [Redirected flights](#redirected-flights).
+
+## hero_here, Hero, AnimatedSwitcher and similar packages
+
+| | Animates when | Needs a route change | What flies |
+|---|---|---|---|
+| `Hero` | the `Navigator` pushes or pops a route | yes | from the widget with a tag on one route to the one with that tag on the other |
+| `AnimatedSwitcher` | its child changes to one with another key or type | no | nothing: by default, it cross-fades from the old child to the new one, in the same place |
+| [heroine](https://pub.dev/packages/heroine) | the `Navigator` pushes or pops a route, with a `HeroineController` among its observers | yes | as with `Hero`, on a spring |
+| [local_hero](https://pub.dev/packages/local_hero) | a `LocalHero`'s position changes, under a `LocalHeroScope` | no | the widget, to its new position |
+| [animated_to](https://pub.dev/packages/animated_to) | its child's position changes, such as on a rebuild; it takes a `GlobalKey` | no | the widget, to its new position |
+| **hero_here** | a `HeroHereSwitcher`'s child changes and brings a hero with a tag and another key | no | from the hero with that tag that was there to the new one, as with `Hero` |
+
+- To fly between routes, use `Hero`, or heroine for springs and drag to dismiss.
+- To move one widget to wherever a rebuild lays it out, local_hero and animated_to follow its position, with no second widget.
+- hero_here flies between two widgets that share a tag, as `Hero` does, so they may look different, such as a thumbnail and a full photo, and a shuttle, such as a crossfade or a flip, can blend them in flight.
+
+## FAQ
+
+### Why doesn't `Hero` animate when I call `setState`?
+
+`Hero` flies only during a route's transition, when the `Navigator` pushes or pops a route. A rebuild of the page you're on shows the widget in its new place at once. To fly it there, wrap that part of the page in a `HeroHereSwitcher` and use `HeroHere` in place of `Hero`.
+
+### I moved my widget and nothing flew. Why?
+
+A hero's key tells a switch whether it's a new hero, which flies, or the same one, which doesn't. A hero with the same key shows where it is now, even when it moved. Give the hero in each place its own key, such as `ValueKey(place)`, as in the [quick start](#quick-start).
+
+To slide one widget to wherever a rebuild lays it out instead, see local_hero or animated_to above.
+
+### Can two heroes have the same tag?
+
+Of the heroes with one tag in the switcher's child, only the last shows. The others hide, keeping their space. Give each item its own tag, such as its id.
+
+### How do I change a flight's duration or curve?
+
+Set them on the heroes. A flight takes each of its options from the hero it flies to, or else from the hero it leaves, or else the default: 300 ms on `Curves.easeInOut`.
+
+```dart
+HeroHere(
+  key: ValueKey(side),
+  tag: 'ball',
+  flightAnimationDuration: const Duration(milliseconds: 600),
+  flightAnimationFactory: (controller) =>
+      CurvedAnimation(parent: controller, curve: Curves.easeOutBack),
+  child: const CircleAvatar(),
+)
+```
+
+For a spring, run the flight's controller on a `SpringSimulation` through `forwardFlightAnimation` and `reverseFlightAnimation`, as the [flip card example](https://github.com/igorkurilenko/hero_here/blob/main/example/lib/flip_card_hero/main.dart) does.
+
+### Is it a shared element transition?
+
+Yes, within one screen. It's the idea behind SwiftUI's `matchedGeometryEffect`, Jetpack Compose's shared elements and Framer Motion's `layoutId`: two views share an id, and a change from one to the other animates.
 
 ## Redirected flights
 
