@@ -1011,7 +1011,6 @@ void main() {
 
     // Redirect the flight to the middle slot on the frame it lands.
     slot.value = 1;
-    await tester.pump();
     await _pumpWebFrame(tester, frame * 2);
 
     // It flies on to the middle slot rather than landing on it at once.
@@ -1042,7 +1041,6 @@ void main() {
 
     // Take the hero away on the frame it lands on the middle slot.
     slot.value = _noSlot;
-    await tester.pump();
     await _pumpWebFrame(tester, frame * 2);
 
     expect(find.byKey(_shuttleKey), findsNothing);
@@ -1157,7 +1155,6 @@ void main() {
 
     // On to the middle slot again on the frame it lands back.
     slot.value = 1;
-    await tester.pump();
     await _pumpWebFrame(tester, frame * 2);
 
     final shuttle = find.byKey(_shuttleKey);
