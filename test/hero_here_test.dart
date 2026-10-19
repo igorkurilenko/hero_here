@@ -840,85 +840,54 @@ void main() {
     expect(find.byKey(const ValueKey('box0')), findsOneWidget);
   });
 
-  testWidgets('turns a hero back to where the hero it left is now', (
-    tester,
-  ) async {
-    final slot = ValueNotifier(0);
-    final shift = ValueNotifier(0.0);
-    addTearDown(slot.dispose);
-    addTearDown(shift.dispose);
+  for (final again in [false, true]) {
+    testWidgets('turns a hero ${again ? 'around again' : 'back'} where its '
+        'shuttle is, to where the hero it heads for moved before it turned', (
+      tester,
+    ) async {
+      final slot = ValueNotifier(0);
+      final shift = ValueNotifier(0.0);
+      addTearDown(slot.dispose);
+      addTearDown(shift.dispose);
 
-    await tester.pumpWidget(
-      _SlotSwitcher(slot: slot, layoutBuilder: _shiftedLayoutBuilder(shift)),
-    );
-    await tester.pumpAndSettle();
+      await tester.pumpWidget(
+        _SlotSwitcher(slot: slot, layoutBuilder: _shiftedLayoutBuilder(shift)),
+      );
+      await tester.pumpAndSettle();
 
-    slot.value = 2;
-    await _pumpSwitch(tester);
-    await tester.pump(HeroHere.defaultFlightAnimationDuration ~/ 2);
+      slot.value = 2;
+      await _pumpSwitch(tester);
+      await tester.pump(HeroHere.defaultFlightAnimationDuration ~/ 2);
 
-    // The heroes move, as on a window resize, then the flight turns back.
-    shift.value = 100;
-    await tester.pump(_frame);
-    await tester.pump(_frame);
-    final shuttle = find.byKey(_shuttleKey);
-    final leftAtTurn = tester.getRect(shuttle).left;
-    slot.value = 0;
-    await _pumpSwitch(tester);
-
-    final lefts = <double>[];
-    for (var i = 0; i < 40 && tester.any(shuttle); i++) {
-      lefts.add(tester.getRect(shuttle).left);
+      // The heroes move, as on a window resize, then the flight turns back,
+      // and then on again.
+      shift.value = 100;
       await tester.pump(_frame);
-    }
-
-    // It turns where it is and lands where the first hero is now.
-    final box0 = find.byKey(const ValueKey('box0'));
-    expect(lefts.first, leftAtTurn);
-    expect(lefts.last, closeTo(tester.getRect(box0).left, 1));
-    expect(tester.getRect(box0).left, _slotRects[0].left + 100);
-  });
-
-  testWidgets('turns a hero around again where its shuttle is', (tester) async {
-    final slot = ValueNotifier(0);
-    final shift = ValueNotifier(0.0);
-    addTearDown(slot.dispose);
-    addTearDown(shift.dispose);
-
-    await tester.pumpWidget(
-      _SlotSwitcher(slot: slot, layoutBuilder: _shiftedLayoutBuilder(shift)),
-    );
-    await tester.pumpAndSettle();
-
-    slot.value = 2;
-    await _pumpSwitch(tester);
-    await tester.pump(HeroHere.defaultFlightAnimationDuration ~/ 2);
-
-    // The heroes move, the flight turns back, then on again.
-    shift.value = 100;
-    await tester.pump(_frame);
-    await tester.pump(_frame);
-    slot.value = 0;
-    await _pumpSwitch(tester);
-    await tester.pump(HeroHere.defaultFlightAnimationDuration ~/ 4);
-
-    final shuttle = find.byKey(_shuttleKey);
-    final leftAtTurn = tester.getRect(shuttle).left;
-    slot.value = 2;
-    await _pumpSwitch(tester);
-
-    final lefts = <double>[];
-    for (var i = 0; i < 40 && tester.any(shuttle); i++) {
-      lefts.add(tester.getRect(shuttle).left);
       await tester.pump(_frame);
-    }
+      if (again) {
+        slot.value = 0;
+        await _pumpSwitch(tester);
+        await tester.pump(HeroHere.defaultFlightAnimationDuration ~/ 4);
+      }
+      final shuttle = find.byKey(_shuttleKey);
+      final leftAtTurn = tester.getRect(shuttle).left;
+      final heading = again ? 2 : 0;
+      slot.value = heading;
+      await _pumpSwitch(tester);
 
-    // It turns where it is and lands where the third hero is now.
-    final box2 = find.byKey(const ValueKey('box2'));
-    expect(lefts.first, leftAtTurn);
-    expect(lefts.last, closeTo(tester.getRect(box2).left, 1));
-    expect(tester.getRect(box2).left, _slotRects[2].left + 100);
-  });
+      final lefts = <double>[];
+      for (var i = 0; i < 40 && tester.any(shuttle); i++) {
+        lefts.add(tester.getRect(shuttle).left);
+        await tester.pump(_frame);
+      }
+
+      // It turns where it is and lands where the hero it heads for is now.
+      final box = find.byKey(ValueKey('box$heading'));
+      expect(lefts.first, leftAtTurn);
+      expect(lefts.last, closeTo(tester.getRect(box).left, 1));
+      expect(tester.getRect(box).left, _slotRects[heading].left + 100);
+    });
+  }
 
   for (final again in [false, true]) {
     testWidgets('turns a hero ${again ? 'around again' : 'back'} to where the '
