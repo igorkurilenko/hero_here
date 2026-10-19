@@ -1983,11 +1983,7 @@ void main() {
     addTearDown(switchKey.dispose);
 
     await tester.pumpWidget(
-      _RebuildSwitcher(
-        rebuilds: rebuilds,
-        sameChild: false,
-        switchKey: switchKey,
-      ),
+      _RebuildSwitcher(rebuilds: rebuilds, switchKey: switchKey),
     );
     await tester.pumpAndSettle();
 
@@ -3252,17 +3248,12 @@ class _ExtraSwitcher extends StatelessWidget {
 }
 
 /// Rebuilds a switcher on each change of [rebuilds] or [switchKey], with a new
-/// child keyed by [rebuilds] each time, or with the same `const` child when
-/// [sameChild]. The switcher's switch key is [switchKey]'s, if any.
+/// child keyed by [rebuilds] each time. The switcher's switch key is
+/// [switchKey]'s, if any.
 class _RebuildSwitcher extends StatelessWidget {
-  const _RebuildSwitcher({
-    required this.rebuilds,
-    required this.sameChild,
-    this.switchKey,
-  });
+  const _RebuildSwitcher({required this.rebuilds, this.switchKey});
 
   final ValueNotifier<int> rebuilds;
-  final bool sameChild;
   final ValueNotifier<Object?>? switchKey;
 
   @override
@@ -3271,9 +3262,7 @@ class _RebuildSwitcher extends StatelessWidget {
       listenable: Listenable.merge([rebuilds, switchKey]),
       builder: (context, _) => HeroHereSwitcher(
         switchKey: switchKey?.value,
-        child: sameChild
-            ? const SizedBox.square(dimension: 40)
-            : SizedBox.square(key: ValueKey(rebuilds.value), dimension: 40),
+        child: SizedBox.square(key: ValueKey(rebuilds.value), dimension: 40),
       ),
     ),
   );
