@@ -204,6 +204,8 @@ void _standInsTests() {
           child: CompositedTransformFollower(
             link: link,
             offset: _clippedRect.topLeft - const Offset(300, 50),
+            // It shows, as it has its target, though it would hide without.
+            showWhenUnlinked: false,
             child: hero,
           ),
         ),
@@ -217,6 +219,44 @@ void _standInsTests() {
 
     await _expectRedIn(tester, _clippedRect);
   });
+
+  for (final showsUnlinked in [false, true]) {
+    testWidgets('stands in for a hero in a composited transform follower with '
+        'no target, as the follower ${showsUnlinked ? 'shows' : 'hides'} it', (
+      tester,
+    ) async {
+      _setUpView(tester);
+      final slot = ValueNotifier(0);
+      addTearDown(slot.dispose);
+
+      await tester.pumpWidget(
+        _PlacedSwitcher(
+          slot: slot,
+          place: (hero) => Positioned.fromRect(
+            rect: _clippedRect,
+            child: CompositedTransformFollower(
+              link: LayerLink(),
+              showWhenUnlinked: showsUnlinked,
+              child: hero,
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+      Future<void> expectAsShown() async => showsUnlinked
+          ? await _expectRedIn(tester, _clippedRect)
+          : expect(
+              await _pixelAt(tester, _clippedRect.center),
+              isNot(const Color(0xFFFF0000)),
+            );
+      await expectAsShown();
+
+      slot.value = 1;
+      await tester.pump();
+
+      await expectAsShown();
+    });
+  }
 
   testWidgets('disposes the layer a stand-in shows once it goes', (
     tester,

@@ -31,7 +31,7 @@ Add hero_here to your `pubspec.yaml`:
 
 ```yaml
 dependencies:
-  hero_here: ^2.2.0
+  hero_here: ^2.2.1
 ```
 
 Wrap the part of the page whose widgets move in a `HeroHereSwitcher`. Put a `HeroHere` in each place the widget may be, with the same tag and a key of its own:

@@ -139,21 +139,22 @@ extension _RenderBox on RenderBox {
 
 /// [element] and its ancestors below [root], from the top down, or null if
 /// a disabled [HeroMode] is among them, which leaves the hero at [element]
-/// out of switches.
+/// out of switches. An element that isn't below [root] gets all its
+/// ancestors, since no hero mode below [root] leaves it out.
 List<Element>? _pathBelow(Element root, Element element) {
   final path = [element];
-  var leftOut = false;
+  var leftOut = false, belowRoot = false;
   element.visitAncestorElements((ancestor) {
-    if (identical(ancestor, root)) return false;
-    final widget = ancestor.widget;
-    if (widget is HeroMode && !widget.enabled) {
-      leftOut = true;
+    if (identical(ancestor, root)) {
+      belowRoot = true;
       return false;
     }
+    final widget = ancestor.widget;
+    if (widget is HeroMode && !widget.enabled) leftOut = true;
     path.add(ancestor);
     return true;
   });
-  return leftOut ? null : path.reversed.toList();
+  return leftOut && belowRoot ? null : path.reversed.toList();
 }
 
 /// [heroes] that no disabled [HeroMode] below [root] leaves out, in the

@@ -93,6 +93,36 @@ void main() {
     expect(find.descendant(of: list, matching: find.text('b')), findsOneWidget);
   });
 
+  testWidgets('sends a message typed and sent before the frame after the last '
+      'send as a message of its own', (tester) async {
+    await tester.pumpWidget(const MaterialApp(home: ChatMessageExample()));
+    await _send(tester, 'Hello');
+
+    // Typed and sent before the next frame, while the field still shows
+    // the message sent before it.
+    tester.testTextInput.updateEditingValue(
+      const TextEditingValue(
+        text: 'Helloworld',
+        selection: TextSelection.collapsed(offset: 10),
+      ),
+    );
+    await tester.testTextInput.receiveAction(TextInputAction.done);
+    await tester.pumpAndSettle();
+
+    final list = find.byType(ListView);
+    for (final text in ['Hello', 'world']) {
+      expect(
+        find.descendant(of: list, matching: find.text(text)),
+        findsOneWidget,
+      );
+    }
+    expect(
+      find.descendant(of: list, matching: find.text('Helloworld')),
+      findsNothing,
+    );
+    expect(tester.widget<TextField>(_input).controller!.text, isEmpty);
+  });
+
   testWidgets('keeps a sent message in the input until its shuttle shows it', (
     tester,
   ) async {

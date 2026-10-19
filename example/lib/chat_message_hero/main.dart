@@ -43,6 +43,10 @@ class _ChatMessageExampleState extends State<ChatMessageExample> {
   // The input stays the same field through every send, so it keeps its focus
   // and what is typed. Only the hero over it changes with the draft.
   final _inputController = TextEditingController();
+
+  // The messages sent on this frame, which the input shows until the frame
+  // after it, before what is typed after them.
+  var _sent = '';
   final _scrollController = ScrollController();
   final _focusNode = FocusNode();
 
@@ -138,27 +142,38 @@ class _ChatMessageExampleState extends State<ChatMessageExample> {
   );
 
   void _onMessageSubmitted(String text) {
-    if (text.isEmpty) return;
+    // A message sent before the frame after the last send comes after it.
+    final message = text.startsWith(_sent)
+        ? text.substring(_sent.length)
+        : text;
+    if (message.isEmpty) return;
 
     setState(() {
-      _messages.add(_draft..text = text);
+      _messages.add(_draft..text = message);
       _draft = Message();
     });
 
     // The message flies after this frame, so the field shows it until then,
     // and keeps anything typed after it.
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      final value = _inputController.value;
-      if (!value.text.startsWith(text)) return;
-      _inputController.value = value.replaced(
-        TextRange(start: 0, end: text.length),
-        '',
-      );
-    });
+    _sent += message;
+    WidgetsBinding.instance.addPostFrameCallback((_) => _takeOutSent());
 
     // The list scrolls to the message after the frame of the send and the
     // next one, by when the message's flight is under way.
     _afterTwoFrames(_scrollToBottom);
+  }
+
+  /// Takes the messages sent on the last frame out of the input, keeping
+  /// what was typed after them.
+  void _takeOutSent() {
+    final sent = _sent;
+    _sent = '';
+    final value = _inputController.value;
+    if (sent.isEmpty || !value.text.startsWith(sent)) return;
+    _inputController.value = value.replaced(
+      TextRange(start: 0, end: sent.length),
+      '',
+    );
   }
 
   void _scrollToBottom() => _scrollController.animateTo(
