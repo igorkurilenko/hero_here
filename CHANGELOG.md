@@ -1,3 +1,19 @@
+## 2.2.0
+
+### Features
+
+* Add `HeroHereShuttles.scale()`, which lays out the child of the hero a flight flies to once, at that hero's size, and scales it to the shuttle as it flies: it stretches it by default, or scales it as its `fit` and `alignment` say. What it shows keeps its layout in flight, such as where its text wraps, rather than being laid out anew at each size the shuttle takes. If that hero's size changes mid-flight, such as on a window resize, it lays the child out anew at the new size.
+* Add `HeroHere.toHeroSizeOf`, which gives a widget in a shuttle the size of the hero its flight flies to, so a shuttle of your own can do the same.
+
+### Fixes
+
+* Show a hero that went away where it was on the frame of its switch when a `CompositedTransformTarget` or a `CompositedTransformFollower` placed it. The stand-in the switch shows for it left out the offset or the transform they put it at, so for that frame it showed elsewhere, such as at the follower's place before it followed.
+
+### Docs
+
+* Say that a hero builds its child while it hides too, so a `GlobalKey` in a child that a shuttle shows, as the default shuttle does, is in the tree twice while the flight flies. Such a hero needs a `flightShuttleBuilder` that builds what the child shows without the key.
+* Head the README with "Hero animations on the same page", the words of the package's description and of most searches for what it does, rather than "on the same screen".
+
 ## 2.1.1
 
 ### Fixes

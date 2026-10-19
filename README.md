@@ -1,6 +1,6 @@
-# hero_here: Hero animations on the same screen
+# hero_here: Hero animations on the same page
 
-Like Flutter's `Hero`, but within the same page: no `Navigator`, no routes.
+Like Flutter's `Hero`, but with no `Navigator` and no routes.
 
 Flutter's `Hero` flies a widget to its place on a new route, as the `Navigator` pushes or pops it. When the page you're on changes instead, such as when a grid item opens into its details in place, or a sent message joins the chat, the widget just jumps to its new place. hero_here makes it fly there, without navigation: as with `Hero`, give its old and new places the same tag, then change state.
 
@@ -21,7 +21,7 @@ Flutter's `Hero` flies a widget to its place on a new route, as the `Navigator` 
 - `HeroHereSwitcher` and `HeroHere`, which work like `AnimatedSwitcher` and `Hero`.
 - Customizable flights: their duration, curve, path and shuttle, and what drives them, such as a spring.
 - Flights that change course mid-flight, either landing on each hero in turn or diverting straight to the new one.
-- Ready-made shuttles: a crossfade, and a flip like a card's.
+- Ready-made shuttles: a crossfade, a flip like a card's, and a scale that keeps text from reflowing in flight.
 - Flights that follow their heroes as they move, such as on a scroll or a window resize.
 - Android, iOS, web, macOS, Windows and Linux. Wasm-ready, with no dependencies beyond Flutter.
 
@@ -31,7 +31,7 @@ Add hero_here to your `pubspec.yaml`:
 
 ```yaml
 dependencies:
-  hero_here: ^2.1.1
+  hero_here: ^2.2.0
 ```
 
 Wrap the part of the page whose widgets move in a `HeroHereSwitcher`. Put a `HeroHere` in each place the widget may be, with the same tag and a key of its own:
@@ -69,9 +69,9 @@ The [Example tab](https://pub.dev/packages/hero_here/example) has a whole app, a
 
 ## Examples
 
-### Grid to details on one screen (container transform without a route)
+### Grid to details on the same page (container transform without a route)
 
-In the [details example](https://github.com/igorkurilenko/hero_here/tree/main/example/lib/show_details_hero), a tapped mountain in a grid opens into its details on the same page: its photo, name and description each fly to their places in the details, and back when they close. Each is a hero of its own, whose tag the grid's cell and the details share.
+In the [details example](https://github.com/igorkurilenko/hero_here/tree/main/example/lib/show_details_hero), a tapped mountain in a grid opens into its details in place: its photo, name and description each fly to their places in the details, and back when they close. Each is a hero of its own, whose tag the grid's cell and the details share.
 
 ### A chat message that flies from the input into the list
 
@@ -135,7 +135,7 @@ For a spring, run the flight's controller on a `SpringSimulation` through `forwa
 
 ### Is it a shared element transition?
 
-Yes, within one screen. It's the idea behind SwiftUI's `matchedGeometryEffect`, Jetpack Compose's shared elements and Framer Motion's `layoutId`: two views share an id, and a change from one to the other animates.
+Yes, within one page. It's the idea behind SwiftUI's `matchedGeometryEffect`, Jetpack Compose's shared elements and Framer Motion's `layoutId`: two views share an id, and a change from one to the other animates.
 
 ## Redirected flights
 
@@ -160,6 +160,7 @@ A flight shows a shuttle as it flies: by default, the child of the hero it flies
 
 - `HeroHereShuttles.crossfade()` fades the hero a flight leaves out over the hero it flies to.
 - `HeroHereShuttles.flip()` turns the shuttle over like a card, and shows the hero it flies to once it's edge on. Pass `axis: Axis.horizontal` to turn it top over bottom.
+- `HeroHereShuttles.scale()` lays out the hero it flies to once, at that hero's size, and stretches it to the shuttle, so its text keeps its line breaks as the shuttle grows or shrinks. Pass `fit` and `alignment` to scale it another way.
 
 ```dart
 HeroHere(

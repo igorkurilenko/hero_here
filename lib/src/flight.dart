@@ -35,7 +35,13 @@ class _FlightWidget extends StatelessWidget {
           // The shuttle moves on each frame. In its own layer, it repaints
           // only when it changes, such as when it changes size.
           child: IgnorePointer(
-            child: _ShuttleLayer(flight: flight, child: flight.shuttle),
+            child: _ShuttleLayer(
+              flight: flight,
+              child: _ToHeroSize(
+                size: flight.toHeroSize,
+                child: flight.shuttle,
+              ),
+            ),
           ),
         ),
       ),
@@ -87,6 +93,17 @@ class _RenderShuttleLayer extends _RenderBoundary {
 }
 
 /// Builds a flight's shuttle from the heroes it shows.
+/// Tells the shuttle below it the size of `toHero`, the hero its flight
+/// flies to, on this frame. See [HeroHere.toHeroSizeOf].
+class _ToHeroSize extends InheritedWidget {
+  const _ToHeroSize({required this.size, required super.child});
+
+  final Size? size;
+
+  @override
+  bool updateShouldNotify(_ToHeroSize oldWidget) => size != oldWidget.size;
+}
+
 class _Shuttle extends StatelessWidget {
   final HeroHereFlightShuttleBuilder builder;
   final Animation<double> animation;
@@ -346,6 +363,10 @@ class _Flight extends ChangeNotifier {
     _controller.dispose();
     super.dispose();
   }
+
+  /// The size of the hero the flight flies to, the shuttle's `toHero`, on
+  /// this frame, or where it was if it's nowhere now.
+  Size? get toHeroSize => _rectOf(_manifest.to)?.size;
 
   /// The hero the shuttle is on its way to.
   _Hero get _target => _reversed ? _manifest.from : _manifest.to;
