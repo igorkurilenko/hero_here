@@ -108,57 +108,9 @@ class _AutoSwitchingExampleState extends State<AutoSwitchingExample> {
       child: Stack(
         fit: StackFit.expand,
         children: [
-          Align(
-            alignment: _alignments[HeroType.red]!,
-            child: SizedBox(
-              width: 100,
-              height: 100,
-              child: curHeroType == HeroType.red
-                  ? HeroHere(
-                      key: const ValueKey(HeroType.red),
-                      tag: kHeroTag,
-                      flightAnimationDuration: kHeroFlightAnimationDuration,
-                      flightShuttleBuilder: HeroHereShuttles.crossfade(),
-                      flightRedirect: _redirect,
-                      child: Container(color: Colors.red),
-                    )
-                  : null,
-            ),
-          ),
-          Align(
-            alignment: _alignments[HeroType.green]!,
-            child: SizedBox(
-              width: 150,
-              height: 150,
-              child: curHeroType == HeroType.green
-                  ? HeroHere(
-                      key: const ValueKey(HeroType.green),
-                      tag: kHeroTag,
-                      flightAnimationDuration: kHeroFlightAnimationDuration,
-                      flightShuttleBuilder: HeroHereShuttles.crossfade(),
-                      flightRedirect: _redirect,
-                      child: Container(color: Colors.green),
-                    )
-                  : null,
-            ),
-          ),
-          Align(
-            alignment: _alignments[HeroType.blue]!,
-            child: SizedBox(
-              width: 100,
-              height: 100,
-              child: curHeroType == HeroType.blue
-                  ? HeroHere(
-                      key: const ValueKey(HeroType.blue),
-                      tag: kHeroTag,
-                      flightAnimationDuration: kHeroFlightAnimationDuration,
-                      flightShuttleBuilder: HeroHereShuttles.crossfade(),
-                      flightRedirect: _redirect,
-                      child: Container(color: Colors.blue),
-                    )
-                  : null,
-            ),
-          ),
+          _heroSpot(HeroType.red, color: Colors.red, size: 100),
+          _heroSpot(HeroType.green, color: Colors.green, size: 150),
+          _heroSpot(HeroType.blue, color: Colors.blue, size: 100),
         ],
       ),
     ),
@@ -184,6 +136,30 @@ class _AutoSwitchingExampleState extends State<AutoSwitchingExample> {
           ],
         ),
       ),
+    ),
+  );
+
+  /// The spot of the [type] hero, [size] across, where it shows in [color]
+  /// while it's the current hero.
+  Widget _heroSpot(
+    HeroType type, {
+    required Color color,
+    required double size,
+  }) => Align(
+    alignment: _alignments[type]!,
+    child: SizedBox(
+      width: size,
+      height: size,
+      child: curHeroType == type
+          ? HeroHere(
+              key: ValueKey(type),
+              tag: kHeroTag,
+              flightAnimationDuration: kHeroFlightAnimationDuration,
+              flightShuttleBuilder: HeroHereShuttles.crossfade(),
+              flightRedirect: _redirect,
+              child: Container(color: color),
+            )
+          : null,
     ),
   );
 
