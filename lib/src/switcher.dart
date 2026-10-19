@@ -229,8 +229,8 @@ class _Mount extends _SwitchingState {
   }
 
   Set<_Hero> _findHiddenHeroes(Set<_Hero> heroes) {
-    final lastHeroesByTag = {for (final hero in heroes) hero.tag: hero};
-    return heroes.where((hero) => lastHeroesByTag[hero.tag] != hero).toSet();
+    final lastByTag = _lastByTag(heroes);
+    return heroes.where((hero) => lastByTag[hero.tag] != hero).toSet();
   }
 }
 
@@ -421,36 +421,25 @@ class _SwitchPlan {
     required Set<_Hero>? prevSwitchHeroes,
     required Map<Object, _FlightManifest> flying,
   }) {
-    final manifests = <Object, _FlightManifest>{};
-
-    for (final x in nextHeroes) {
-      final manifest = manifests.putIfAbsent(
-        x.tag,
-        () => _FlightManifest(tag: x.tag, from: x, to: x),
-      );
-      manifest.to = x;
-    }
-
-    for (final manifest in manifests.values) {
-      final flight = flying[manifest.tag];
-      if (flight?.from == manifest.to) {
-        manifest.from = flight!.to;
-      } else if (flight != null) {
-        manifest.from = flight.from;
-      } else {
-        manifest.from =
-            curHeroes
-                .where((x) => x.tag == manifest.tag)
-                .where((x) => x.onstage)
-                .where((x) => prevSwitchHeroes?.contains(x) ?? false)
-                .firstOrNull ??
-            curHeroes
-                .where((x) => x.tag == manifest.tag)
-                .where((x) => x.onstage)
-                .firstOrNull ??
-            manifest.to;
+    // Where the tag of [to], the hero it flies to, flies from.
+    _Hero sourceOf(_Hero to) {
+      if (flying[to.tag] case final flight?) {
+        return flight.from == to ? flight.to : flight.from;
       }
+      final shown = curHeroes.where((x) => x.tag == to.tag && x.onstage);
+      return shown
+              .where((x) => prevSwitchHeroes?.contains(x) ?? false)
+              .firstOrNull ??
+          shown.firstOrNull ??
+          to;
     }
+
+    // In the order of each tag's first next hero, which is the order the
+    // flights start in, so the order they fly in, one over another.
+    final manifests = {
+      for (final to in _lastByTag(nextHeroes).values)
+        to.tag: _FlightManifest(tag: to.tag, from: sourceOf(to), to: to),
+    };
 
     // A flight under way goes on while a next hero has its tag, even when it
     // flies back to the hero it left, as a diverted flight may.
@@ -473,3 +462,9 @@ class _SwitchPlan {
     );
   }
 }
+
+/// The last of [heroes] with each tag, the one that shows, by tag, in the
+/// order of each tag's first hero.
+Map<Object, _Hero> _lastByTag(Iterable<_Hero> heroes) => {
+  for (final hero in heroes) hero.tag: hero,
+};
