@@ -489,6 +489,50 @@ void _heroesTests() {
     });
   }
 
+  testWidgets(
+    'flies nothing from a hero that the switch bringing a hero of its '
+    'tag leaves out by a disabled hero mode, on every frame',
+    (tester) async {
+      final disabled = ValueNotifier(false);
+      addTearDown(disabled.dispose);
+      await tester.pumpWidget(
+        MaterialApp(
+          home: ValueListenableBuilder(
+            valueListenable: disabled,
+            builder: (context, disabled, _) => HeroHereSwitcher(
+              child: Stack(
+                children: [
+                  HeroMode(
+                    enabled: !disabled,
+                    child: Stack(
+                      children: [_heroAt(const ValueKey('a'), _slotRects[0])],
+                    ),
+                  ),
+                  if (disabled) _heroAt(const ValueKey('b'), _slotRects[1]),
+                ],
+              ),
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+      final a = _boxOf(const ValueKey('a'));
+      final b = _boxOf(const ValueKey('b'), skipOffstage: false);
+
+      disabled.value = true;
+      // The frame of the switch, and the frames after it.
+      for (var i = 0; i < 3; i++) {
+        await tester.pump(_frame);
+        expect(find.byKey(_shuttleKey), findsNothing);
+        expect(_paintedInPlace(tester, a), isTrue);
+        expect(_paintedInPlace(tester, b), isTrue);
+      }
+      await tester.pumpAndSettle();
+      expect(_paintedInPlace(tester, a), isTrue);
+      expect(_paintedInPlace(tester, b), isTrue);
+    },
+  );
+
   testWidgets('shows the hero a flight flies to once a disabled hero mode '
       'leaves it out mid-flight, as the flight lands on it and flies on to the '
       'next hero', (tester) async {

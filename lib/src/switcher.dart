@@ -290,8 +290,12 @@ class _Switch extends _SwitchingState {
   @override
   final List<_Hero> standIns;
 
-  /// The tags that may fly: those of [standIns].
-  final Set<Object> _tags;
+  /// The tags that may fly: those of [standIns], other than of the heroes
+  /// the switch leaves out, which no flight starts from.
+  late final Set<Object> _tags = {
+    for (final hero in standIns)
+      if (!_leftOutHeroes.contains(hero)) hero.tag,
+  };
 
   /// [curHeroes] themselves, rather than heroes equal to them, which may have
   /// mounted anew.
@@ -300,6 +304,13 @@ class _Switch extends _SwitchingState {
   /// The heroes of the new child, found once it is built and laid out: when
   /// the first of them that may hide paints, or else after the frame.
   late final Set<_Hero> _nextHeroes = switcher.findHeroes();
+
+  /// The heroes in the switcher's child that the switch leaves out, as a
+  /// disabled hero mode does, other than heroes equal to one before them.
+  late final Set<_Hero> _leftOutHeroes = Set.identity()
+    ..addAll(
+      switcher.registeredHeroes.where((hero) => !_nextHeroes.contains(hero)),
+    );
 
   /// What [standIns] last showed, kept from before the switch. Their layers
   /// are kept until the stand-ins, which keep them while they show, have
@@ -320,7 +331,6 @@ class _Switch extends _SwitchingState {
       prevSwitchHeroes: prevSwitchHeroes,
       curHeroes: curHeroes,
       standIns: standIns,
-      tags: {for (final hero in standIns) hero.tag},
       // Kept now, while the heroes and their last frame's layers are as they
       // were.
       looks: Map.identity()
@@ -335,7 +345,6 @@ class _Switch extends _SwitchingState {
     required this.prevSwitchHeroes,
     required this.curHeroes,
     required this.standIns,
-    required this._tags,
     required this._looks,
   });
 
@@ -368,6 +377,7 @@ class _Switch extends _SwitchingState {
       curHeroes: curHeroes,
       nextHeroes: _nextHeroes,
       prevSwitchHeroes: prevSwitchHeroes,
+      leftOutHeroes: _leftOutHeroes,
       flying: {
         for (final flight in switcher.flights.all) flight.tag: flight.manifest,
       },
@@ -397,10 +407,9 @@ class _Switch extends _SwitchingState {
     }
 
     // A hero that a disabled hero mode leaves out shows as it is, though the
-    // switches before it, or a flight, hid it. A hero equal to one before it,
-    // which the switch leaves out too, stays as it is.
-    for (final hero in switcher.registeredHeroes) {
-      if (!_nextHeroes.contains(hero)) hero.offstage = false;
+    // switches before it, or a flight, hid it.
+    for (final hero in _leftOutHeroes) {
+      hero.offstage = false;
     }
 
     switcher.enter(_Idle(switcher, prevSwitchHeroes: _nextHeroes));
@@ -439,17 +448,19 @@ class _SwitchPlan {
   });
 
   /// Plans the switch from [curHeroes] to [nextHeroes], given the heroes of
-  /// the last switch and the manifests of the flights [flying], by tag.
+  /// the last switch, the heroes the switch leaves out, and the manifests of
+  /// the flights [flying], by tag.
   ///
   /// Of the next heroes that share a tag, the last one is where its tag
   /// flies to. It flies from where its flight under way is, or else from the
-  /// current hero with its tag that shows, preferring one of the last
-  /// switch. With neither, nothing flies: the last one shows at once, as on
-  /// mount.
+  /// current hero with its tag that shows and isn't left out, preferring one
+  /// of the last switch. With neither, nothing flies: the last one shows at
+  /// once, as on mount.
   factory _SwitchPlan({
     required Set<_Hero> curHeroes,
     required Set<_Hero> nextHeroes,
     required Set<_Hero> prevSwitchHeroes,
+    required Set<_Hero> leftOutHeroes,
     required Map<Object, _FlightManifest> flying,
   }) {
     // Where the tag of [to], the hero it flies to, flies from.
@@ -457,7 +468,9 @@ class _SwitchPlan {
       if (flying[to.tag] case final flight?) {
         return flight.from == to ? flight.to : flight.from;
       }
-      final shown = curHeroes.where((x) => x.tag == to.tag && x.onstage);
+      final shown = curHeroes.where(
+        (x) => x.tag == to.tag && x.onstage && !leftOutHeroes.contains(x),
+      );
       return shown.where(prevSwitchHeroes.contains).firstOrNull ??
           shown.firstOrNull ??
           to;
