@@ -4,6 +4,7 @@
 - `lib/basic_with_auto_switching/`: heroes that switch on a timer, with flights that chain or divert when they change course.
 - `lib/chat_message_hero/`: a sent message flies from the input into the chat.
 - `lib/show_details_hero/`: a grid of mountains whose photo, name and description fly into a details view and back.
+- `lib/flip_card_hero/`: tap a photo in a grid, and its card flies to the middle on a bouncy spring, flipping over to show the mountain's name and description. Tap it again, or beside it, and it flies back. It's the effect of heroine's showcase, within one page.
 
 Run one with `flutter run -t <file>`, such as `flutter run -t lib/show_details_hero/main.dart`.
 
