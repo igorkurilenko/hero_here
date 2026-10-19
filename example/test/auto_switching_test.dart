@@ -22,6 +22,36 @@ void main() {
     expect(redirect(), HeroHereFlightRedirect.chain);
   });
 
+  testWidgets('switches its hero on and on while it plays, until paused', (
+    tester,
+  ) async {
+    await tester.pumpWidget(const MaterialApp(home: AutoSwitchingExample()));
+    await tester.pumpAndSettle();
+    final play = find
+        .descendant(
+          of: find.byType(BottomAppBar),
+          matching: find.byType(IconButton),
+        )
+        .first;
+    Key? hero() => tester.widget(find.byType(HeroHere)).key;
+
+    await tester.tap(play);
+    final shown = <Key?>{};
+    for (var i = 0; i < 20; i++) {
+      await tester.pump(kAutoHeroSwitchingDuration);
+      shown.add(hero());
+    }
+    expect(shown, hasLength(greaterThan(1)));
+
+    // Paused, it switches no more, and leaves no timer running once the test
+    // ends, which would fail it.
+    await tester.tap(play);
+    await tester.pumpAndSettle();
+    final last = hero();
+    await tester.pump(kAutoHeroSwitchingDuration * 4);
+    expect(hero(), last);
+  });
+
   testWidgets('places its heroes off one line', (tester) async {
     await tester.pumpWidget(const MaterialApp(home: AutoSwitchingExample()));
     await tester.pumpAndSettle();
