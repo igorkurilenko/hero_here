@@ -75,6 +75,14 @@ class _HeroHereSwitcherState extends State<HeroHereSwitcher>
   /// mounts, or while a switch waits to fly its tag.
   bool hides(_Hero hero) => _switchingState.hides(hero);
 
+  /// Whether [hero], in the switcher's child, shows by its switches and
+  /// flights: if a disabled hero mode leaves it out of them, or if no flight
+  /// of its tag is under way and it's the last of the heroes with its tag.
+  bool shows(_Hero hero) =>
+      hero.isLeftOutOf(this) ||
+      (flights[hero.tag] == null &&
+          identical(_lastByTag(findHeroes())[hero.tag], hero));
+
   /// Takes the widget's child, with its switch key, as the one to show.
   void takeChild() {
     _child = widget.child;
