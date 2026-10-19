@@ -12,6 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+import 'dart:math';
+
 import 'package:flutter/material.dart';
 import 'package:hero_here/hero_here.dart';
 
@@ -216,24 +218,15 @@ class _ShowDetailsExampleState extends State<ShowDetailsExample> {
     // depend on the window's size, so each resize would rebuild it and run a
     // switch.
     final pageSize = context.size!;
-    final pageCenter = pageSize.center(Offset.zero);
-    final xOffset = pageCenter.dx - cellCenter.dx;
-    final yOffset = pageCenter.dy - cellCenter.dy;
-    final maxXOffset = pageSize.width * (kGridViewScaleWhenDetailsOpen - 1) / 2;
-    final maxYOffset =
-        pageSize.height * (kGridViewScaleWhenDetailsOpen - 1) / 2;
-    var target = pageCenter;
+    final toCenter = pageSize.center(Offset.zero) - cellCenter;
+    final margin = pageSize * ((kGridViewScaleWhenDetailsOpen - 1) / 2);
+    // The share of the way to the center that keeps within both margins.
+    final share = [
+      1.0,
+      if (toCenter.dx != 0) margin.width / toCenter.dx.abs(),
+      if (toCenter.dy != 0) margin.height / toCenter.dy.abs(),
+    ].reduce(min);
 
-    if (xOffset.abs() > maxXOffset) {
-      final x = cellCenter.dx + xOffset.sign * maxXOffset;
-      final y = (x - cellCenter.dx) * yOffset / xOffset + cellCenter.dy;
-      target = Offset(x, y);
-    } else if (yOffset.abs() > maxYOffset) {
-      final y = cellCenter.dy + yOffset.sign * maxYOffset;
-      final x = (y - cellCenter.dy) * xOffset / yOffset + cellCenter.dx;
-      target = Offset(x, y);
-    }
-
-    return (target - cellCenter).scale(1 / pageSize.width, 1 / pageSize.height);
+    return (toCenter * share).scale(1 / pageSize.width, 1 / pageSize.height);
   }
 }

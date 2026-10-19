@@ -64,6 +64,30 @@ void main() {
     expect(offset.dy, closeTo(toMiddle.dy / page.height, .001));
   });
 
+  testWidgets('slides the grid no farther than its scale leaves a margin, '
+      'for a cell far across and down', (tester) async {
+    await _pumpExample(tester);
+    final page = tester.getRect(find.byType(ShowDetailsExample));
+    // The first cell of the second row, which reaches below the page.
+    final cell = tester.getRect(
+      find.byType(EightThousanderPreviewHero, skipOffstage: false).at(2),
+    );
+    final toMiddle = page.center - cell.center;
+
+    await tester.tapAt(Offset(cell.center.dx, page.bottom - 20));
+    await tester.pump();
+
+    final offset = tester
+        .widget<AnimatedSlide>(find.byType(AnimatedSlide))
+        .offset;
+    final margin = (kGridViewScaleWhenDetailsOpen - 1) / 2;
+    expect(offset.dx.abs(), lessThanOrEqualTo(margin + 1e-9));
+    expect(offset.dy.abs(), lessThanOrEqualTo(margin + 1e-9));
+    // Toward the middle, along the line from the cell.
+    final slid = Offset(offset.dx * page.width, offset.dy * page.height);
+    expect(slid.direction, closeTo(toMiddle.direction, 1e-6));
+  });
+
   testWidgets('enables the back button once the details have flown open', (
     tester,
   ) async {
