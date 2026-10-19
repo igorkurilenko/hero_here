@@ -60,8 +60,8 @@ class _EightThousanderDetailsHeroState
   Velocity? get imageDragVelocity => _imageDragVelocityTracker?.getVelocity();
 
   Size get imageSize => Size(
-    min(screenSize.width, kGridViewConstraints.maxWidth),
-    min(screenSize.width, kGridViewConstraints.maxWidth) * kGoldenRatio,
+    min(screenSize.width, kGridViewMaxWidth),
+    min(screenSize.width, kGridViewMaxWidth) * kGoldenRatio,
   );
 
   BorderRadius get imageBorderRadius =>

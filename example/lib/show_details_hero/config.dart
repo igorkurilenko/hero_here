@@ -21,14 +21,14 @@ import 'eight_thousander.dart';
 
 const kGoldenRatio = 1.618;
 
-const kGridViewConstraints = BoxConstraints(maxWidth: 560);
+/// The widest the grid and the details get, centered in a wider window.
+const kGridViewMaxWidth = 560.0;
 
-/// Padding that centers a column no wider than [kGridViewConstraints] in a
+/// Padding that centers a column no wider than [kGridViewMaxWidth] in a
 /// scroll view [width] wide. The scroll view can then span the window, which
 /// puts its scrollbar at the window's edge.
-EdgeInsets centerColumnPadding(double width) => EdgeInsets.symmetric(
-  horizontal: max(0, (width - kGridViewConstraints.maxWidth) / 2),
-);
+EdgeInsets centerColumnPadding(double width) =>
+    EdgeInsets.symmetric(horizontal: max(0, (width - kGridViewMaxWidth) / 2));
 
 const kGridViewPadding = EdgeInsets.all(8);
 const kGridViewDelegate = SliverGridDelegateWithFixedCrossAxisCount(
@@ -38,10 +38,10 @@ const kGridViewDelegate = SliverGridDelegateWithFixedCrossAxisCount(
   crossAxisSpacing: 16,
 );
 
-/// How tall a grid cell is with the grid [width] wide, or as wide as
-/// [kGridViewConstraints] lets it be, if that's less.
+/// How tall a grid cell is with the grid [width] wide, or [kGridViewMaxWidth]
+/// wide, if that's less.
 double gridViewCellHeight(double width) =>
-    (min(width, kGridViewConstraints.maxWidth) -
+    (min(width, kGridViewMaxWidth) -
         kGridViewPadding.horizontal -
         (kGridViewDelegate.crossAxisCount - 1) *
             kGridViewDelegate.crossAxisSpacing) /
