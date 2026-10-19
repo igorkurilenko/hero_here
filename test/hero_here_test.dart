@@ -24,6 +24,9 @@ Finder _inShuttle(String box) => find.descendant(
   matching: find.byKey(ValueKey(box)),
 );
 
+/// The color most of the tests' heroes show.
+const _heroColor = Color(0xFF2196F3);
+
 /// A frame at 60 frames a second.
 const _frame = Duration(milliseconds: 16);
 
@@ -154,10 +157,7 @@ void main() {
         key: ValueKey(key),
         tag: 'hero',
         flightShuttleBuilder: (_, _, _, toHero) => toHero,
-        child: ColoredBox(
-          key: ValueKey('box-$key'),
-          color: const Color(0xFF2196F3),
-        ),
+        child: ColoredBox(key: ValueKey('box-$key'), color: _heroColor),
       ),
     );
 
@@ -3016,7 +3016,7 @@ class _SourceSwitcher extends StatelessWidget {
           tag: 'hero',
           flightShuttleBuilder: (_, _, fromHero, _) =>
               SizedBox.expand(child: fromHero.child),
-          child: ColoredBox(key: ValueKey(box), color: const Color(0xFF2196F3)),
+          child: ColoredBox(key: ValueKey(box), color: _heroColor),
         );
 
         return HeroHereSwitcher(
@@ -3076,7 +3076,7 @@ class _ChainSwitcher extends StatelessWidget {
                     flightShuttleBuilder: _shuttleBox,
                     child: ColoredBox(
                       key: ValueKey('box$slot'),
-                      color: const Color(0xFF2196F3),
+                      color: _heroColor,
                     ),
                   );
                   return wrapped ? KeyedSubtree(child: hero) : hero;
@@ -3109,10 +3109,7 @@ class _RemountSwitcher extends StatelessWidget {
           key: ValueKey(slot),
           tag: 'hero',
           flightShuttleBuilder: _shuttleBox,
-          child: ColoredBox(
-            key: ValueKey('box$slot'),
-            color: const Color(0xFF2196F3),
-          ),
+          child: ColoredBox(key: ValueKey('box$slot'), color: _heroColor),
         );
         if (wrapped.value) hero = KeyedSubtree(child: hero);
 
@@ -3152,7 +3149,7 @@ class _ExtraSwitcher extends StatelessWidget {
         Widget hero(Object key, String box) => HeroHere(
           key: ValueKey(key),
           tag: 'hero',
-          child: ColoredBox(key: ValueKey(box), color: const Color(0xFF2196F3)),
+          child: ColoredBox(key: ValueKey(box), color: _heroColor),
         );
 
         return HeroHereSwitcher(
@@ -3251,7 +3248,7 @@ class _LookSwitcher extends StatelessWidget {
         KeyedSubtree(key: _shuttleKey, child: toHero.child),
     child: ColoredBox(
       key: ValueKey('box${slot.value}$look'),
-      color: const Color(0xFF2196F3),
+      color: _heroColor,
     ),
   );
 }
@@ -3277,10 +3274,7 @@ class _LeftLookSwitcher extends StatelessWidget {
           tag: 'hero',
           flightShuttleBuilder: (_, _, fromHero, _) =>
               KeyedSubtree(key: _shuttleKey, child: fromHero.child),
-          child: ColoredBox(
-            key: ValueKey('box$look'),
-            color: const Color(0xFF2196F3),
-          ),
+          child: ColoredBox(key: ValueKey('box$look'), color: _heroColor),
         );
 
         return HeroHereSwitcher(
@@ -3401,7 +3395,7 @@ class _ShiftSwitcher extends StatelessWidget {
             key: ValueKey(i),
             tag: 'hero',
             flightShuttleBuilder: shuttleBuilder,
-            child: const ColoredBox(color: Color(0xFF2196F3)),
+            child: const ColoredBox(color: _heroColor),
           ),
         );
 
@@ -3458,10 +3452,7 @@ class _LabelSwitcher extends StatelessWidget {
                 key: ValueKey(slot),
                 tag: 'hero',
                 flightShuttleBuilder: _shuttleBox,
-                child: ColoredBox(
-                  key: ValueKey('box$slot'),
-                  color: const Color(0xFF2196F3),
-                ),
+                child: ColoredBox(key: ValueKey('box$slot'), color: _heroColor),
               ),
             ),
           ],
@@ -3548,7 +3539,7 @@ class _GoneSwitcher extends StatelessWidget {
           key: ValueKey(key),
           tag: 'hero',
           flightShuttleBuilder: _shuttleBox,
-          child: const ColoredBox(color: Color(0xFF2196F3)),
+          child: const ColoredBox(color: _heroColor),
         );
 
         return HeroHereSwitcher(
@@ -3618,7 +3609,7 @@ class _SlotSwitcher extends StatelessWidget {
                     flightShuttleBuilder: shuttleBuilder ?? _shuttleBox,
                     child: ColoredBox(
                       key: ValueKey('box$slot'),
-                      color: const Color(0xFF2196F3),
+                      color: _heroColor,
                     ),
                   ),
                 ),
@@ -3652,7 +3643,7 @@ class _SplitSwitcher extends StatelessWidget {
                   tag: 'hero',
                   child: ColoredBox(
                     key: ValueKey('box$slot'),
-                    color: const Color(0xFF2196F3),
+                    color: _heroColor,
                   ),
                 ),
               ),
@@ -3685,7 +3676,7 @@ class _StaySwitcher extends StatelessWidget {
           key: ValueKey(key),
           tag: 'hero',
           flightShuttleBuilder: _shuttleBox,
-          child: const ColoredBox(color: Color(0xFF2196F3)),
+          child: const ColoredBox(color: _heroColor),
         );
 
         return HeroHereSwitcher(
@@ -3727,10 +3718,7 @@ class _LeftSwitcher extends StatelessWidget {
           key: ValueKey(key),
           tag: 'hero',
           flightShuttleBuilder: _shuttleBox,
-          child: ColoredBox(
-            key: ValueKey('box-$key'),
-            color: const Color(0xFF2196F3),
-          ),
+          child: ColoredBox(key: ValueKey('box-$key'), color: _heroColor),
         );
 
         return HeroHereSwitcher(
@@ -3773,10 +3761,7 @@ class _TurnSwitcher extends StatelessWidget {
           key: ValueKey(key),
           tag: 'hero',
           flightShuttleBuilder: _shuttleBox,
-          child: ColoredBox(
-            key: ValueKey('box-$key'),
-            color: const Color(0xFF2196F3),
-          ),
+          child: ColoredBox(key: ValueKey('box-$key'), color: _heroColor),
         );
         final a = Positioned.fromRect(
           key: const ValueKey('slot-a'),
@@ -3826,7 +3811,7 @@ class _NewTagSwitcher extends StatelessWidget {
                     flightShuttleBuilder: _shuttleBox,
                     child: ColoredBox(
                       key: ValueKey('box$slot'),
-                      color: const Color(0xFF2196F3),
+                      color: _heroColor,
                     ),
                   ),
                 ),
@@ -4077,7 +4062,7 @@ class _OffsetSwitcher extends StatelessWidget {
                     key: ValueKey(moved),
                     tag: 'hero',
                     flightShuttleBuilder: _shuttleBox,
-                    child: const ColoredBox(color: Color(0xFF2196F3)),
+                    child: const ColoredBox(color: _heroColor),
                   ),
                 ),
               ],
@@ -4173,7 +4158,7 @@ Widget _heroAt(Key key, Rect rect) => Positioned.fromRect(
     key: key,
     tag: 'hero',
     flightShuttleBuilder: _shuttleBox,
-    child: const ColoredBox(color: Color(0xFF2196F3)),
+    child: const ColoredBox(color: _heroColor),
   ),
 );
 
