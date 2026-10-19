@@ -4,6 +4,7 @@
 
 * Hide the hero a flight leaves when a global key moved it into another switcher, with a disabled `HeroMode` around the whole app too. Asking whether a disabled hero mode left that hero out of the switches, the flight looked past its own switcher, up to the hero mode around the app, so the hero showed under the shuttle that flew from it.
 * Show a hero that a global key moved into another switcher once a flight in the switcher it left lands, if that flight flew from it. The flight hid it, as the hero it leaves, and nothing showed it again, so it stayed hidden in its new switcher for good.
+* Show nothing for a hero that went away from under a `CompositedTransformFollower` with no target, set not to show without one, on the frame of its switch. The follower hid the hero, but the stand-in the switch shows for it showed it at the follower's own place.
 
 ## 2.2.0
 

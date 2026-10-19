@@ -135,6 +135,13 @@ class _KeptLook {
         final origin = hero.placeholderRectIn(switcher)?.topLeft ?? Offset.zero;
         return _KeptLook._(layer, origin, wrappers);
       }
+      // A follower with no leader to follow, and set to hide then, showed
+      // nothing in it.
+      if (parent is FollowerLayer &&
+          parent.link.leader == null &&
+          parent.showWhenUnlinked == false) {
+        return null;
+      }
       if (_wrapperLike(parent) case final wrapper?) wrappers.add(wrapper);
     }
     return _KeptLook._(layer, Offset.zero, null);
