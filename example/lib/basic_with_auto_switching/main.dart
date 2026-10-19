@@ -28,18 +28,20 @@ void main() => runApp(
     debugShowCheckedModeBanner: false,
     theme: ThemeData(useMaterial3: true, brightness: Brightness.light),
     darkTheme: ThemeData(useMaterial3: true, brightness: Brightness.dark),
-    home: const HeroHereExample(),
+    home: const AutoSwitchingExample(),
   ),
 );
 
-class HeroHereExample extends StatefulWidget {
-  const HeroHereExample({super.key});
+enum HeroType { red, green, blue }
+
+class AutoSwitchingExample extends StatefulWidget {
+  const AutoSwitchingExample({super.key});
 
   @override
-  State<HeroHereExample> createState() => _HeroHereExampleState();
+  State<AutoSwitchingExample> createState() => _AutoSwitchingExampleState();
 }
 
-class _HeroHereExampleState extends State<HeroHereExample> {
+class _AutoSwitchingExampleState extends State<AutoSwitchingExample> {
   HeroType _curHeroType = HeroType.red;
   HeroHereFlightRedirect _redirect = HeroHereFlightRedirect.chain;
   bool _paused = true;
@@ -59,9 +61,12 @@ class _HeroHereExampleState extends State<HeroHereExample> {
 
   set paused(bool value) {
     if (value == _paused) return;
-    setState(() {
-      (_paused = value) ? _pauseHeroSwitching() : _startHeroSwitching();
-    });
+    setState(() => _paused = value);
+    if (value) {
+      _pauseHeroSwitching();
+    } else {
+      _startHeroSwitching();
+    }
   }
 
   @override
@@ -169,7 +174,7 @@ class _HeroHereExampleState extends State<HeroHereExample> {
               children: [
                 IconButton(
                   onPressed: () => paused = !paused,
-                  icon: Icon(_paused ? Icons.play_arrow : Icons.pause),
+                  icon: Icon(paused ? Icons.play_arrow : Icons.pause),
                 ),
               ],
             ),
@@ -283,5 +288,3 @@ class _HeroHereExampleState extends State<HeroHereExample> {
     return Map.fromIterables(HeroType.values, alignments);
   }
 }
-
-enum HeroType { red, green, blue }

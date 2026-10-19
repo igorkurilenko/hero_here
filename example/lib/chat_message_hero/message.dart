@@ -17,10 +17,6 @@ import 'package:flutter/foundation.dart';
 class Message {
   String? text;
 
-  Message([this.text]);
-
-  bool get isEmpty => text == null || text!.isEmpty;
-
   String get textOrEmpty => text ?? '';
 
   String get id => shortHash(this);

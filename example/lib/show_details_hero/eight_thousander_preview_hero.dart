@@ -12,18 +12,16 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-import 'package:example/show_details_hero/config.dart';
 import 'package:flutter/material.dart';
 import 'package:hero_here/hero_here.dart';
 
+import 'config.dart';
 import 'eight_thousander.dart';
 
 class EightThousanderPreviewHero extends StatefulWidget {
   final String tag;
   final EightThousander eightThousander;
   final ValueChanged<BuildContext>? onTap;
-  final HeroHereFlightAnimationControllerFactory?
-  imageHeroFlightAnimationControllerFactory;
   final HeroHereFlightAnimationFactory? imageHeroFlightAnimationFactory;
   final HeroHereFlightAnimationStarter? forwardImageHeroFlightAnimation;
 
@@ -32,7 +30,6 @@ class EightThousanderPreviewHero extends StatefulWidget {
     required this.tag,
     required this.eightThousander,
     this.onTap,
-    this.imageHeroFlightAnimationControllerFactory,
     this.imageHeroFlightAnimationFactory,
     this.forwardImageHeroFlightAnimation,
   });
@@ -68,8 +65,6 @@ class _EightThousanderPreviewHeroState
   HeroHere _buildImageHero() => HeroHere(
     key: ValueKey('$kImageHeroTagPrefix$tag'),
     tag: '$kImageHeroTagPrefix$tag',
-    flightAnimationControllerFactory:
-        widget.imageHeroFlightAnimationControllerFactory,
     flightAnimationFactory: widget.imageHeroFlightAnimationFactory,
     forwardFlightAnimation: widget.forwardImageHeroFlightAnimation,
     flightShuttleBuilder: _buildImageHeroFlightShuttle,
@@ -110,21 +105,16 @@ class _EightThousanderPreviewHeroState
     HeroHere toHero,
   ) {
     final fromBorderRadius = fromHero.payload as BorderRadius;
-    return Stack(
-      fit: StackFit.expand,
-      children: [
-        AnimatedBuilder(
-          animation: animation,
-          builder: (context, child) => ClipRRect(
-            borderRadius: BorderRadiusTween(
-              begin: fromBorderRadius,
-              end: BorderRadius.circular(kPreviewImageBorderRadius),
-            ).evaluate(animation)!,
-            child: child,
-          ),
-          child: fromHero.child,
-        ),
-      ],
+    return AnimatedBuilder(
+      animation: animation,
+      builder: (context, child) => ClipRRect(
+        borderRadius: BorderRadiusTween(
+          begin: fromBorderRadius,
+          end: BorderRadius.circular(kPreviewImageBorderRadius),
+        ).evaluate(animation)!,
+        child: child,
+      ),
+      child: fromHero.child,
     );
   }
 

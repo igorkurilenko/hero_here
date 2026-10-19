@@ -12,11 +12,11 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-import 'package:example/chat_message_hero/message_widget.dart';
 import 'package:flutter/material.dart';
 import 'package:hero_here/hero_here.dart';
 
 import 'message.dart';
+import 'message_widget.dart';
 
 void main() => runApp(
   MaterialApp(
@@ -24,18 +24,18 @@ void main() => runApp(
     debugShowCheckedModeBanner: false,
     theme: ThemeData(useMaterial3: true, brightness: Brightness.light),
     darkTheme: ThemeData(useMaterial3: true, brightness: Brightness.dark),
-    home: const HeroHereExample(),
+    home: const ChatMessageExample(),
   ),
 );
 
-class HeroHereExample extends StatefulWidget {
-  const HeroHereExample({super.key});
+class ChatMessageExample extends StatefulWidget {
+  const ChatMessageExample({super.key});
 
   @override
-  State<HeroHereExample> createState() => _HeroHereExampleState();
+  State<ChatMessageExample> createState() => _ChatMessageExampleState();
 }
 
-class _HeroHereExampleState extends State<HeroHereExample> {
+class _ChatMessageExampleState extends State<ChatMessageExample> {
   final _messages = <Message>[];
   // The message being typed. Sending it starts a new one, so the input's
   // hero hands its tag to the sent message, which flies into the list.
@@ -156,7 +156,9 @@ class _HeroHereExampleState extends State<HeroHereExample> {
       );
     });
 
-    afterBuild(_scrollToBottom);
+    // The list scrolls to the message after the frame of the send and the
+    // next one, by when the message's flight is under way.
+    _afterTwoFrames(_scrollToBottom);
   }
 
   void _scrollToBottom() => _scrollController.animateTo(
@@ -164,6 +166,13 @@ class _HeroHereExampleState extends State<HeroHereExample> {
     duration: HeroHere.defaultFlightAnimationDuration,
     curve: HeroHere.defaultFlightAnimationCurve,
   );
+
+  /// Runs [work] after this frame and the next.
+  void _afterTwoFrames(VoidCallback work) {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      WidgetsBinding.instance.addPostFrameCallback((_) => work());
+    });
+  }
 }
 
 /// Keeps a list that shows its newest message showing it when its viewport
@@ -193,13 +202,5 @@ class _KeepNewestInView extends ScrollPhysics {
       isScrolling: isScrolling,
       velocity: velocity,
     );
-  }
-}
-
-extension _State on State {
-  void afterBuild(VoidCallback cb) {
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      WidgetsBinding.instance.addPostFrameCallback((_) => cb());
-    });
   }
 }

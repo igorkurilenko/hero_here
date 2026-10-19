@@ -61,7 +61,7 @@ class _ShuttleLayer extends SingleChildRenderObjectWidget {
   ) => renderObject.flight = flight;
 }
 
-class _RenderShuttleLayer extends RenderRepaintBoundary {
+class _RenderShuttleLayer extends _RenderBoundary {
   _Flight _flight;
 
   _RenderShuttleLayer(this._flight);
@@ -72,9 +72,6 @@ class _RenderShuttleLayer extends RenderRepaintBoundary {
     _flight = value;
     if (attached) _flight._shuttleLayer = this;
   }
-
-  /// The layer this boundary last painted into, if it painted.
-  OffsetLayer? get lastLayer => layer as OffsetLayer?;
 
   @override
   void attach(PipelineOwner owner) {
@@ -107,13 +104,11 @@ class _Shuttle extends StatelessWidget {
   Widget build(BuildContext context) => builder(context, animation, from, to);
 }
 
-/// Sizes its child to [rect] and paints it there. The [rect] is global, so
-/// the flight lands on its heroes wherever the switcher's sky is placed.
-/// Places a shuttle at [rect], in the space of the switcher's child, which
-/// [space] gives. It works out where that is on the screen when it paints,
-/// once the whole screen is laid out, so the shuttle is where its heroes are
-/// even when the switcher moves on the frame, such as on a window resize
-/// that lays the switcher out anew.
+/// Sizes its child to [rect] and places it there, in the space of the
+/// switcher's child, which [space] gives. It works out where that is on the
+/// screen when it paints, once the whole screen is laid out, so the shuttle
+/// is where its heroes are even when the switcher moves on the frame, such
+/// as on a window resize that lays the switcher out anew.
 class _ShuttleRect extends SingleChildRenderObjectWidget {
   final Rect rect;
   final RenderBox? Function() space;
@@ -569,13 +564,6 @@ class _FlightManifest {
   bool get isIdle => from == to;
 
   _FlightManifest get reversed => _FlightManifest(tag: tag, from: to, to: from);
-
-  @override
-  int get hashCode => Object.hash(from, to);
-
-  @override
-  bool operator ==(Object other) =>
-      (other is _FlightManifest && from == other.from) && to == other.to;
 
   @override
   String toString() => '_FlightManifest(from: $from, to: $to)';

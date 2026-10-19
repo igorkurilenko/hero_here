@@ -9,39 +9,57 @@ import 'package:hero_here/hero_here.dart';
 
 const _shuttleKey = ValueKey('shuttle');
 
+/// A shuttle that fills its rect, with [_shuttleKey], so a test can find
+/// where a flight is.
+Widget _shuttleBox(
+  BuildContext _,
+  Animation<double> _,
+  HeroHere _,
+  HeroHere _,
+) => const SizedBox.expand(key: _shuttleKey);
+
+/// The widget keyed [box] inside the shuttle with [_shuttleKey].
+Finder _inShuttle(String box) => find.descendant(
+  of: find.byKey(_shuttleKey),
+  matching: find.byKey(ValueKey(box)),
+);
+
+/// A frame at 60 frames a second.
+const _frame = Duration(milliseconds: 16);
+
 void main() {
   for (final textDirection in TextDirection.values) {
-    testWidgets('flies between hero rects when the switcher is away from the origin '
-        '($textDirection)', (tester) async {
-      final moved = ValueNotifier(false);
-      addTearDown(moved.dispose);
+    testWidgets(
+      'flies between hero rects when the switcher is away from the origin '
+      '($textDirection)',
+      (tester) async {
+        final moved = ValueNotifier(false);
+        addTearDown(moved.dispose);
 
-      await tester.pumpWidget(
-        _OffsetSwitcher(moved: moved, textDirection: textDirection),
-      );
-      await tester.pumpAndSettle();
+        await tester.pumpWidget(
+          _OffsetSwitcher(moved: moved, textDirection: textDirection),
+        );
+        await tester.pumpAndSettle();
 
-      final fromRect = tester.getRect(find.byKey(const ValueKey(false)));
+        final fromRect = tester.getRect(find.byKey(const ValueKey(false)));
 
-      moved.value = true;
-      // Snapshot the old child, lay the new one out offstage, start the flight.
-      await tester.pump();
-      await tester.pump();
-      await tester.pump();
+        moved.value = true;
+        await _pumpSwitch(tester);
 
-      final toRect = tester.getRect(find.byKey(const ValueKey(true)));
-      expect(tester.getRect(find.byKey(_shuttleKey)), fromRect);
+        final toRect = tester.getRect(find.byKey(const ValueKey(true)));
+        expect(tester.getRect(find.byKey(_shuttleKey)), fromRect);
 
-      await tester.pump(HeroHere.defaultFlightAnimationDuration ~/ 2);
-      final t = HeroHere.defaultFlightAnimationCurve.transform(0.5);
-      expect(
-        tester.getRect(find.byKey(_shuttleKey)),
-        _rectMoreOrLessEquals(Rect.lerp(fromRect, toRect, t)!),
-      );
+        await tester.pump(HeroHere.defaultFlightAnimationDuration ~/ 2);
+        final t = HeroHere.defaultFlightAnimationCurve.transform(0.5);
+        expect(
+          tester.getRect(find.byKey(_shuttleKey)),
+          _rectMoreOrLessEquals(Rect.lerp(fromRect, toRect, t)!),
+        );
 
-      await tester.pumpAndSettle();
-      expect(find.byKey(_shuttleKey), findsNothing);
-    });
+        await tester.pumpAndSettle();
+        expect(find.byKey(_shuttleKey), findsNothing);
+      },
+    );
   }
 
   testWidgets('flies from where the hero it leaves is when that one stays', (
@@ -69,7 +87,7 @@ void main() {
       final perFrame = <int>[];
       for (var i = 0; i < 3; i++) {
         measures = 0;
-        await tester.pump(const Duration(milliseconds: 16));
+        await tester.pump(_frame);
         perFrame.add(measures);
       }
       return perFrame;
@@ -680,7 +698,7 @@ void main() {
     final lefts = <double>[];
     for (var frame = 0; frame < 40; frame++) {
       if (tester.any(shuttle)) lefts.add(tester.getRect(shuttle).left);
-      await tester.pump(const Duration(milliseconds: 16));
+      await tester.pump(_frame);
     }
 
     // The slots run left to right, so the shuttle only ever moves right: it
@@ -728,7 +746,7 @@ void main() {
     await _pumpSwitch(tester);
     final shuttle = find.byKey(_shuttleKey);
     for (var frame = 0; frame < 40 && tester.any(shuttle); frame++) {
-      await tester.pump(const Duration(milliseconds: 16));
+      await tester.pump(_frame);
     }
 
     expect(shuttle, findsNothing);
@@ -760,7 +778,7 @@ void main() {
     final lefts = <double>[];
     for (var frame = 0; frame < 40; frame++) {
       if (tester.any(shuttle)) lefts.add(tester.getRect(shuttle).left);
-      await tester.pump(const Duration(milliseconds: 16));
+      await tester.pump(_frame);
     }
 
     expect(lefts, isNotEmpty);
@@ -769,7 +787,7 @@ void main() {
     }
     // It takes as long as it flew, not a whole flight.
     expect(
-      lefts.length * 16,
+      lefts.length * _frame.inMilliseconds,
       lessThan(HeroHere.defaultFlightAnimationDuration.inMilliseconds * 3 / 4),
     );
     expect(shuttle, findsNothing);
@@ -791,10 +809,9 @@ void main() {
     await _pumpSwitch(tester);
     await tester.pump(HeroHere.defaultFlightAnimationDuration ~/ 2);
 
-    const frame = Duration(milliseconds: 16);
     final shuttle = find.byKey(_shuttleKey);
     final leftBefore = tester.getRect(shuttle).left;
-    await tester.pump(frame);
+    await tester.pump(_frame);
     final rectAtTurn = tester.getRect(shuttle);
     final stepBefore = rectAtTurn.left - leftBefore;
 
@@ -804,7 +821,7 @@ void main() {
 
     final rects = <Rect>[];
     for (var i = 0; i < 40 && tester.any(shuttle); i++) {
-      await tester.pump(frame);
+      await tester.pump(_frame);
       if (tester.any(shuttle)) rects.add(tester.getRect(shuttle));
     }
 
@@ -841,10 +858,9 @@ void main() {
     await tester.pump(HeroHere.defaultFlightAnimationDuration ~/ 2);
 
     // The heroes move, as on a window resize, then the flight turns back.
-    const frame = Duration(milliseconds: 16);
     shift.value = 100;
-    await tester.pump(frame);
-    await tester.pump(frame);
+    await tester.pump(_frame);
+    await tester.pump(_frame);
     final shuttle = find.byKey(_shuttleKey);
     final leftAtTurn = tester.getRect(shuttle).left;
     slot.value = 0;
@@ -853,7 +869,7 @@ void main() {
     final lefts = <double>[];
     for (var i = 0; i < 40 && tester.any(shuttle); i++) {
       lefts.add(tester.getRect(shuttle).left);
-      await tester.pump(frame);
+      await tester.pump(_frame);
     }
 
     // It turns where it is and lands where the first hero is now.
@@ -879,10 +895,9 @@ void main() {
     await tester.pump(HeroHere.defaultFlightAnimationDuration ~/ 2);
 
     // The heroes move, the flight turns back, then on again.
-    const frame = Duration(milliseconds: 16);
     shift.value = 100;
-    await tester.pump(frame);
-    await tester.pump(frame);
+    await tester.pump(_frame);
+    await tester.pump(_frame);
     slot.value = 0;
     await _pumpSwitch(tester);
     await tester.pump(HeroHere.defaultFlightAnimationDuration ~/ 4);
@@ -895,7 +910,7 @@ void main() {
     final lefts = <double>[];
     for (var i = 0; i < 40 && tester.any(shuttle); i++) {
       lefts.add(tester.getRect(shuttle).left);
-      await tester.pump(frame);
+      await tester.pump(_frame);
     }
 
     // It turns where it is and lands where the third hero is now.
@@ -928,12 +943,11 @@ void main() {
       }
 
       // The hero it heads for moves within the switcher, after it turned.
-      const frame = Duration(milliseconds: 16);
       nudge.value = 100;
       final shuttle = find.byKey(_shuttleKey);
       final lefts = <double>[];
       for (var i = 0; i < 40 && tester.any(shuttle); i++) {
-        await tester.pump(frame);
+        await tester.pump(_frame);
         if (tester.any(shuttle)) lefts.add(tester.getRect(shuttle).left);
       }
 
@@ -971,7 +985,7 @@ void main() {
     for (var frame = 0; frame < 40 && tester.any(shuttle); frame++) {
       lefts.add(tester.getRect(shuttle).left);
       tops.add(tester.getRect(shuttle).top);
-      await tester.pump(const Duration(milliseconds: 16));
+      await tester.pump(_frame);
     }
 
     // It goes on from where it was, never toward the third slot, and takes
@@ -984,7 +998,7 @@ void main() {
     expect(lefts.last, closeTo(_slotRects[1].left, 1));
     expect(tops, everyElement(closeTo(_slotRects[1].top, 1)));
     expect(
-      lefts.length * 16,
+      lefts.length * _frame.inMilliseconds,
       greaterThanOrEqualTo(
         HeroHere.defaultFlightAnimationDuration.inMilliseconds,
       ),
@@ -1006,13 +1020,11 @@ void main() {
 
     slot.value = 2;
     await _pumpSwitch(tester);
-    const frame = Duration(milliseconds: 16);
-    await tester.pump(HeroHere.defaultFlightAnimationDuration - frame);
+    await tester.pump(HeroHere.defaultFlightAnimationDuration - _frame);
 
     // Redirect the flight to the middle slot on the frame it lands.
     slot.value = 1;
-    await tester.pump();
-    await _pumpWebFrame(tester, frame * 2);
+    await _pumpWebFrame(tester, _frame * 2);
 
     // It flies on to the middle slot rather than landing on it at once.
     final shuttle = find.byKey(_shuttleKey);
@@ -1037,22 +1049,19 @@ void main() {
     await _pumpSwitch(tester);
     slot.value = 2;
     await _pumpSwitch(tester);
-    const frame = Duration(milliseconds: 16);
-    await tester.pump(HeroHere.defaultFlightAnimationDuration - frame);
+    await tester.pump(HeroHere.defaultFlightAnimationDuration - _frame);
 
     // Take the hero away on the frame it lands on the middle slot.
     slot.value = _noSlot;
-    await tester.pump();
-    await _pumpWebFrame(tester, frame * 2);
+    await _pumpWebFrame(tester, _frame * 2);
 
     expect(find.byKey(_shuttleKey), findsNothing);
     await tester.pumpAndSettle();
     expect(find.byKey(_shuttleKey), findsNothing);
   });
 
-  testWidgets('shows a shuttle that lands while a switch shows its snapshot', (
-    tester,
-  ) async {
+  testWidgets('shows a shuttle that lands on a hero a switch took away, and '
+      'flies it on', (tester) async {
     final slot = ValueNotifier(0);
     addTearDown(slot.dispose);
 
@@ -1061,15 +1070,13 @@ void main() {
 
     slot.value = 2;
     await _pumpSwitch(tester);
-    const frame = Duration(milliseconds: 16);
-    await tester.pump(HeroHere.defaultFlightAnimationDuration - frame);
+    await tester.pump(HeroHere.defaultFlightAnimationDuration - _frame);
 
-    // The switch snapshots the child with the hero the flight lands on
-    // hidden, and the flight lands on the next frame, which shows that
-    // snapshot.
+    // A frame before the flight lands, a switch moves the hero to the middle
+    // slot, so the flight lands where the hero was and flies on from there.
     slot.value = 1;
     await tester.pump();
-    await tester.pump(frame * 2);
+    await tester.pump(_frame * 2);
 
     final shuttle = find.byKey(_shuttleKey);
     expect(shuttle, findsOneWidget);
@@ -1079,8 +1086,8 @@ void main() {
     expect(find.byKey(const ValueKey('box1')), findsOneWidget);
   });
 
-  testWidgets('shows a shuttle that lands back while a switch shows its '
-      'snapshot', (tester) async {
+  testWidgets('shows a shuttle that lands back on a hero a switch took away, '
+      'and flies it on', (tester) async {
     final slot = ValueNotifier(0);
     addTearDown(slot.dispose);
 
@@ -1094,14 +1101,14 @@ void main() {
     // Back to the first slot, which takes as long as it flew.
     slot.value = 0;
     await _pumpSwitch(tester);
-    const frame = Duration(milliseconds: 16);
-    await tester.pump(HeroHere.defaultFlightAnimationDuration ~/ 2 - frame);
+    await tester.pump(HeroHere.defaultFlightAnimationDuration ~/ 2 - _frame);
 
-    // The flight lands back on the frame that shows the next switch's
-    // snapshot, in which the hero it lands on is hidden.
+    // A frame before the flight lands back, a switch moves the hero to the
+    // third slot, so the flight lands back where the hero was and flies on
+    // from there.
     slot.value = 2;
     await tester.pump();
-    await tester.pump(frame * 2);
+    await tester.pump(_frame * 2);
 
     final shuttle = find.byKey(_shuttleKey);
     expect(shuttle, findsOneWidget);
@@ -1111,8 +1118,8 @@ void main() {
     expect(find.byKey(const ValueKey('box2')), findsOneWidget);
   });
 
-  testWidgets('shows a shuttle that lands after a switch snapshots its frame, '
-      'as on the web', (tester) async {
+  testWidgets('shows a shuttle that lands on a hero a switch took away, and '
+      'flies it on, as on the web', (tester) async {
     final slot = ValueNotifier(0);
     addTearDown(slot.dispose);
 
@@ -1121,13 +1128,13 @@ void main() {
 
     slot.value = 2;
     await _pumpSwitch(tester);
-    const frame = Duration(milliseconds: 16);
-    await tester.pump(HeroHere.defaultFlightAnimationDuration - frame);
+    await tester.pump(HeroHere.defaultFlightAnimationDuration - _frame);
 
-    // The flight lands after the switch on its frame snapshots the child with
-    // the hero it lands on hidden.
+    // On the frame the flight lands, a switch moves the hero to the middle
+    // slot. The landing comes after the switch, as on the web, so the flight
+    // lands where the hero was and flies on from there.
     slot.value = 1;
-    await _pumpWebFrame(tester, frame * 2);
+    await _pumpWebFrame(tester, _frame * 2);
 
     final shuttle = find.byKey(_shuttleKey);
     expect(shuttle, findsOneWidget);
@@ -1152,13 +1159,11 @@ void main() {
     // Back to the first slot, which takes as long as it flew.
     slot.value = 0;
     await _pumpSwitch(tester);
-    const frame = Duration(milliseconds: 16);
-    await tester.pump(HeroHere.defaultFlightAnimationDuration ~/ 2 - frame);
+    await tester.pump(HeroHere.defaultFlightAnimationDuration ~/ 2 - _frame);
 
     // On to the middle slot again on the frame it lands back.
     slot.value = 1;
-    await tester.pump();
-    await _pumpWebFrame(tester, frame * 2);
+    await _pumpWebFrame(tester, _frame * 2);
 
     final shuttle = find.byKey(_shuttleKey);
     expect(shuttle, findsOneWidget);
@@ -1185,9 +1190,8 @@ void main() {
 
     // At full speed past the middle slot, redirect the flight to it.
     final shuttle = find.byKey(_shuttleKey);
-    const frame = Duration(milliseconds: 16);
     final leftBefore = tester.getRect(shuttle).left;
-    await tester.pump(frame);
+    await tester.pump(_frame);
     final left = tester.getRect(shuttle).left;
     final stepBefore = left - leftBefore;
     expect(stepBefore, greaterThan(10));
@@ -1195,7 +1199,7 @@ void main() {
     slot.value = 1;
     await _pumpSwitch(tester);
     expect(tester.getRect(shuttle).left, left);
-    await tester.pump(frame);
+    await tester.pump(_frame);
 
     // It goes on at about the speed it had rather than stopping, then turns
     // back and lands on the middle slot.
@@ -1228,21 +1232,20 @@ void main() {
     await tester.pump(HeroHere.defaultFlightAnimationDuration ~/ 2);
 
     final shuttle = find.byKey(_shuttleKey);
-    const frame = Duration(milliseconds: 16);
     final leftBefore = tester.getRect(shuttle).left;
-    await tester.pump(frame);
+    await tester.pump(_frame);
     final stepBefore = tester.getRect(shuttle).left - leftBefore;
 
     // The hero it flies to jumps right, and the shuttle with it, just before
     // the flight diverts.
     shift.value = 200;
-    await tester.pump(frame);
-    await tester.pump(frame);
+    await tester.pump(_frame);
+    await tester.pump(_frame);
     final left = tester.getRect(shuttle).left;
 
     slot.value = 1;
     await _pumpSwitch(tester);
-    await tester.pump(frame);
+    await tester.pump(_frame);
 
     // It goes on at about the speed it flew at, not at the jump's.
     final stepAfter = tester.getRect(shuttle).left - left;
@@ -1252,9 +1255,7 @@ void main() {
   for (final (edge, flipped) in [('bottom', false), ('right', true)]) {
     testWidgets('keeps a diverted shuttle inside the switcher as it swings '
         'toward its $edge edge', (tester) async {
-      tester.view.devicePixelRatio = 1;
-      tester.view.physicalSize = const Size(800, 600);
-      addTearDown(tester.view.reset);
+      _setUpView(tester);
       final slot = ValueNotifier(0);
       addTearDown(slot.dispose);
       const size = Size(60, 60);
@@ -1326,7 +1327,7 @@ void main() {
     final lefts = <double>[];
     for (var frame = 0; frame < 40 && tester.any(shuttle); frame++) {
       lefts.add(tester.getRect(shuttle).left);
-      await tester.pump(const Duration(milliseconds: 16));
+      await tester.pump(_frame);
     }
 
     // It carries on toward the middle slot a little at the speed it had,
@@ -1441,7 +1442,7 @@ void main() {
     final lefts = <double>[];
     for (var frame = 0; frame < 60 && tester.any(shuttle); frame++) {
       lefts.add(tester.getRect(shuttle).left);
-      await tester.pump(const Duration(milliseconds: 16));
+      await tester.pump(_frame);
     }
 
     // It lands back on the first slot before it flies on.
@@ -1684,7 +1685,7 @@ void main() {
       expect(shuttle, findsNothing);
       expect(find.byKey(const ValueKey('box0')), findsNothing);
       expect(find.byKey(const ValueKey('box2')), findsOneWidget);
-      await tester.pump(const Duration(milliseconds: 16));
+      await tester.pump(_frame);
     }
   });
 
@@ -1829,9 +1830,7 @@ void main() {
     testWidgets('stands in for a hero with the clip around it$how', (
       tester,
     ) async {
-      tester.view.devicePixelRatio = 1;
-      tester.view.physicalSize = const Size(800, 600);
-      addTearDown(tester.view.reset);
+      _setUpView(tester);
       final slot = ValueNotifier(0);
       addTearDown(slot.dispose);
 
@@ -1986,11 +1985,7 @@ void main() {
     addTearDown(switchKey.dispose);
 
     await tester.pumpWidget(
-      _RebuildSwitcher(
-        rebuilds: rebuilds,
-        sameChild: false,
-        switchKey: switchKey,
-      ),
+      _RebuildSwitcher(rebuilds: rebuilds, switchKey: switchKey),
     );
     await tester.pumpAndSettle();
 
@@ -2026,15 +2021,11 @@ void main() {
       await _pumpSwitch(tester);
       await tester.pump(const Duration(milliseconds: 100));
       look.value = 'b';
-      // A switch shows the new child on its third frame, the others at once.
-      keyed || looksBelow ? await tester.pump() : await _pumpSwitch(tester);
+      // Each shows the new child on the frame of the rebuild.
+      await tester.pump();
 
-      Finder shuttled(String box) => find.descendant(
-        of: find.byKey(_shuttleKey),
-        matching: find.byKey(ValueKey(box)),
-      );
-      expect(shuttled('box1b'), findsOneWidget);
-      expect(shuttled('box1a'), findsNothing);
+      expect(_inShuttle('box1b'), findsOneWidget);
+      expect(_inShuttle('box1a'), findsNothing);
     });
   }
 
@@ -2053,12 +2044,8 @@ void main() {
     look.value = 'b';
     await tester.pump();
 
-    Finder shuttled(String box) => find.descendant(
-      of: find.byKey(_shuttleKey),
-      matching: find.byKey(ValueKey(box)),
-    );
-    expect(shuttled('boxb'), findsOneWidget);
-    expect(shuttled('boxa'), findsNothing);
+    expect(_inShuttle('boxb'), findsOneWidget);
+    expect(_inShuttle('boxa'), findsNothing);
   });
 
   testWidgets('builds the shuttle of a leg once, not on each frame', (
@@ -2082,7 +2069,7 @@ void main() {
     slot.value = 1;
     await _pumpSwitch(tester);
     for (var frame = 0; frame < 10; frame++) {
-      await tester.pump(const Duration(milliseconds: 16));
+      await tester.pump(_frame);
     }
 
     expect(find.byKey(_shuttleKey), findsOneWidget);
@@ -2091,9 +2078,7 @@ void main() {
 
   testWidgets('shows its heroes on each frame of a window resize, even when '
       'sizes are read above it', (tester) async {
-    tester.view.devicePixelRatio = 1;
-    tester.view.physicalSize = const Size(800, 600);
-    addTearDown(tester.view.reset);
+    _setUpView(tester);
 
     // Each frame of the resize rebuilds the switcher, so runs a switch.
     await tester.pumpWidget(
@@ -2169,7 +2154,7 @@ void main() {
     await _pumpSwitch(tester);
     skyLayouts = 0;
     for (var frame = 0; frame < 10; frame++) {
-      await tester.pump(const Duration(milliseconds: 16));
+      await tester.pump(_frame);
     }
 
     expect(skyLayouts, 0);
@@ -2202,7 +2187,7 @@ void main() {
     await _pumpSwitch(tester);
     siblingPaints = 0;
     for (var frame = 0; frame < 10; frame++) {
-      await tester.pump(const Duration(milliseconds: 16));
+      await tester.pump(_frame);
     }
 
     expect(siblingPaints, 0);
@@ -2224,7 +2209,7 @@ void main() {
     await _pumpSwitch(tester);
     shuttlePaints = 0;
     for (var frame = 0; frame < 10; frame++) {
-      await tester.pump(const Duration(milliseconds: 16));
+      await tester.pump(_frame);
     }
 
     expect(find.byKey(_moverKey), findsOneWidget);
@@ -2248,7 +2233,7 @@ void main() {
 
     await tester.pumpWidget(_TwinSwitcher(rebuilds: rebuilds));
     for (var frame = 0; frame < 30; frame++) {
-      await tester.pump(const Duration(milliseconds: 16));
+      await tester.pump(_frame);
       expect(find.byKey(_shuttleKey), findsNothing);
     }
 
@@ -2300,9 +2285,7 @@ void main() {
   testWidgets('lands on a hidden hero that a resize changes the size of', (
     tester,
   ) async {
-    tester.view.devicePixelRatio = 1;
-    tester.view.physicalSize = const Size(800, 600);
-    addTearDown(tester.view.reset);
+    _setUpView(tester);
     final moved = ValueNotifier(false);
     addTearDown(moved.dispose);
 
@@ -2320,7 +2303,7 @@ void main() {
     late Rect shuttleRect;
     for (var frame = 0; frame < 40 && tester.any(shuttle); frame++) {
       shuttleRect = tester.getRect(shuttle);
-      await tester.pump(const Duration(milliseconds: 16));
+      await tester.pump(_frame);
     }
     expect(shuttle, findsNothing);
 
@@ -2414,7 +2397,7 @@ void main() {
     for (var frame = 0; frame < 40 && tester.any(shuttle); frame++) {
       shuttleRect = tester.getRect(shuttle);
       heroRect = tester.getRect(hero);
-      await tester.pump(const Duration(milliseconds: 16));
+      await tester.pump(_frame);
     }
     expect(shuttle, findsNothing);
     expect(
@@ -2427,9 +2410,7 @@ void main() {
   testWidgets('flies to where its hero is on the frame of a window resize', (
     tester,
   ) async {
-    tester.view.devicePixelRatio = 1;
-    tester.view.physicalSize = const Size(800, 600);
-    addTearDown(tester.view.reset);
+    _setUpView(tester);
     final moved = ValueNotifier(false);
     addTearDown(moved.dispose);
     late Animation<double> animation;
@@ -2452,7 +2433,7 @@ void main() {
 
     // The hero the flight lands on is a quarter of the window wide.
     tester.view.physicalSize = const Size(400, 600);
-    await tester.pump(const Duration(milliseconds: 16));
+    await tester.pump(_frame);
 
     final toRect = tester.getRect(
       find.byKey(const ValueKey('box-true'), skipOffstage: false),
@@ -2484,9 +2465,7 @@ void main() {
   ]) {
     testWidgets('starts where the hero it leaves would be after the window '
         'shrinks, when that hero was $where', (tester) async {
-      tester.view.devicePixelRatio = 1;
-      tester.view.physicalSize = const Size(800, 600);
-      addTearDown(tester.view.reset);
+      _setUpView(tester);
       final slot = ValueNotifier(0);
       addTearDown(slot.dispose);
 
@@ -2502,9 +2481,11 @@ void main() {
       await tester.pumpAndSettle();
 
       slot.value = 1;
-      await tester.pump(); // The switch keeps where the hero it leaves is.
+      // The switch keeps where the hero it leaves is, and starts the flight
+      // after this frame.
+      await tester.pump();
       tester.view.physicalSize = const Size(400, 600);
-      await tester.pump(); // The flight starts after this frame.
+      await tester.pump(); // The shuttle shows from this frame.
       await tester.pump();
 
       expect(
@@ -2521,9 +2502,7 @@ void main() {
   ]) {
     testWidgets('$how from where its shuttle would be after the window '
         'shrinks', (tester) async {
-      tester.view.devicePixelRatio = 1;
-      tester.view.physicalSize = const Size(800, 600);
-      addTearDown(tester.view.reset);
+      _setUpView(tester);
       final slot = ValueNotifier(0);
       addTearDown(slot.dispose);
       const size = Size(40, 40);
@@ -2549,8 +2528,8 @@ void main() {
           await tester.pump(const Duration(milliseconds: 50));
         }
         slot.value = next;
-        await tester.pump();
         await tester.pump(); // The flight changes course after this frame.
+        await tester.pump();
       }
       final shuttle = find.byKey(_shuttleKey);
       final rect = tester.getRect(shuttle);
@@ -2599,7 +2578,7 @@ void main() {
       }
       await tester.pump(duration ~/ 4);
       shift.value = 200; // The hero it leaves moves down, without a switch.
-      await tester.pump(const Duration(milliseconds: 16));
+      await tester.pump(_frame);
 
       expect(
         tester.getRect(find.byKey(_shuttleKey)),
@@ -2616,9 +2595,7 @@ void main() {
 
   testWidgets('flies to where its heroes are on the frame a window resize '
       'moves the switcher', (tester) async {
-    tester.view.devicePixelRatio = 1;
-    tester.view.physicalSize = const Size(800, 600);
-    addTearDown(tester.view.reset);
+    _setUpView(tester);
     final moved = ValueNotifier(false);
     addTearDown(moved.dispose);
     late Animation<double> animation;
@@ -2642,7 +2619,7 @@ void main() {
     // The header is as high as a quarter of the window's width, so the
     // switcher moves up.
     tester.view.physicalSize = const Size(600, 600);
-    await tester.pump(const Duration(milliseconds: 16));
+    await tester.pump(_frame);
 
     final toRect = tester.getRect(
       find.byKey(const ValueKey('box-true'), skipOffstage: false),
@@ -2677,8 +2654,7 @@ void main() {
                   child: HeroHere(
                     key: ValueKey(moved),
                     tag: 'hero',
-                    flightShuttleBuilder: (_, _, _, _) =>
-                        const SizedBox.expand(key: _shuttleKey),
+                    flightShuttleBuilder: _shuttleBox,
                     child: const SizedBox(width: 20, height: 20),
                   ),
                 ),
@@ -2705,9 +2681,7 @@ void main() {
   });
 
   testWidgets('lets what is behind it show through by default', (tester) async {
-    tester.view.devicePixelRatio = 1;
-    tester.view.physicalSize = const Size(800, 600);
-    addTearDown(tester.view.reset);
+    _setUpView(tester);
     const green = Color(0xFF00FF00);
 
     await tester.pumpWidget(
@@ -2791,8 +2765,7 @@ void main() {
                   child: HeroHere(
                     key: ValueKey(moved),
                     tag: 'hero',
-                    flightShuttleBuilder: (_, _, _, _) =>
-                        const SizedBox.expand(key: _shuttleKey),
+                    flightShuttleBuilder: _shuttleBox,
                     child: const SizedBox(width: 20, height: 20),
                   ),
                 ),
@@ -2831,8 +2804,7 @@ void main() {
                 child: HeroHere(
                   key: ValueKey(moved),
                   tag: 'hero',
-                  flightShuttleBuilder: (_, _, _, _) =>
-                      const SizedBox.expand(key: _shuttleKey),
+                  flightShuttleBuilder: _shuttleBox,
                   child: const SizedBox(width: 40, height: 40),
                 ),
               ),
@@ -2885,8 +2857,7 @@ void main() {
                     child: HeroHere(
                       key: ValueKey(moved),
                       tag: 'hero',
-                      flightShuttleBuilder: (_, _, _, _) =>
-                          const SizedBox.expand(key: _shuttleKey),
+                      flightShuttleBuilder: _shuttleBox,
                       child: const SizedBox(width: 40, height: 40),
                     ),
                   ),
@@ -3050,7 +3021,17 @@ Future<void> _pumpWebFrame(WidgetTester tester, Duration after) async {
   await tester.pump();
 }
 
-/// Snapshots the old child, lays the new one out offstage, starts the flight.
+/// Sets the view to 800 by 600 logical pixels, at a pixel ratio of 1, for
+/// the rest of the test, which may resize it from there.
+void _setUpView(WidgetTester tester) {
+  tester.view.devicePixelRatio = 1;
+  tester.view.physicalSize = const Size(800, 600);
+  addTearDown(tester.view.reset);
+}
+
+/// Pumps the frames of a switch: the frame of its build, which shows the new
+/// child and after which the switch starts its flights; the next one, from
+/// which their shuttles show; and a third, as a switch took before 1.5.0.
 Future<void> _pumpSwitch(WidgetTester tester) async {
   await tester.pump();
   await tester.pump();
@@ -3140,8 +3121,7 @@ class _ChainSwitcher extends StatelessWidget {
                   final hero = HeroHere(
                     key: ValueKey(slot),
                     tag: 'hero',
-                    flightShuttleBuilder: (_, _, _, _) =>
-                        const SizedBox.expand(key: _shuttleKey),
+                    flightShuttleBuilder: _shuttleBox,
                     child: ColoredBox(
                       key: ValueKey('box$slot'),
                       color: const Color(0xFF2196F3),
@@ -3176,8 +3156,7 @@ class _RemountSwitcher extends StatelessWidget {
         Widget hero = HeroHere(
           key: ValueKey(slot),
           tag: 'hero',
-          flightShuttleBuilder: (_, _, _, _) =>
-              const SizedBox.expand(key: _shuttleKey),
+          flightShuttleBuilder: _shuttleBox,
           child: ColoredBox(
             key: ValueKey('box$slot'),
             color: const Color(0xFF2196F3),
@@ -3251,17 +3230,12 @@ class _ExtraSwitcher extends StatelessWidget {
 }
 
 /// Rebuilds a switcher on each change of [rebuilds] or [switchKey], with a new
-/// child keyed by [rebuilds] each time, or with the same `const` child when
-/// [sameChild]. The switcher's switch key is [switchKey]'s, if any.
+/// child keyed by [rebuilds] each time. The switcher's switch key is
+/// [switchKey]'s, if any.
 class _RebuildSwitcher extends StatelessWidget {
-  const _RebuildSwitcher({
-    required this.rebuilds,
-    required this.sameChild,
-    this.switchKey,
-  });
+  const _RebuildSwitcher({required this.rebuilds, this.switchKey});
 
   final ValueNotifier<int> rebuilds;
-  final bool sameChild;
   final ValueNotifier<Object?>? switchKey;
 
   @override
@@ -3270,9 +3244,7 @@ class _RebuildSwitcher extends StatelessWidget {
       listenable: Listenable.merge([rebuilds, switchKey]),
       builder: (context, _) => HeroHereSwitcher(
         switchKey: switchKey?.value,
-        child: sameChild
-            ? const SizedBox.square(dimension: 40)
-            : SizedBox.square(key: ValueKey(rebuilds.value), dimension: 40),
+        child: SizedBox.square(key: ValueKey(rebuilds.value), dimension: 40),
       ),
     ),
   );
@@ -3407,8 +3379,7 @@ class _AlignSwitcher extends StatelessWidget {
             key: ValueKey(slot),
             tag: 'hero',
             flightRedirect: redirect,
-            flightShuttleBuilder: (_, _, _, _) =>
-                const SizedBox.expand(key: _shuttleKey),
+            flightShuttleBuilder: _shuttleBox,
             child: SizedBox.fromSize(size: spots[slot].size),
           ),
         ),
@@ -3534,8 +3505,7 @@ class _LabelSwitcher extends StatelessWidget {
               child: HeroHere(
                 key: ValueKey(slot),
                 tag: 'hero',
-                flightShuttleBuilder: (_, _, _, _) =>
-                    const SizedBox.expand(key: _shuttleKey),
+                flightShuttleBuilder: _shuttleBox,
                 child: ColoredBox(
                   key: ValueKey('box$slot'),
                   color: const Color(0xFF2196F3),
@@ -3625,8 +3595,7 @@ class _GoneSwitcher extends StatelessWidget {
         Widget hero(String key) => HeroHere(
           key: ValueKey(key),
           tag: 'hero',
-          flightShuttleBuilder: (_, _, _, _) =>
-              const SizedBox.expand(key: _shuttleKey),
+          flightShuttleBuilder: _shuttleBox,
           child: const ColoredBox(color: Color(0xFF2196F3)),
         );
 
@@ -3694,9 +3663,7 @@ class _SlotSwitcher extends StatelessWidget {
                     key: ValueKey(slot),
                     tag: 'hero',
                     flightRedirect: redirect,
-                    flightShuttleBuilder:
-                        shuttleBuilder ??
-                        (_, _, _, _) => const SizedBox.expand(key: _shuttleKey),
+                    flightShuttleBuilder: shuttleBuilder ?? _shuttleBox,
                     child: ColoredBox(
                       key: ValueKey('box$slot'),
                       color: const Color(0xFF2196F3),
@@ -3765,8 +3732,7 @@ class _StaySwitcher extends StatelessWidget {
         Widget hero(String key) => HeroHere(
           key: ValueKey(key),
           tag: 'hero',
-          flightShuttleBuilder: (_, _, _, _) =>
-              const SizedBox.expand(key: _shuttleKey),
+          flightShuttleBuilder: _shuttleBox,
           child: const ColoredBox(color: Color(0xFF2196F3)),
         );
 
@@ -3808,8 +3774,7 @@ class _LeftSwitcher extends StatelessWidget {
         Widget hero(String key) => HeroHere(
           key: ValueKey(key),
           tag: 'hero',
-          flightShuttleBuilder: (_, _, _, _) =>
-              const SizedBox.expand(key: _shuttleKey),
+          flightShuttleBuilder: _shuttleBox,
           child: ColoredBox(
             key: ValueKey('box-$key'),
             color: const Color(0xFF2196F3),
@@ -3855,8 +3820,7 @@ class _TurnSwitcher extends StatelessWidget {
         Widget hero(String key) => HeroHere(
           key: ValueKey(key),
           tag: 'hero',
-          flightShuttleBuilder: (_, _, _, _) =>
-              const SizedBox.expand(key: _shuttleKey),
+          flightShuttleBuilder: _shuttleBox,
           child: ColoredBox(
             key: ValueKey('box-$key'),
             color: const Color(0xFF2196F3),
@@ -3907,8 +3871,7 @@ class _NewTagSwitcher extends StatelessWidget {
                   child: HeroHere(
                     key: ValueKey(slot),
                     tag: 'hero',
-                    flightShuttleBuilder: (_, _, _, _) =>
-                        const SizedBox.expand(key: _shuttleKey),
+                    flightShuttleBuilder: _shuttleBox,
                     child: ColoredBox(
                       key: ValueKey('box$slot'),
                       color: const Color(0xFF2196F3),
@@ -3961,8 +3924,7 @@ class _TwinSwitcher extends StatelessWidget {
   Widget _buildHero(String name, Widget child) => HeroHere(
     key: ValueKey(name),
     tag: 'hero',
-    flightShuttleBuilder: (_, _, _, _) =>
-        const SizedBox.expand(key: _shuttleKey),
+    flightShuttleBuilder: _shuttleBox,
     child: child,
   );
 }
@@ -4065,9 +4027,7 @@ class _QuarterWidthSwitcher extends StatelessWidget {
           child: HeroHere(
             key: ValueKey(moved),
             tag: 'hero',
-            flightShuttleBuilder:
-                shuttleBuilder ??
-                (_, _, _, _) => const SizedBox.expand(key: _shuttleKey),
+            flightShuttleBuilder: shuttleBuilder ?? _shuttleBox,
             child: FractionallySizedBox(
               key: ValueKey('box-$moved'),
               widthFactor: moved ? 0.25 : null,
@@ -4134,8 +4094,7 @@ class _PageSwitcher extends StatelessWidget {
   static Widget _hero(Key key) => HeroHere(
     key: key,
     tag: 'hero',
-    flightShuttleBuilder: (_, _, _, _) =>
-        const SizedBox.expand(key: _shuttleKey),
+    flightShuttleBuilder: _shuttleBox,
     child: const SizedBox(width: 40, height: 40),
   );
 }
@@ -4165,8 +4124,7 @@ class _OffsetSwitcher extends StatelessWidget {
                   child: HeroHere(
                     key: ValueKey(moved),
                     tag: 'hero',
-                    flightShuttleBuilder: (_, _, _, _) =>
-                        const SizedBox.expand(key: _shuttleKey),
+                    flightShuttleBuilder: _shuttleBox,
                     child: const ColoredBox(color: Color(0xFF2196F3)),
                   ),
                 ),
@@ -4262,8 +4220,7 @@ Widget _heroAt(Key key, Rect rect) => Positioned.fromRect(
   child: HeroHere(
     key: key,
     tag: 'hero',
-    flightShuttleBuilder: (_, _, _, _) =>
-        const SizedBox.expand(key: _shuttleKey),
+    flightShuttleBuilder: _shuttleBox,
     child: const ColoredBox(color: Color(0xFF2196F3)),
   ),
 );

@@ -225,21 +225,16 @@ class _EightThousanderDetailsHeroState
     Animation<double> animation,
     HeroHere fromHero,
     HeroHere toHero,
-  ) => Stack(
-    fit: StackFit.expand,
-    children: [
-      AnimatedBuilder(
-        animation: animation,
-        builder: (context, child) => ClipRRect(
-          borderRadius: BorderRadiusTween(
-            begin: BorderRadius.circular(kPreviewImageBorderRadius),
-            end: BorderRadius.zero,
-          ).evaluate(animation)!,
-          child: child,
-        ),
-        child: toHero.child,
-      ),
-    ],
+  ) => AnimatedBuilder(
+    animation: animation,
+    builder: (context, child) => ClipRRect(
+      borderRadius: BorderRadiusTween(
+        begin: BorderRadius.circular(kPreviewImageBorderRadius),
+        end: BorderRadius.zero,
+      ).evaluate(animation)!,
+      child: child,
+    ),
+    child: toHero.child,
   );
 
   RectTween _createImageHeroRectTween(Rect? begin, Rect? end) =>
