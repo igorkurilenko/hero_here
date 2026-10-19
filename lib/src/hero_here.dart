@@ -96,10 +96,9 @@ enum HeroHereFlightRedirect {
   /// had, so it turns toward the new hero rather than stops, and swings
   /// around to a hero behind it rather than doubling back. Near the
   /// switcher's edge, it slides along the edge rather than out of the
-  /// switcher. Its `fromHero`
-  /// becomes a stand-in for the shuttle as it was, with the key, tag and
-  /// payload of the hero the flight left, so a shuttle that fades `fromHero`
-  /// into `toHero` fades from what it showed.
+  /// switcher. Its `fromHero` becomes a stand-in for the shuttle as it was,
+  /// with the key, tag and payload of the hero the flight left, so a shuttle
+  /// that fades `fromHero` into `toHero` fades from what it showed.
   divert,
 }
 

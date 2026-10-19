@@ -61,12 +61,11 @@ class _RenderRelayoutBoundary extends RenderProxyBox {
 
 /// A rect in the switcher's child kept from an earlier frame, with the size
 /// the child had then. When the child changes size, such as on a window
-/// resize, the rect keeps
-/// its size, and its place in the room the child has around it, as an
-/// [Align] keeps a child's: as far across that room, in proportion. So a rect
-/// at an edge stays there, and one in the middle stays in the middle. A rect
-/// outside that room, such as a hero's that was scrolled away, keeps its
-/// distance from it, so it stays outside.
+/// resize, the rect keeps its size, and its place in the room the child has
+/// around it, as an [Align] keeps a child's: as far across that room, in
+/// proportion. So a rect at an edge stays there, and one in the middle stays
+/// in the middle. A rect outside that room, such as a hero's that was
+/// scrolled away, keeps its distance from it, so it stays outside.
 class _KeptRect {
   final Rect rect;
 
