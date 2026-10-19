@@ -47,10 +47,13 @@ class _HeroHereSwitcherState extends State<HeroHereSwitcher>
   /// walk of the child, in tree order. Of heroes equal by tag and key, the
   /// first in the tree counts.
   Set<_Hero> findHeroes() {
-    final child = _childKey.currentContext as Element?;
+    final child = childElement;
     if (child == null) return const {};
     return LinkedHashSet.of(_inTreeOrder(_heroes, child));
   }
+
+  /// The element of the switcher's child, which its heroes are below.
+  Element? get childElement => _childKey.currentContext as Element?;
 
   /// The switcher's child. Flights work out their rects in its space, so the
   /// rects don't depend on where the switcher is on the screen, which may not
@@ -271,7 +274,7 @@ class _Idle extends _SwitchingState {
 /// its heroes after that frame, once it is built and laid out, so with no
 /// snapshot of the old child. On that frame, the new heroes of every tag that
 /// may fly hide, those built later in the frame too, while the heroes that
-/// stay show as they are. The sky shows a stand-in of each hero that was on
+/// stay, and those a disabled [HeroMode] leaves out, show as they are. The sky shows a stand-in of each hero that was on
 /// the screen and went away, where it was, so its flight starts where its
 /// stand-in is. Builds while it waits need nothing: it takes the newest
 /// child.
@@ -287,12 +290,27 @@ class _Switch extends _SwitchingState {
   @override
   final List<_Hero> standIns;
 
-  /// The tags that may fly: those of [standIns].
-  final Set<Object> _tags;
+  /// The tags that may fly: those of [standIns], other than of the heroes
+  /// the switch leaves out, which no flight starts from.
+  late final Set<Object> _tags = {
+    for (final hero in standIns)
+      if (!_leftOutHeroes.contains(hero)) hero.tag,
+  };
 
   /// [curHeroes] themselves, rather than heroes equal to them, which may have
   /// mounted anew.
   late final Set<_Hero> _stayed = Set.identity()..addAll(curHeroes);
+
+  /// The heroes of the new child, found once it is built and laid out: when
+  /// the first of them that may hide paints, or else after the frame.
+  late final Set<_Hero> _nextHeroes = switcher.findHeroes();
+
+  /// The heroes in the switcher's child that the switch leaves out, as a
+  /// disabled hero mode does, other than heroes equal to one before them.
+  late final Set<_Hero> _leftOutHeroes = Set.identity()
+    ..addAll(
+      switcher.registeredHeroes.where((hero) => !_nextHeroes.contains(hero)),
+    );
 
   /// What [standIns] last showed, kept from before the switch. Their layers
   /// are kept until the stand-ins, which keep them while they show, have
@@ -313,7 +331,6 @@ class _Switch extends _SwitchingState {
       prevSwitchHeroes: prevSwitchHeroes,
       curHeroes: curHeroes,
       standIns: standIns,
-      tags: {for (final hero in standIns) hero.tag},
       // Kept now, while the heroes and their last frame's layers are as they
       // were.
       looks: Map.identity()
@@ -328,7 +345,6 @@ class _Switch extends _SwitchingState {
     required this.prevSwitchHeroes,
     required this.curHeroes,
     required this.standIns,
-    required this._tags,
     required this._looks,
   });
 
@@ -339,7 +355,10 @@ class _Switch extends _SwitchingState {
   void onBuild() => switcher.takeChild();
 
   @override
-  bool hides(_Hero hero) => _tags.contains(hero.tag) && !_stayed.contains(hero);
+  bool hides(_Hero hero) =>
+      _tags.contains(hero.tag) &&
+      !_stayed.contains(hero) &&
+      _nextHeroes.contains(hero);
 
   @override
   _KeptLook? standInLook(_Hero hero) => _looks[hero];
@@ -354,17 +373,17 @@ class _Switch extends _SwitchingState {
   }
 
   void _switch() {
-    final nextHeroes = switcher.findHeroes();
     final plan = _SwitchPlan(
       curHeroes: curHeroes,
-      nextHeroes: nextHeroes,
+      nextHeroes: _nextHeroes,
       prevSwitchHeroes: prevSwitchHeroes,
+      leftOutHeroes: _leftOutHeroes,
       flying: {
         for (final flight in switcher.flights.all) flight.tag: flight.manifest,
       },
     );
 
-    notifyWillSwitch(nextHeroes);
+    notifyWillSwitch(_nextHeroes);
 
     for (final hero in plan.hiddenHeroes) {
       hero.offstage = true;
@@ -387,11 +406,18 @@ class _Switch extends _SwitchingState {
       }
     }
 
-    switcher.enter(_Idle(switcher, prevSwitchHeroes: nextHeroes));
+    // A hero that a disabled hero mode leaves out shows as it is, though the
+    // switches before it, or a flight, hid it.
+    for (final hero in _leftOutHeroes) {
+      hero.offstage = false;
+    }
+
+    switcher.enter(_Idle(switcher, prevSwitchHeroes: _nextHeroes));
 
     // The heroes it hid while it waited show again, unless the plan hid
-    // them, and the sky drops the stand-ins. It hid every hero of a tag that
-    // may fly, those the plan leaves out too.
+    // them, and the sky drops the stand-ins. It hid the new heroes of the
+    // tags that may fly, those equal to a hero before them too, which the
+    // plan leaves out.
     _repaintHeroesOf(switcher.registeredHeroes);
     switcher.flights.changed();
     _releaseLayers();
@@ -422,17 +448,19 @@ class _SwitchPlan {
   });
 
   /// Plans the switch from [curHeroes] to [nextHeroes], given the heroes of
-  /// the last switch and the manifests of the flights [flying], by tag.
+  /// the last switch, the heroes the switch leaves out, and the manifests of
+  /// the flights [flying], by tag.
   ///
   /// Of the next heroes that share a tag, the last one is where its tag
   /// flies to. It flies from where its flight under way is, or else from the
-  /// current hero with its tag that shows, preferring one of the last
-  /// switch. With neither, nothing flies: the last one shows at once, as on
-  /// mount.
+  /// current hero with its tag that shows and isn't left out, preferring one
+  /// of the last switch. With neither, nothing flies: the last one shows at
+  /// once, as on mount.
   factory _SwitchPlan({
     required Set<_Hero> curHeroes,
     required Set<_Hero> nextHeroes,
     required Set<_Hero> prevSwitchHeroes,
+    required Set<_Hero> leftOutHeroes,
     required Map<Object, _FlightManifest> flying,
   }) {
     // Where the tag of [to], the hero it flies to, flies from.
@@ -440,7 +468,9 @@ class _SwitchPlan {
       if (flying[to.tag] case final flight?) {
         return flight.from == to ? flight.to : flight.from;
       }
-      final shown = curHeroes.where((x) => x.tag == to.tag && x.onstage);
+      final shown = curHeroes.where(
+        (x) => x.tag == to.tag && x.onstage && !leftOutHeroes.contains(x),
+      );
       return shown.where(prevSwitchHeroes.contains).firstOrNull ??
           shown.firstOrNull ??
           to;

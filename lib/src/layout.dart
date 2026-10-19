@@ -137,29 +137,29 @@ extension _RenderBox on RenderBox {
   }
 }
 
+/// [element] and its ancestors below [root], from the top down, or null if
+/// a disabled [HeroMode] is among them, which leaves the hero at [element]
+/// out of switches.
+List<Element>? _pathBelow(Element root, Element element) {
+  final path = [element];
+  var leftOut = false;
+  element.visitAncestorElements((ancestor) {
+    if (identical(ancestor, root)) return false;
+    final widget = ancestor.widget;
+    if (widget is HeroMode && !widget.enabled) {
+      leftOut = true;
+      return false;
+    }
+    path.add(ancestor);
+    return true;
+  });
+  return leftOut ? null : path.reversed.toList();
+}
+
 /// [heroes] that no disabled [HeroMode] below [root] leaves out, in the
 /// order a depth-first walk of the tree below [root] would meet them: a hero
 /// before the heroes inside it, and children in their parent's order.
 List<_Hero> _inTreeOrder(Iterable<_Hero> heroes, Element root) {
-  // The hero's element and its ancestors below root, from the top down, or
-  // null if a disabled hero mode is among them.
-  List<Element>? pathOf(_Hero hero) {
-    final element = hero.context as Element;
-    final path = [element];
-    var leftOut = false;
-    element.visitAncestorElements((ancestor) {
-      if (identical(ancestor, root)) return false;
-      final widget = ancestor.widget;
-      if (widget is HeroMode && !widget.enabled) {
-        leftOut = true;
-        return false;
-      }
-      path.add(ancestor);
-      return true;
-    });
-    return leftOut ? null : path.reversed.toList();
-  }
-
   // Where each child is among its parent's children, for each parent where
   // two paths part, worked out once, however many heroes are below it.
   final childIndexes = Map<Element, Map<Element, int>>.identity();
@@ -188,7 +188,8 @@ List<_Hero> _inTreeOrder(Iterable<_Hero> heroes, Element root) {
 
   final paths = [
     for (final hero in heroes)
-      if (pathOf(hero) case final path?) (hero: hero, path: path),
+      if (_pathBelow(root, hero.context as Element) case final path?)
+        (hero: hero, path: path),
   ]..sort((a, b) => compare(a.path, b.path));
   return [for (final entry in paths) entry.hero];
 }

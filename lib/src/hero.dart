@@ -48,6 +48,15 @@ class _HeroHereState extends State<HeroHere> {
   /// moved it back in.
   bool get wentAway => !_active;
 
+  /// Whether a disabled [HeroMode] between the hero and [switcher]'s child
+  /// leaves the hero out of switches, as [_Switcher.findHeroes] leaves it
+  /// out. A hero that went away isn't left out.
+  bool isLeftOutOf(_Switcher switcher) {
+    final root = switcher.childElement;
+    if (root == null || wentAway) return false;
+    return _pathBelow(root, context as Element) == null;
+  }
+
   /// Where the hero was at the last switch, as it would be in [switcher]'s
   /// child now.
   Rect? placeholderRectIn(_Switcher switcher) =>
@@ -65,13 +74,14 @@ class _HeroHereState extends State<HeroHere> {
     _switcher?.unregister(this);
     _switcher = switcher;
 
-    // A hero that mounts, or moves in, while its tag flies hides. If it
-    // mounts anew a hero of the flight, it takes over that hero's part and
-    // placeholder; any other hero shows when the flight ends.
+    // A hero that mounts, or moves in, while its tag flies hides, unless a
+    // disabled hero mode leaves it out of switches, as it then shows as it
+    // is. If it mounts anew a hero of the flight, it takes over that hero's
+    // part and placeholder; any other hero shows when the flight ends.
     final flight = switcher?.flights[tag];
     if (flight != null) {
       _placeholder = flight.adopt(this)?._placeholder;
-      _offstage = true;
+      if (!isLeftOutOf(switcher!)) _offstage = true;
     }
   }
 

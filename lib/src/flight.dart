@@ -396,8 +396,11 @@ class _Flight extends ChangeNotifier {
   void _forward({double? from}) {
     _reversed = false;
     _nextHero = null;
-    _manifest.from.offstage = true;
-    _manifest.to.offstage = true;
+    // The heroes the shuttle stands in for hide, other than one that a
+    // disabled hero mode leaves out of switches, which shows as it is.
+    for (final hero in [_manifest.from, _manifest.to]) {
+      if (!hero.isLeftOutOf(switcher)) hero.offstage = true;
+    }
 
     final run = ++_runs;
     _style
