@@ -178,67 +178,31 @@ class _AutoSwitchingExampleState extends State<AutoSwitchingExample> {
                 ),
               ],
             ),
-            Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                IconButton(
-                  onPressed: () {
-                    paused = true;
-                    curHeroType = HeroType.red;
-                  },
-                  icon: Icon(
-                    curHeroType == HeroType.red
-                        ? Icons.circle
-                        : Icons.radio_button_off,
-                  ),
-                  color: curHeroType == HeroType.red
-                      ? Colors.red
-                      : Theme.of(context).colorScheme.secondary,
-                ),
-              ],
-            ),
-            Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                IconButton(
-                  onPressed: () {
-                    paused = true;
-                    curHeroType = HeroType.green;
-                  },
-                  icon: Icon(
-                    curHeroType == HeroType.green
-                        ? Icons.circle
-                        : Icons.radio_button_off,
-                  ),
-                  color: curHeroType == HeroType.green
-                      ? Colors.green
-                      : Theme.of(context).colorScheme.secondary,
-                ),
-              ],
-            ),
-            Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                IconButton(
-                  onPressed: () {
-                    paused = true;
-                    curHeroType = HeroType.blue;
-                  },
-                  icon: Icon(
-                    curHeroType == HeroType.blue
-                        ? Icons.circle
-                        : Icons.radio_button_off,
-                  ),
-                  color: curHeroType == HeroType.blue
-                      ? Colors.blue
-                      : Theme.of(context).colorScheme.secondary,
-                ),
-              ],
-            ),
+            _heroButton(HeroType.red, Colors.red),
+            _heroButton(HeroType.green, Colors.green),
+            _heroButton(HeroType.blue, Colors.blue),
           ],
         ),
       ),
     ),
+  );
+
+  /// A button that shows the [type] hero, and pauses the switching. It's
+  /// [color] while that hero shows.
+  Widget _heroButton(HeroType type, Color color) => Column(
+    mainAxisAlignment: MainAxisAlignment.center,
+    children: [
+      IconButton(
+        onPressed: () {
+          paused = true;
+          curHeroType = type;
+        },
+        icon: Icon(curHeroType == type ? Icons.circle : Icons.radio_button_off),
+        color: curHeroType == type
+            ? color
+            : Theme.of(context).colorScheme.secondary,
+      ),
+    ],
   );
 
   void _startHeroSwitching() {
