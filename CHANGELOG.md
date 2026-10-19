@@ -12,6 +12,7 @@
 ### Docs
 
 * Say that a hero builds its child while it hides too, so a `GlobalKey` in a child that a shuttle shows, as the default shuttle does, is in the tree twice while the flight flies. Such a hero needs a `flightShuttleBuilder` that builds what the child shows without the key.
+* Head the README with "Hero animations on the same page", the words of the package's description and of most searches for what it does, rather than "on the same screen".
 
 ## 2.1.1
 
