@@ -11,37 +11,37 @@ const _shuttleKey = ValueKey('shuttle');
 
 void main() {
   for (final textDirection in TextDirection.values) {
-    testWidgets('flies between hero rects when the switcher is away from the origin '
-        '($textDirection)', (tester) async {
-      final moved = ValueNotifier(false);
-      addTearDown(moved.dispose);
+    testWidgets(
+      'flies between hero rects when the switcher is away from the origin '
+      '($textDirection)',
+      (tester) async {
+        final moved = ValueNotifier(false);
+        addTearDown(moved.dispose);
 
-      await tester.pumpWidget(
-        _OffsetSwitcher(moved: moved, textDirection: textDirection),
-      );
-      await tester.pumpAndSettle();
+        await tester.pumpWidget(
+          _OffsetSwitcher(moved: moved, textDirection: textDirection),
+        );
+        await tester.pumpAndSettle();
 
-      final fromRect = tester.getRect(find.byKey(const ValueKey(false)));
+        final fromRect = tester.getRect(find.byKey(const ValueKey(false)));
 
-      moved.value = true;
-      // Snapshot the old child, lay the new one out offstage, start the flight.
-      await tester.pump();
-      await tester.pump();
-      await tester.pump();
+        moved.value = true;
+        await _pumpSwitch(tester);
 
-      final toRect = tester.getRect(find.byKey(const ValueKey(true)));
-      expect(tester.getRect(find.byKey(_shuttleKey)), fromRect);
+        final toRect = tester.getRect(find.byKey(const ValueKey(true)));
+        expect(tester.getRect(find.byKey(_shuttleKey)), fromRect);
 
-      await tester.pump(HeroHere.defaultFlightAnimationDuration ~/ 2);
-      final t = HeroHere.defaultFlightAnimationCurve.transform(0.5);
-      expect(
-        tester.getRect(find.byKey(_shuttleKey)),
-        _rectMoreOrLessEquals(Rect.lerp(fromRect, toRect, t)!),
-      );
+        await tester.pump(HeroHere.defaultFlightAnimationDuration ~/ 2);
+        final t = HeroHere.defaultFlightAnimationCurve.transform(0.5);
+        expect(
+          tester.getRect(find.byKey(_shuttleKey)),
+          _rectMoreOrLessEquals(Rect.lerp(fromRect, toRect, t)!),
+        );
 
-      await tester.pumpAndSettle();
-      expect(find.byKey(_shuttleKey), findsNothing);
-    });
+        await tester.pumpAndSettle();
+        expect(find.byKey(_shuttleKey), findsNothing);
+      },
+    );
   }
 
   testWidgets('flies from where the hero it leaves is when that one stays', (
@@ -1062,9 +1062,8 @@ void main() {
     const frame = Duration(milliseconds: 16);
     await tester.pump(HeroHere.defaultFlightAnimationDuration - frame);
 
-    // The switch snapshots the child with the hero the flight lands on
-    // hidden, and the flight lands on the next frame, which shows that
-    // snapshot.
+    // A frame before the flight lands, a switch moves the hero to the middle
+    // slot, so the flight lands where the hero was and flies on from there.
     slot.value = 1;
     await tester.pump();
     await tester.pump(frame * 2);
@@ -1095,8 +1094,9 @@ void main() {
     const frame = Duration(milliseconds: 16);
     await tester.pump(HeroHere.defaultFlightAnimationDuration ~/ 2 - frame);
 
-    // The flight lands back on the frame that shows the next switch's
-    // snapshot, in which the hero it lands on is hidden.
+    // A frame before the flight lands back, a switch moves the hero to the
+    // third slot, so the flight lands back where the hero was and flies on
+    // from there.
     slot.value = 2;
     await tester.pump();
     await tester.pump(frame * 2);
@@ -1122,8 +1122,9 @@ void main() {
     const frame = Duration(milliseconds: 16);
     await tester.pump(HeroHere.defaultFlightAnimationDuration - frame);
 
-    // The flight lands after the switch on its frame snapshots the child with
-    // the hero it lands on hidden.
+    // On the frame the flight lands, a switch moves the hero to the middle
+    // slot. The landing comes after the switch, as on the web, so the flight
+    // lands where the hero was and flies on from there.
     slot.value = 1;
     await _pumpWebFrame(tester, frame * 2);
 
@@ -2499,9 +2500,11 @@ void main() {
       await tester.pumpAndSettle();
 
       slot.value = 1;
-      await tester.pump(); // The switch keeps where the hero it leaves is.
+      // The switch keeps where the hero it leaves is, and starts the flight
+      // after this frame.
+      await tester.pump();
       tester.view.physicalSize = const Size(400, 600);
-      await tester.pump(); // The flight starts after this frame.
+      await tester.pump(); // The shuttle shows from this frame.
       await tester.pump();
 
       expect(
@@ -2546,8 +2549,8 @@ void main() {
           await tester.pump(const Duration(milliseconds: 50));
         }
         slot.value = next;
-        await tester.pump();
         await tester.pump(); // The flight changes course after this frame.
+        await tester.pump();
       }
       final shuttle = find.byKey(_shuttleKey);
       final rect = tester.getRect(shuttle);
@@ -3047,7 +3050,9 @@ Future<void> _pumpWebFrame(WidgetTester tester, Duration after) async {
   await tester.pump();
 }
 
-/// Snapshots the old child, lays the new one out offstage, starts the flight.
+/// Pumps the frames of a switch: the frame of its build, which shows the new
+/// child and after which the switch starts its flights; the next one, from
+/// which their shuttles show; and a third, as a switch took before 1.5.0.
 Future<void> _pumpSwitch(WidgetTester tester) async {
   await tester.pump();
   await tester.pump();
