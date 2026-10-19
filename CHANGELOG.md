@@ -1,3 +1,9 @@
+## Unreleased
+
+### Fixes
+
+* Show a hero that equals one before it, with the same tag and key, again after a switch, with its semantics up to date. While a switch waits, it hides every hero of a tag that may fly, but it told only the heroes it plans flights for to show again. Such a hero then showed without the semantics tree knowing, which tripped an assertion with semantics on, as under a screen reader.
+
 ## 2.1.0
 
 ### Features

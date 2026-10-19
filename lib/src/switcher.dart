@@ -36,6 +36,11 @@ class _HeroHereSwitcherState extends State<HeroHereSwitcher>
 
   void register(_Hero hero) => _heroes.add(hero);
 
+  /// Every hero in the switcher's child, those a switch leaves out included,
+  /// such as a hero equal to one before it, or one a disabled [HeroMode]
+  /// leaves out.
+  Iterable<_Hero> get registeredHeroes => _heroes;
+
   void unregister(_Hero hero) => _heroes.remove(hero);
 
   /// The heroes in the switcher's child, from the registry rather than a
@@ -385,8 +390,9 @@ class _Switch extends _SwitchingState {
     switcher.enter(_Idle(switcher, prevSwitchHeroes: nextHeroes));
 
     // The heroes it hid while it waited show again, unless the plan hid
-    // them, and the sky drops the stand-ins.
-    _repaintHeroesOf(nextHeroes);
+    // them, and the sky drops the stand-ins. It hid every hero of a tag that
+    // may fly, those the plan leaves out too.
+    _repaintHeroesOf(switcher.registeredHeroes);
     switcher.flights.changed();
     _releaseLayers();
   }
