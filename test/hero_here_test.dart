@@ -2024,8 +2024,8 @@ void main() {
       await _pumpSwitch(tester);
       await tester.pump(const Duration(milliseconds: 100));
       look.value = 'b';
-      // A switch shows the new child on its third frame, the others at once.
-      keyed || looksBelow ? await tester.pump() : await _pumpSwitch(tester);
+      // Each shows the new child on the frame of the rebuild.
+      await tester.pump();
 
       Finder shuttled(String box) => find.descendant(
         of: find.byKey(_shuttleKey),
