@@ -465,6 +465,8 @@ class _Flight extends ChangeNotifier {
   /// latecomers, and leaves the registry, which disposes it. If the hero it
   /// landed on went away mid-flight, with no switch since to say which hero
   /// of the tag shows, it shows the hero it [left] instead, where that is.
+  /// It shows the hero it left, too, if a global key moved that one out of
+  /// this flight's switcher, where its tag shows another hero now.
   void _end({_Hero? landedOn, _Hero? left}) {
     _runs++;
     if (landedOn != null && !landedOn.mounted) {
@@ -472,6 +474,7 @@ class _Flight extends ChangeNotifier {
     } else {
       landedOn?.landedFrom(_shuttleLayer?.lastLayer);
       landedOn?.offstage = false;
+      if (left != null && left.switcher != switcher) left.offstage = false;
     }
     for (final hero in _latecomers) {
       hero.offstage = false;

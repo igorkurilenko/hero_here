@@ -134,49 +134,88 @@ void _heroesTests() {
   });
 
   for (final offAround in [false, true]) {
-    testWidgets('hides a hero that a global key moves into another switcher '
-        'while a flight leaves it there'
-        '${offAround ? ', under a disabled hero mode around the app' : ''}', (
-      tester,
-    ) async {
-      final moving = GlobalKey();
-      // 0: the hero in the left switcher; 1: moved into the right one, at the
-      // same place in it, as the left one brings another hero of its tag.
-      Widget app(int stage) {
-        final app = MaterialApp(
-          home: Row(
-            children: [
-              for (final right in [false, true])
-                SizedBox(
-                  width: 400,
-                  height: 600,
-                  child: HeroHereSwitcher(
-                    child: Stack(
-                      children: [
-                        if (stage == (right ? 1 : 0))
-                          _heroAt(moving, _slotRects[0]),
-                        if (!right && stage == 1)
-                          _heroAt(const ValueKey('other'), _slotRects[1]),
-                      ],
+    testWidgets(
+      'hides a hero that a global key moves into another switcher '
+      'while a flight leaves it there, and shows it there once the flight '
+      'lands${offAround ? ', under a disabled hero mode around the app' : ''}',
+      (tester) async {
+        final moving = GlobalKey();
+        // 0: the hero in the left switcher; 1: moved into the right one, at the
+        // same place in it, as the left one brings another hero of its tag.
+        Widget app(int stage) {
+          final app = MaterialApp(
+            home: Row(
+              children: [
+                for (final right in [false, true])
+                  SizedBox(
+                    width: 400,
+                    height: 600,
+                    child: HeroHereSwitcher(
+                      child: Stack(
+                        children: [
+                          if (stage == (right ? 1 : 0))
+                            _heroAt(moving, _slotRects[0]),
+                          if (!right && stage == 1)
+                            _heroAt(const ValueKey('other'), _slotRects[1]),
+                        ],
+                      ),
                     ),
                   ),
-                ),
-            ],
-          ),
-        );
-        return offAround ? HeroMode(enabled: false, child: app) : app;
-      }
+              ],
+            ),
+          );
+          return offAround ? HeroMode(enabled: false, child: app) : app;
+        }
 
-      await tester.pumpWidget(app(0));
-      await tester.pumpAndSettle();
-      await tester.pumpWidget(app(1));
-      await _pumpSwitch(tester);
-      await tester.pump(_frame * 3);
+        await tester.pumpWidget(app(0));
+        await tester.pumpAndSettle();
+        await tester.pumpWidget(app(1));
+        await _pumpSwitch(tester);
+        await tester.pump(_frame * 3);
 
-      expect(find.byKey(_shuttleKey), findsOneWidget);
-      expect(_painted(tester, _boxOf(moving, skipOffstage: false)), isFalse);
-    });
+        expect(find.byKey(_shuttleKey), findsOneWidget);
+        expect(_painted(tester, _boxOf(moving, skipOffstage: false)), isFalse);
+
+        await tester.pumpAndSettle();
+        expect(find.byKey(_shuttleKey), findsNothing);
+        expect(_paintedInPlace(tester, _boxOf(moving)), isTrue);
+        expect(tester.getRect(_boxOf(moving)), _slotRects[0].translate(400, 0));
+      },
+    );
   }
+
+  testWidgets('keeps the hero a flight leaves hidden once it lands, while that '
+      'hero stays behind a later hero of its tag', (tester) async {
+    final stage = ValueNotifier(0);
+    addTearDown(stage.dispose);
+    await tester.pumpWidget(
+      MaterialApp(
+        home: ValueListenableBuilder(
+          valueListenable: stage,
+          builder: (context, stage, _) => HeroHereSwitcher(
+            child: Stack(
+              children: [
+                _heroAt(const ValueKey('a'), _slotRects[0]),
+                if (stage == 1) _heroAt(const ValueKey('b'), _slotRects[1]),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    stage.value = 1;
+    await _pumpSwitch(tester);
+    expect(find.byKey(_shuttleKey), findsOneWidget);
+
+    await tester.pumpAndSettle();
+    expect(
+      _painted(tester, _boxOf(const ValueKey('a'), skipOffstage: false)),
+      isFalse,
+    );
+    expect(_paintedInPlace(tester, _boxOf(const ValueKey('b'))), isTrue);
+  });
 
   testWidgets('hides a hero that a global key moves into a switcher while its '
       'tag flies there, until the flight lands', (tester) async {
