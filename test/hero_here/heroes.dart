@@ -489,6 +489,52 @@ void _heroesTests() {
     });
   }
 
+  testWidgets('shows the hero a flight flies to once a disabled hero mode '
+      'leaves it out mid-flight, as the flight lands on it and flies on to the '
+      'next hero', (tester) async {
+    // 0: 'a'; 1: 'b' comes in an enabled hero mode; 2: the hero mode is
+    // disabled, and 'c' comes.
+    final stage = ValueNotifier(0);
+    addTearDown(stage.dispose);
+    await tester.pumpWidget(
+      MaterialApp(
+        home: ValueListenableBuilder(
+          valueListenable: stage,
+          builder: (context, stage, _) => HeroHereSwitcher(
+            child: Stack(
+              children: [
+                if (stage == 0) _heroAt(const ValueKey('a'), _slotRects[0]),
+                if (stage > 0)
+                  HeroMode(
+                    enabled: stage == 1,
+                    child: Stack(
+                      children: [_heroAt(const ValueKey('b'), _slotRects[1])],
+                    ),
+                  ),
+                if (stage == 2) _heroAt(const ValueKey('c'), _slotRects[2]),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    stage.value = 1;
+    await _pumpSwitch(tester);
+    await tester.pump(_frame * 5);
+    expect(find.byKey(_shuttleKey), findsOneWidget);
+
+    stage.value = 2;
+    await tester.pumpAndSettle();
+    expect(find.byKey(_shuttleKey), findsNothing);
+    expect(_paintedInPlace(tester, _boxOf(const ValueKey('c'))), isTrue);
+    expect(_boxOf(const ValueKey('b')), findsOneWidget);
+    expect(
+      _paintedInPlace(tester, _boxOf(const ValueKey('b'), skipOffstage: false)),
+      isTrue,
+    );
+  });
+
   testWidgets('shows a hero under a disabled hero mode that mounts while its '
       'tag flies, on every frame', (tester) async {
     final moved = ValueNotifier(false);

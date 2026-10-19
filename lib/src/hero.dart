@@ -53,7 +53,7 @@ class _HeroHereState extends State<HeroHere> {
   /// out. A hero that went away isn't left out.
   bool isLeftOutOf(_Switcher switcher) {
     final root = switcher.childElement;
-    if (root == null || !mounted || wentAway) return false;
+    if (root == null || wentAway) return false;
     return _pathBelow(root, context as Element) == null;
   }
 

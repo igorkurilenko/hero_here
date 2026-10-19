@@ -5,6 +5,7 @@
 * Keep showing a hero under a disabled `HeroMode` on the frame of a switch that flies its tag. Switches leave such a hero out, yet on the switch's frame, while it waits to fly the tag, the switcher hid every new hero of the tag, so the hero blinked out for a frame. Now it hides only the heroes the switch flies or hides.
 * Show a hero again once a disabled `HeroMode` leaves it out of switches, if it had hidden: behind a later hero of its tag, or as the hero a flight flew to. It stayed hidden for good, since only switches and flights show a hero again, and both left it out. Now each switch shows the heroes it leaves out.
 * Show a hero under a disabled `HeroMode` that mounts while a flight flies its tag. It hid until the flight ended, like a hero that takes part in switches, and for good if a switch came first.
+* Keep showing a hero once a disabled `HeroMode` leaves it out mid-flight, when the flight lands on it and flies on to the next hero. The next leg hid it again, as the hero it leaves, for good.
 
 ## 2.1.0
 
