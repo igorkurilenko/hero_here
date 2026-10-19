@@ -393,6 +393,13 @@ class _Switch extends _SwitchingState {
       }
     }
 
+    // A hero that a disabled hero mode leaves out shows as it is, though the
+    // switches before it, or a flight, hid it. A hero equal to one before it,
+    // which the switch leaves out too, stays as it is.
+    for (final hero in switcher.registeredHeroes) {
+      if (!_nextHeroes.contains(hero)) hero.offstage = false;
+    }
+
     switcher.enter(_Idle(switcher, prevSwitchHeroes: _nextHeroes));
 
     // The heroes it hid while it waited show again, unless the plan hid

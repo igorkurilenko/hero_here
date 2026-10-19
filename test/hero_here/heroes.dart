@@ -396,6 +396,99 @@ void _heroesTests() {
     });
   }
 
+  testWidgets('shows a hero that hid behind a later hero of its tag once a '
+      'disabled hero mode leaves it out', (tester) async {
+    final enabled = ValueNotifier(true);
+    addTearDown(enabled.dispose);
+    await tester.pumpWidget(
+      MaterialApp(
+        home: ValueListenableBuilder(
+          valueListenable: enabled,
+          builder: (context, enabled, _) => HeroHereSwitcher(
+            child: Stack(
+              children: [
+                HeroMode(
+                  enabled: enabled,
+                  child: Stack(
+                    children: [_heroAt(const ValueKey('a'), _slotRects[0])],
+                  ),
+                ),
+                _heroAt(const ValueKey('b'), _slotRects[1]),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    final a = _boxOf(const ValueKey('a'), skipOffstage: false);
+    expect(_painted(tester, a), isFalse);
+
+    enabled.value = false;
+    await tester.pumpAndSettle();
+    expect(_boxOf(const ValueKey('a')), findsOneWidget);
+    expect(_paintedInPlace(tester, a), isTrue);
+
+    // Enabled again, it hides behind 'b' again.
+    enabled.value = true;
+    await tester.pumpAndSettle();
+    expect(_painted(tester, a), isFalse);
+  });
+
+  for (final stays in [false, true]) {
+    testWidgets('shows the hero a flight flies to once a disabled hero mode '
+        'leaves it out mid-flight, with the hero the flight leaves '
+        '${stays ? 'staying' : 'gone'}', (tester) async {
+      // 0: 'a'; 1: 'b' comes in an enabled hero mode; 2: the hero mode is
+      // disabled.
+      final stage = ValueNotifier(0);
+      addTearDown(stage.dispose);
+      await tester.pumpWidget(
+        MaterialApp(
+          home: ValueListenableBuilder(
+            valueListenable: stage,
+            builder: (context, stage, _) => HeroHereSwitcher(
+              child: Stack(
+                children: [
+                  if (stage == 0 || stays)
+                    _heroAt(const ValueKey('a'), _slotRects[0]),
+                  if (stage > 0)
+                    HeroMode(
+                      enabled: stage == 1,
+                      child: Stack(
+                        children: [_heroAt(const ValueKey('b'), _slotRects[1])],
+                      ),
+                    ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+      stage.value = 1;
+      await _pumpSwitch(tester);
+      await tester.pump(_frame * 5);
+      expect(find.byKey(_shuttleKey), findsOneWidget);
+
+      // The flight stops, or, if 'a' stays, turns back to it.
+      stage.value = 2;
+      await tester.pumpAndSettle();
+      expect(find.byKey(_shuttleKey), findsNothing);
+      expect(_boxOf(const ValueKey('b')), findsOneWidget);
+      expect(
+        _paintedInPlace(
+          tester,
+          _boxOf(const ValueKey('b'), skipOffstage: false),
+        ),
+        isTrue,
+      );
+      if (stays) {
+        expect(_paintedInPlace(tester, _boxOf(const ValueKey('a'))), isTrue);
+      }
+    });
+  }
+
   testWidgets('keeps a hero that a global key moves within its switcher, with '
       'no flight', (tester) async {
     final moving = GlobalKey();
