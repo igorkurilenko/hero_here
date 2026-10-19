@@ -156,7 +156,9 @@ class _HeroHereExampleState extends State<HeroHereExample> {
       );
     });
 
-    afterBuild(_scrollToBottom);
+    // The list scrolls to the message after the frame of the send and the
+    // next one, by when the message's flight is under way.
+    _afterTwoFrames(_scrollToBottom);
   }
 
   void _scrollToBottom() => _scrollController.animateTo(
@@ -164,6 +166,13 @@ class _HeroHereExampleState extends State<HeroHereExample> {
     duration: HeroHere.defaultFlightAnimationDuration,
     curve: HeroHere.defaultFlightAnimationCurve,
   );
+
+  /// Runs [work] after this frame and the next.
+  void _afterTwoFrames(VoidCallback work) {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      WidgetsBinding.instance.addPostFrameCallback((_) => work());
+    });
+  }
 }
 
 /// Keeps a list that shows its newest message showing it when its viewport
@@ -193,13 +202,5 @@ class _KeepNewestInView extends ScrollPhysics {
       isScrolling: isScrolling,
       velocity: velocity,
     );
-  }
-}
-
-extension _State on State {
-  void afterBuild(VoidCallback cb) {
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      WidgetsBinding.instance.addPostFrameCallback((_) => cb());
-    });
   }
 }
