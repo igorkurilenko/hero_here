@@ -208,11 +208,9 @@ class _ShowDetailsExampleState extends State<ShowDetailsExample> {
       detailsVisible ? kGridViewScaleWhenDetailsOpen : 1.0;
 
   /// How far the grid slides, in fractions of the page's size, as the
-  /// details of the cell at [cellCenter] open. A cell farther from the
-  /// page's center, across or down, than the margin the grid's scale leaves
-  /// slides it toward the center, along the line from the cell, by that
-  /// margin, so the grid still covers the page. A nearer cell doesn't slide
-  /// it.
+  /// details of the cell at [cellCenter] open: toward the page's center,
+  /// along the line from the cell, all the way, or as far as the margin the
+  /// grid's scale leaves across and down, so the grid still covers the page.
   Offset _computeGridViewSlideOffset(Offset cellCenter) {
     // The page's size rather than MediaQuery's, which would make the page
     // depend on the window's size, so each resize would rebuild it and run a
@@ -224,7 +222,7 @@ class _ShowDetailsExampleState extends State<ShowDetailsExample> {
     final maxXOffset = pageSize.width * (kGridViewScaleWhenDetailsOpen - 1) / 2;
     final maxYOffset =
         pageSize.height * (kGridViewScaleWhenDetailsOpen - 1) / 2;
-    var target = cellCenter;
+    var target = pageCenter;
 
     if (xOffset.abs() > maxXOffset) {
       final x = cellCenter.dx + xOffset.sign * maxXOffset;
