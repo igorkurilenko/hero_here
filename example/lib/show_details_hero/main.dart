@@ -189,7 +189,7 @@ class _ShowDetailsExampleState extends State<ShowDetailsExample> {
     final renderBox = context.findRenderObject() as RenderBox;
     final itemPosition = renderBox.localToGlobal(Offset.zero);
     final itemCenter = renderBox.size.center(itemPosition);
-    _gridViewOffset = _computeGridViewSlideOffset(index, itemCenter);
+    _gridViewOffset = _computeGridViewSlideOffset(itemCenter);
     _showDetailsIndex = index;
     _dragEndVelocityOnClose = null;
     _isHeroSwitching.value = true;
@@ -205,7 +205,7 @@ class _ShowDetailsExampleState extends State<ShowDetailsExample> {
   double get _gridViewScale =>
       detailsVisible ? kGridViewScaleWhenDetailsOpen : 1.0;
 
-  Offset _computeGridViewSlideOffset(int index, Offset begin) {
+  Offset _computeGridViewSlideOffset(Offset begin) {
     // The page's size rather than MediaQuery's, which would make the page
     // depend on the window's size, so each resize would rebuild it and run a
     // switch.
