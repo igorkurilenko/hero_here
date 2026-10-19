@@ -61,7 +61,7 @@ class _ShuttleLayer extends SingleChildRenderObjectWidget {
   ) => renderObject.flight = flight;
 }
 
-class _RenderShuttleLayer extends RenderRepaintBoundary {
+class _RenderShuttleLayer extends _RenderBoundary {
   _Flight _flight;
 
   _RenderShuttleLayer(this._flight);
@@ -72,9 +72,6 @@ class _RenderShuttleLayer extends RenderRepaintBoundary {
     _flight = value;
     if (attached) _flight._shuttleLayer = this;
   }
-
-  /// The layer this boundary last painted into, if it painted.
-  OffsetLayer? get lastLayer => layer as OffsetLayer?;
 
   @override
   void attach(PipelineOwner owner) {
