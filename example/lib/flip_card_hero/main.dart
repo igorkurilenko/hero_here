@@ -16,7 +16,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter/physics.dart';
 import 'package:hero_here/hero_here.dart';
 
-import '../show_details_hero/config.dart' show kEightThousanders;
 import '../show_details_hero/eight_thousander.dart';
 
 void main() => runApp(

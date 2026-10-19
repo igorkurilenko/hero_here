@@ -16,6 +16,7 @@ import 'package:flutter/material.dart';
 import 'package:hero_here/hero_here.dart';
 
 import 'config.dart';
+import 'eight_thousander.dart';
 import 'eight_thousander_details_hero.dart';
 import 'eight_thousander_preview_hero.dart';
 

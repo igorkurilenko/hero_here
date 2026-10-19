@@ -1,5 +1,6 @@
 import 'package:example/show_details_hero/eight_thousander_details_hero.dart';
 import 'package:example/show_details_hero/config.dart';
+import 'package:example/show_details_hero/eight_thousander.dart';
 import 'package:example/show_details_hero/eight_thousander_preview_hero.dart';
 import 'package:example/show_details_hero/main.dart';
 import 'package:flutter/material.dart';

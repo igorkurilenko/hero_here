@@ -1,7 +1,6 @@
 import 'dart:math' as math;
 
 import 'package:example/flip_card_hero/main.dart';
-import 'package:example/show_details_hero/config.dart';
 import 'package:example/show_details_hero/eight_thousander.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
