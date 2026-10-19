@@ -18,3 +18,4 @@
 library;
 
 export 'src/hero_here.dart';
+export 'src/shuttles/shuttles.dart';

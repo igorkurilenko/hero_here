@@ -1,5 +1,9 @@
 ## Unreleased
 
+### Features
+
+* Add `HeroHereShuttles`, ready-made builders of what a flight shows as it flies, for `HeroHere.flightShuttleBuilder`. `HeroHereShuttles.crossfade()` fades the hero a flight leaves out over the hero it flies to. `HeroHereShuttles.flip()` turns the shuttle over like a card, about the vertical axis or, with `axis: Axis.horizontal`, the horizontal one. It shows the hero the flight leaves until it's edge on, then the hero it flies to, mirrored so it reads the right way round. Each follows the flight's animation itself, since a flight builds its shuttle once per leg rather than on each frame.
+
 ### Example
 
 * Add an example whose photo cards flip over as they fly open on a bouncy spring, and back: `example/lib/flip_card_hero/`. Its heroes drive their flights with a `SpringSimulation` on an unbounded controller, so a card swings past its place and back, and a card closed mid-flight carries on a little before it turns back. Their shuttle builder turns the card about its upright axis. The card's back is laid out at the open card's size and scaled to the shuttle's, so its words keep their lines as it grows and shrinks in flight. Each card dims its own faces while another card is open, rather than lie under a layer that dims the grid, which flights fly over, so a card on its way back to the grid dims along with it when another card opens meanwhile.
