@@ -287,11 +287,7 @@ class _Switch extends _SwitchingState {
   /// What [standIns] last showed, kept from before the switch. Their layers
   /// are kept until the stand-ins, which keep them while they show, have
   /// them.
-  late final Map<_Hero, _KeptLook> _looks = Map.identity()
-    ..addAll({
-      for (final hero in standIns)
-        hero: ?_KeptLook.of(hero, switcher.childLayer),
-    });
+  final Map<_Hero, _KeptLook> _looks;
 
   factory _Switch(
     _Switcher switcher, {
@@ -308,6 +304,13 @@ class _Switch extends _SwitchingState {
       curHeroes: curHeroes,
       standIns: standIns,
       tags: {for (final hero in standIns) hero.tag},
+      // Kept now, while the heroes and their last frame's layers are as they
+      // were.
+      looks: Map.identity()
+        ..addAll({
+          for (final hero in standIns)
+            hero: ?_KeptLook.of(hero, switcher.childLayer),
+        }),
     );
   }
 
@@ -317,15 +320,11 @@ class _Switch extends _SwitchingState {
     required this.curHeroes,
     required this.standIns,
     required this._tags,
+    required this._looks,
   });
 
-  // The layers are kept now, while the heroes and their last frame's layers
-  // are as they were.
   @override
-  void enter() {
-    _looks;
-    afterFrame(_switch);
-  }
+  void enter() => afterFrame(_switch);
 
   @override
   void onBuild() => switcher.takeChild();
