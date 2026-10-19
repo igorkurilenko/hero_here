@@ -346,6 +346,56 @@ void _heroesTests() {
     expect(tester.state(find.byType(HeroHere).first), same(aState));
   });
 
+  for (final comes in [false, true]) {
+    testWidgets('shows a hero under a disabled hero mode that '
+        '${comes ? 'comes with' : 'stays through'} a switch flying its tag, '
+        'on every frame', (tester) async {
+      final switched = ValueNotifier(false);
+      addTearDown(switched.dispose);
+      await tester.pumpWidget(
+        MaterialApp(
+          home: ValueListenableBuilder(
+            valueListenable: switched,
+            builder: (context, switched, _) => HeroHereSwitcher(
+              child: Stack(
+                children: [
+                  if (switched || !comes)
+                    HeroMode(
+                      enabled: false,
+                      child: Stack(
+                        children: [
+                          _heroAt(const ValueKey('off'), _slotRects[2]),
+                        ],
+                      ),
+                    ),
+                  _heroAt(ValueKey(switched), _slotRects[switched ? 1 : 0]),
+                ],
+              ),
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+      final off = _boxOf(const ValueKey('off'));
+      final shuttle = find.byKey(_shuttleKey);
+
+      switched.value = true;
+      // The frame of the switch.
+      await tester.pump();
+      expect(_paintedInPlace(tester, off), isTrue);
+      // The frames of the flight from the hero in the first slot to the one
+      // in the second.
+      await tester.pump();
+      expect(tester.any(shuttle), isTrue);
+      for (var i = 0; i < 40 && tester.any(shuttle); i++) {
+        expect(_paintedInPlace(tester, off), isTrue);
+        await tester.pump(_frame);
+      }
+      expect(tester.any(shuttle), isFalse);
+      expect(_paintedInPlace(tester, off), isTrue);
+    });
+  }
+
   testWidgets('keeps a hero that a global key moves within its switcher, with '
       'no flight', (tester) async {
     final moving = GlobalKey();

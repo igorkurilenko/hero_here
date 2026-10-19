@@ -271,7 +271,7 @@ class _Idle extends _SwitchingState {
 /// its heroes after that frame, once it is built and laid out, so with no
 /// snapshot of the old child. On that frame, the new heroes of every tag that
 /// may fly hide, those built later in the frame too, while the heroes that
-/// stay show as they are. The sky shows a stand-in of each hero that was on
+/// stay, and those a disabled [HeroMode] leaves out, show as they are. The sky shows a stand-in of each hero that was on
 /// the screen and went away, where it was, so its flight starts where its
 /// stand-in is. Builds while it waits need nothing: it takes the newest
 /// child.
@@ -293,6 +293,10 @@ class _Switch extends _SwitchingState {
   /// [curHeroes] themselves, rather than heroes equal to them, which may have
   /// mounted anew.
   late final Set<_Hero> _stayed = Set.identity()..addAll(curHeroes);
+
+  /// The heroes of the new child, found once it is built and laid out: when
+  /// the first of them that may hide paints, or else after the frame.
+  late final Set<_Hero> _nextHeroes = switcher.findHeroes();
 
   /// What [standIns] last showed, kept from before the switch. Their layers
   /// are kept until the stand-ins, which keep them while they show, have
@@ -339,7 +343,10 @@ class _Switch extends _SwitchingState {
   void onBuild() => switcher.takeChild();
 
   @override
-  bool hides(_Hero hero) => _tags.contains(hero.tag) && !_stayed.contains(hero);
+  bool hides(_Hero hero) =>
+      _tags.contains(hero.tag) &&
+      !_stayed.contains(hero) &&
+      _nextHeroes.contains(hero);
 
   @override
   _KeptLook? standInLook(_Hero hero) => _looks[hero];
@@ -354,17 +361,16 @@ class _Switch extends _SwitchingState {
   }
 
   void _switch() {
-    final nextHeroes = switcher.findHeroes();
     final plan = _SwitchPlan(
       curHeroes: curHeroes,
-      nextHeroes: nextHeroes,
+      nextHeroes: _nextHeroes,
       prevSwitchHeroes: prevSwitchHeroes,
       flying: {
         for (final flight in switcher.flights.all) flight.tag: flight.manifest,
       },
     );
 
-    notifyWillSwitch(nextHeroes);
+    notifyWillSwitch(_nextHeroes);
 
     for (final hero in plan.hiddenHeroes) {
       hero.offstage = true;
@@ -387,11 +393,12 @@ class _Switch extends _SwitchingState {
       }
     }
 
-    switcher.enter(_Idle(switcher, prevSwitchHeroes: nextHeroes));
+    switcher.enter(_Idle(switcher, prevSwitchHeroes: _nextHeroes));
 
     // The heroes it hid while it waited show again, unless the plan hid
-    // them, and the sky drops the stand-ins. It hid every hero of a tag that
-    // may fly, those the plan leaves out too.
+    // them, and the sky drops the stand-ins. It hid the new heroes of the
+    // tags that may fly, those equal to a hero before them too, which the
+    // plan leaves out.
     _repaintHeroesOf(switcher.registeredHeroes);
     switcher.flights.changed();
     _releaseLayers();

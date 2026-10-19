@@ -1,3 +1,9 @@
+## Unreleased
+
+### Fixes
+
+* Keep showing a hero under a disabled `HeroMode` on the frame of a switch that flies its tag. Switches leave such a hero out, yet on the switch's frame, while it waits to fly the tag, the switcher hid every new hero of the tag, so the hero blinked out for a frame. Now it hides only the heroes the switch flies or hides.
+
 ## 2.1.0
 
 ### Features
