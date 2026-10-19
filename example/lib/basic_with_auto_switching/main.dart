@@ -32,6 +32,8 @@ void main() => runApp(
   ),
 );
 
+enum HeroType { red, green, blue }
+
 class AutoSwitchingExample extends StatefulWidget {
   const AutoSwitchingExample({super.key});
 
@@ -283,5 +285,3 @@ class _AutoSwitchingExampleState extends State<AutoSwitchingExample> {
     return Map.fromIterables(HeroType.values, alignments);
   }
 }
-
-enum HeroType { red, green, blue }
