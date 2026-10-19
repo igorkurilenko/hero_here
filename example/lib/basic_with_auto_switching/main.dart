@@ -118,7 +118,7 @@ class _AutoSwitchingExampleState extends State<AutoSwitchingExample> {
                       key: const ValueKey(HeroType.red),
                       tag: kHeroTag,
                       flightAnimationDuration: kHeroFlightAnimationDuration,
-                      flightShuttleBuilder: _flightShuttleBuilder,
+                      flightShuttleBuilder: HeroHereShuttles.crossfade(),
                       flightRedirect: _redirect,
                       child: Container(color: Colors.red),
                     )
@@ -135,7 +135,7 @@ class _AutoSwitchingExampleState extends State<AutoSwitchingExample> {
                       key: const ValueKey(HeroType.green),
                       tag: kHeroTag,
                       flightAnimationDuration: kHeroFlightAnimationDuration,
-                      flightShuttleBuilder: _flightShuttleBuilder,
+                      flightShuttleBuilder: HeroHereShuttles.crossfade(),
                       flightRedirect: _redirect,
                       child: Container(color: Colors.green),
                     )
@@ -152,7 +152,7 @@ class _AutoSwitchingExampleState extends State<AutoSwitchingExample> {
                       key: const ValueKey(HeroType.blue),
                       tag: kHeroTag,
                       flightAnimationDuration: kHeroFlightAnimationDuration,
-                      flightShuttleBuilder: _flightShuttleBuilder,
+                      flightShuttleBuilder: HeroHereShuttles.crossfade(),
                       flightRedirect: _redirect,
                       child: Container(color: Colors.blue),
                     )
@@ -239,22 +239,6 @@ class _AutoSwitchingExampleState extends State<AutoSwitchingExample> {
         ),
       ),
     ),
-  );
-
-  Widget _flightShuttleBuilder(
-    BuildContext flightContext,
-    Animation<double> animation,
-    HeroHere fromHero,
-    HeroHere toHero,
-  ) => Stack(
-    fit: StackFit.expand,
-    children: [
-      toHero.child,
-      FadeTransition(
-        opacity: ReverseAnimation(animation),
-        child: fromHero.child,
-      ),
-    ],
   );
 
   void _startHeroSwitching() {

@@ -91,7 +91,7 @@ class _HeroHereExampleState extends State<HeroHereExample> {
                       ? HeroHere(
                           key: const ValueKey(HeroType.red),
                           tag: kHeroTag,
-                          flightShuttleBuilder: _flightShuttleBuilder,
+                          flightShuttleBuilder: HeroHereShuttles.crossfade(),
                           child: Container(
                             decoration: BoxDecoration(
                               color: Colors.red,
@@ -108,7 +108,7 @@ class _HeroHereExampleState extends State<HeroHereExample> {
                       ? HeroHere(
                           key: const ValueKey(HeroType.green),
                           tag: kHeroTag,
-                          flightShuttleBuilder: _flightShuttleBuilder,
+                          flightShuttleBuilder: HeroHereShuttles.crossfade(),
                           child: Container(
                             decoration: BoxDecoration(
                               color: Colors.green,
@@ -157,23 +157,6 @@ class _HeroHereExampleState extends State<HeroHereExample> {
             ],
           ),
         ),
-      );
-
-  Widget _flightShuttleBuilder(
-    BuildContext flightContext,
-    Animation<double> animation,
-    HeroHere fromHero,
-    HeroHere toHero,
-  ) =>
-      Stack(
-        fit: StackFit.expand,
-        children: [
-          toHero.child,
-          FadeTransition(
-            opacity: ReverseAnimation(animation),
-            child: fromHero.child,
-          ),
-        ],
       );
 }
 ```
