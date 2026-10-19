@@ -303,8 +303,7 @@ class _Flight extends ChangeNotifier {
   /// new leg, or when a switch or a rebuild gives a hero of the flight a new
   /// widget mid-flight. So it builds then, and on no other frame.
   Widget get shuttle {
-    final from = _divertedFrom ?? _manifest.from.widget;
-    final to = _manifest.to.widget;
+    final (from, to) = _shownHeroes;
     final shuttle = _shuttle;
     if (shuttle != null &&
         identical(shuttle.from, from) &&
@@ -318,6 +317,12 @@ class _Flight extends ChangeNotifier {
       to: to,
     );
   }
+
+  /// The heroes the shuttle shows: the hero the flight leaves, or the
+  /// stand-in for the shuttle as it was when the flight last diverted, and
+  /// the hero it flies to.
+  (HeroHere, HeroHere) get _shownHeroes =>
+      (_divertedFrom ?? _manifest.from.widget, _manifest.to.widget);
 
   /// Works out where the shuttle is on this frame: on its way from where its
   /// leg began to where the hero it flies to is. While that hero is nowhere,
@@ -363,8 +368,7 @@ class _Flight extends ChangeNotifier {
   /// A stand-in for the hero the flight leaves, with that hero's key, tag and
   /// payload, whose child is the shuttle as it is now, stopped.
   HeroHere _freezeShuttle() {
-    final from = _divertedFrom ?? _manifest.from.widget;
-    final to = _manifest.to.widget;
+    final (from, to) = _shownHeroes;
     final stopped = AlwaysStoppedAnimation(animation.value);
 
     return HeroHere(
