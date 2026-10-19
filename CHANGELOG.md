@@ -1,4 +1,4 @@
-## Unreleased
+## 2.1.0
 
 ### Features
 
@@ -8,6 +8,7 @@
 
 * Add an example whose photo cards flip over as they fly open on a bouncy spring, and back: `example/lib/flip_card_hero/`. Its heroes drive their flights with a `SpringSimulation` on an unbounded controller, so a card swings past its place and back, and a card closed mid-flight carries on a little before it turns back. They fly with `HeroHereShuttles.flip()`, which turns the card about its upright axis. The card's back is laid out at the open card's size and scaled to the shuttle's, so its words keep their lines as it grows and shrinks in flight. Each card dims its own faces while another card is open, rather than lie under a layer that dims the grid, which flights fly over, so a card on its way back to the grid dims along with it when another card opens meanwhile.
 * Decode the details example's grid thumbnails for the cells the device's display shows, rather than for the grid's largest cells. On a phone held upright the cells are smaller, so the 14 thumbnails take about 55 MiB at 3× rather than 111 MiB, within the image cache's 100 MiB, and scrolling no longer evicts and decodes them again. The size follows the wider of the window and the display, so a window's resize still decodes nothing anew, and a phone on its side still gets sharp thumbnails.
+* Sign the example apps with each checkout's own development team, which a `Signing.xcconfig` that git ignores sets, rather than with the team the iOS project carried. Without one, a checkout builds as it is, and macOS signs the app to run locally.
 
 ## 2.0.0
 
