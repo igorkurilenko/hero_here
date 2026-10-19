@@ -1048,9 +1048,8 @@ void main() {
     expect(find.byKey(_shuttleKey), findsNothing);
   });
 
-  testWidgets('shows a shuttle that lands while a switch shows its snapshot', (
-    tester,
-  ) async {
+  testWidgets('shows a shuttle that lands on a hero a switch took away, and '
+      'flies it on', (tester) async {
     final slot = ValueNotifier(0);
     addTearDown(slot.dispose);
 
@@ -1076,8 +1075,8 @@ void main() {
     expect(find.byKey(const ValueKey('box1')), findsOneWidget);
   });
 
-  testWidgets('shows a shuttle that lands back while a switch shows its '
-      'snapshot', (tester) async {
+  testWidgets('shows a shuttle that lands back on a hero a switch took away, '
+      'and flies it on', (tester) async {
     final slot = ValueNotifier(0);
     addTearDown(slot.dispose);
 
@@ -1109,8 +1108,8 @@ void main() {
     expect(find.byKey(const ValueKey('box2')), findsOneWidget);
   });
 
-  testWidgets('shows a shuttle that lands after a switch snapshots its frame, '
-      'as on the web', (tester) async {
+  testWidgets('shows a shuttle that lands on a hero a switch took away, and '
+      'flies it on, as on the web', (tester) async {
     final slot = ValueNotifier(0);
     addTearDown(slot.dispose);
 
