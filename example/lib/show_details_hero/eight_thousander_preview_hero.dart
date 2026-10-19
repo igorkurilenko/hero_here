@@ -105,21 +105,16 @@ class _EightThousanderPreviewHeroState
     HeroHere toHero,
   ) {
     final fromBorderRadius = fromHero.payload as BorderRadius;
-    return Stack(
-      fit: StackFit.expand,
-      children: [
-        AnimatedBuilder(
-          animation: animation,
-          builder: (context, child) => ClipRRect(
-            borderRadius: BorderRadiusTween(
-              begin: fromBorderRadius,
-              end: BorderRadius.circular(kPreviewImageBorderRadius),
-            ).evaluate(animation)!,
-            child: child,
-          ),
-          child: fromHero.child,
-        ),
-      ],
+    return AnimatedBuilder(
+      animation: animation,
+      builder: (context, child) => ClipRRect(
+        borderRadius: BorderRadiusTween(
+          begin: fromBorderRadius,
+          end: BorderRadius.circular(kPreviewImageBorderRadius),
+        ).evaluate(animation)!,
+        child: child,
+      ),
+      child: fromHero.child,
     );
   }
 
