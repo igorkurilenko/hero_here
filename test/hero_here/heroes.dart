@@ -184,6 +184,189 @@ void _heroesTests() {
     );
   }
 
+  testWidgets('keeps a hero that a global key moves into another switcher '
+      'hidden behind a later hero of its tag there, once the flight that left '
+      'it lands', (tester) async {
+    final moving = GlobalKey();
+    // 0: the hero in the left switcher, and a hero of its tag in the right
+    // one; 1: moved into the right one, before that hero, as the left one
+    // brings another hero of its tag.
+    Widget app(int stage) => MaterialApp(
+      home: Row(
+        children: [
+          SizedBox(
+            width: 400,
+            height: 600,
+            child: HeroHereSwitcher(
+              child: Stack(
+                children: [
+                  if (stage == 0)
+                    _heroAt(moving, _slotRects[0])
+                  else
+                    _heroAt(const ValueKey('other'), _slotRects[1]),
+                ],
+              ),
+            ),
+          ),
+          SizedBox(
+            width: 400,
+            height: 600,
+            child: HeroHereSwitcher(
+              child: Stack(
+                children: [
+                  if (stage == 1) _heroAt(moving, _slotRects[0]),
+                  KeyedSubtree(
+                    key: const ValueKey('later slot'),
+                    child: _heroAt(const ValueKey('later'), _slotRects[1]),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+
+    await tester.pumpWidget(app(0));
+    await tester.pumpAndSettle();
+    await tester.pumpWidget(app(1));
+    await tester.pumpAndSettle();
+
+    expect(_painted(tester, _boxOf(moving, skipOffstage: false)), isFalse);
+    expect(_paintedInPlace(tester, _boxOf(const ValueKey('later'))), isTrue);
+  });
+
+  testWidgets('shows a hero that a global key moves under a disabled hero mode '
+      'in another switcher, once a flight that lands on it there and flies on '
+      'lands', (tester) async {
+    final moving = GlobalKey();
+    // 0: 'a' in the left switcher; 1: the moving hero comes there, so a
+    // flight flies to it; 2: mid-flight, it moves under a disabled hero mode
+    // in the right switcher, as 'next' comes in the left one, so the flight
+    // lands on it there, then flies on, from it, to 'next'.
+    Widget app(int stage) => MaterialApp(
+      home: Row(
+        children: [
+          SizedBox(
+            width: 400,
+            height: 600,
+            child: HeroHereSwitcher(
+              child: Stack(
+                children: [
+                  if (stage == 0) _heroAt(const ValueKey('a'), _slotRects[0]),
+                  if (stage == 1) _heroAt(moving, _slotRects[1]),
+                  if (stage == 2)
+                    _heroAt(const ValueKey('next'), _slotRects[0]),
+                ],
+              ),
+            ),
+          ),
+          SizedBox(
+            width: 400,
+            height: 600,
+            child: HeroHereSwitcher(
+              child: Stack(
+                children: [
+                  if (stage == 2)
+                    HeroMode(
+                      enabled: false,
+                      child: Stack(children: [_heroAt(moving, _slotRects[0])]),
+                    ),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+
+    await tester.pumpWidget(app(0));
+    await tester.pumpAndSettle();
+    await tester.pumpWidget(app(1));
+    await _pumpSwitch(tester);
+    await tester.pump(_frame * 5);
+    expect(find.byKey(_shuttleKey), findsOneWidget);
+
+    await tester.pumpWidget(app(2));
+    await tester.pumpAndSettle();
+
+    expect(find.byKey(_shuttleKey), findsNothing);
+    expect(_paintedInPlace(tester, _boxOf(const ValueKey('next'))), isTrue);
+    expect(_paintedInPlace(tester, _boxOf(moving)), isTrue);
+    expect(tester.getRect(_boxOf(moving)), _slotRects[0].translate(400, 0));
+  });
+
+  testWidgets('leaves a hero that a global key moves into another switcher to '
+      'the flight there that flies to it, once the flight that left it '
+      'lands', (tester) async {
+    final moving = GlobalKey();
+    // 0: the hero in the left switcher, and a hero of its tag in the right
+    // one; 1: moved into the right one, after that hero, so a flight there
+    // flies to it, as the left one brings another hero of its tag, whose
+    // quicker flight lands first.
+    Widget app(int stage) => MaterialApp(
+      home: Row(
+        children: [
+          SizedBox(
+            width: 400,
+            height: 600,
+            child: HeroHereSwitcher(
+              child: Stack(
+                children: [
+                  if (stage == 0)
+                    _heroAt(moving, _slotRects[0])
+                  else
+                    Positioned.fromRect(
+                      rect: _slotRects[1],
+                      child: const HeroHere(
+                        key: ValueKey('other'),
+                        tag: 'hero',
+                        flightAnimationDuration: Duration(milliseconds: 100),
+                        flightShuttleBuilder: _shuttleBox,
+                        child: ColoredBox(color: _heroColor),
+                      ),
+                    ),
+                ],
+              ),
+            ),
+          ),
+          SizedBox(
+            width: 400,
+            height: 600,
+            child: HeroHereSwitcher(
+              child: Stack(
+                children: [
+                  KeyedSubtree(
+                    key: const ValueKey('earlier slot'),
+                    child: _heroAt(const ValueKey('earlier'), _slotRects[1]),
+                  ),
+                  if (stage == 1) _heroAt(moving, _slotRects[0]),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+
+    await tester.pumpWidget(app(0));
+    await tester.pumpAndSettle();
+    await tester.pumpWidget(app(1));
+    await _pumpSwitch(tester);
+
+    // The left flight has landed, while the right one flies on to the hero.
+    await tester.pump(const Duration(milliseconds: 150));
+    expect(find.byKey(_shuttleKey), findsOneWidget);
+    expect(_painted(tester, _boxOf(moving, skipOffstage: false)), isFalse);
+
+    await tester.pumpAndSettle();
+    expect(_paintedInPlace(tester, _boxOf(moving)), isTrue);
+    expect(
+      _painted(tester, _boxOf(const ValueKey('earlier'), skipOffstage: false)),
+      isFalse,
+    );
+  });
+
   testWidgets('keeps the hero a flight leaves hidden once it lands, while that '
       'hero stays behind a later hero of its tag', (tester) async {
     final stage = ValueNotifier(0);

@@ -1,3 +1,9 @@
+## 2.2.2
+
+### Fixes
+
+* Leave a hero that a global key moved into another switcher as that switcher shows or hides it, once a flight in the switcher it left, which flew from it, lands. Since 2.2.1 the flight showed it, even behind a later hero of its tag there, or while a flight there still flew to it. Now it shows it only if that switcher would: if no flight of its tag flies there and it's the last hero of its tag there, or if a disabled `HeroMode` there leaves it out.
+
 ## 2.2.1
 
 ### Fixes
