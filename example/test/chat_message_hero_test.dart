@@ -2,6 +2,7 @@ import 'dart:typed_data';
 import 'dart:ui' as ui;
 
 import 'package:example/chat_message_hero/main.dart';
+import 'package:example/chat_message_hero/message.dart';
 import 'package:example/chat_message_hero/message_widget.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
@@ -20,6 +21,14 @@ Future<void> _send(WidgetTester tester, String text) async {
 }
 
 void main() {
+  // A message's hero takes its tag from the message's id, and of heroes that
+  // share a tag only the last shows, so a message with another's id would
+  // vanish from the list.
+  test('gives each message an id of its own, however many there are', () {
+    final ids = {for (var i = 0; i < 5000; i++) Message().id};
+    expect(ids, hasLength(5000));
+  });
+
   testWidgets('sends a message into the list and clears the input', (
     tester,
   ) async {

@@ -12,14 +12,17 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-import 'package:flutter/foundation.dart';
-
 class Message {
+  /// How many messages were made.
+  static var _count = 0;
+
+  /// The message's own id, the number of messages made before it. Its hero's
+  /// tag and key are made from it.
+  final int id = _count++;
+
   String? text;
 
   String get textOrEmpty => text ?? '';
-
-  String get id => shortHash(this);
 
   @override
   String toString() => 'message-$id';
