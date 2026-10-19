@@ -162,9 +162,8 @@ class _HeroScope extends InheritedWidget {
 /// [_Switch], which takes up the builds until it flies the heroes.
 abstract class _SwitchingState {
   final _Switcher switcher;
-  final Set<_Hero>? prevSwitchHeroes;
 
-  _SwitchingState(this.switcher, {this.prevSwitchHeroes});
+  _SwitchingState(this.switcher);
 
   /// Called once, when the switcher enters this state.
   void enter() {}
@@ -235,7 +234,10 @@ class _Mount extends _SwitchingState {
 }
 
 class _Idle extends _SwitchingState {
-  _Idle(super.switcher, {super.prevSwitchHeroes});
+  /// The heroes of the last switch, or of the mount.
+  final Set<_Hero> prevSwitchHeroes;
+
+  _Idle(super.switcher, {required this.prevSwitchHeroes});
 
   @override
   void onBuild() {
@@ -269,6 +271,9 @@ class _Idle extends _SwitchingState {
 /// stand-in is. Builds while it waits need nothing: it takes the newest
 /// child.
 class _Switch extends _SwitchingState {
+  /// The heroes of the switch before this one, or of the mount.
+  final Set<_Hero> prevSwitchHeroes;
+
   final Set<_Hero> curHeroes;
 
   /// The heroes that were on the screen. Each stand-in shows only if its hero
@@ -291,7 +296,7 @@ class _Switch extends _SwitchingState {
 
   factory _Switch(
     _Switcher switcher, {
-    Set<_Hero>? prevSwitchHeroes,
+    required Set<_Hero> prevSwitchHeroes,
     required Set<_Hero> curHeroes,
   }) {
     final standIns = [
@@ -316,7 +321,7 @@ class _Switch extends _SwitchingState {
 
   _Switch._(
     super.switcher, {
-    super.prevSwitchHeroes,
+    required this.prevSwitchHeroes,
     required this.curHeroes,
     required this.standIns,
     required this._tags,
@@ -422,7 +427,7 @@ class _SwitchPlan {
   factory _SwitchPlan({
     required Set<_Hero> curHeroes,
     required Set<_Hero> nextHeroes,
-    required Set<_Hero>? prevSwitchHeroes,
+    required Set<_Hero> prevSwitchHeroes,
     required Map<Object, _FlightManifest> flying,
   }) {
     // Where the tag of [to], the hero it flies to, flies from.
@@ -431,9 +436,7 @@ class _SwitchPlan {
         return flight.from == to ? flight.to : flight.from;
       }
       final shown = curHeroes.where((x) => x.tag == to.tag && x.onstage);
-      return shown
-              .where((x) => prevSwitchHeroes?.contains(x) ?? false)
-              .firstOrNull ??
+      return shown.where(prevSwitchHeroes.contains).firstOrNull ??
           shown.firstOrNull ??
           to;
     }
