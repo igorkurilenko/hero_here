@@ -155,20 +155,13 @@ void main() {
     await tester.tap(find.text('K2'));
     await tester.pumpAndSettle();
 
-    // On the web each opacity layer paints offscreen, even when opaque.
-    var opacityLayers = 0;
-    void visit(RenderObject object) {
-      if (object.debugLayer is OpacityLayer) opacityLayers++;
-      object.visitChildren(visit);
-    }
-
     final details = find.byType(EightThousanderDetailsHero);
-    visit(tester.renderObject(details));
     expect(
       find.descendant(of: details, matching: find.text('K2')),
       findsOneWidget,
     );
-    expect(opacityLayers, 0);
+    // On the web each opacity layer paints offscreen, even when opaque.
+    expect(_opacityLayersIn(tester, details), 0);
   });
 
   testWidgets('fades the flying title and description without opacity '
