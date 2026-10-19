@@ -16,7 +16,7 @@ void main() {
   testWidgets('sends a message into the list and clears the input', (
     tester,
   ) async {
-    await tester.pumpWidget(const MaterialApp(home: HeroHereExample()));
+    await tester.pumpWidget(const MaterialApp(home: ChatMessageExample()));
     await tester.enterText(_input, 'Hello');
     await tester.testTextInput.receiveAction(TextInputAction.done);
     await tester.pumpAndSettle();
@@ -29,11 +29,11 @@ void main() {
   });
 
   testWidgets('keeps the typed text when the page rebuilds', (tester) async {
-    await tester.pumpWidget(const MaterialApp(home: HeroHereExample()));
+    await tester.pumpWidget(const MaterialApp(home: ChatMessageExample()));
     await tester.enterText(_input, 'Hel');
 
     // Rebuild the page, as a theme change while typing would.
-    tester.element(find.byType(HeroHereExample)).markNeedsBuild();
+    tester.element(find.byType(ChatMessageExample)).markNeedsBuild();
     await tester.pumpAndSettle();
 
     expect(tester.widget<TextField>(_input).controller!.text, 'Hel');
@@ -42,7 +42,7 @@ void main() {
   testWidgets('keeps the input focused on an Enter with nothing typed', (
     tester,
   ) async {
-    await tester.pumpWidget(const MaterialApp(home: HeroHereExample()));
+    await tester.pumpWidget(const MaterialApp(home: ChatMessageExample()));
     await tester.enterText(_input, 'Hello');
     await tester.testTextInput.receiveAction(TextInputAction.done);
     await tester.pumpAndSettle();
@@ -56,7 +56,7 @@ void main() {
   testWidgets('keeps what is typed while a sent message sets off', (
     tester,
   ) async {
-    await tester.pumpWidget(const MaterialApp(home: HeroHereExample()));
+    await tester.pumpWidget(const MaterialApp(home: ChatMessageExample()));
     await tester.enterText(_input, 'Hello');
     await tester.testTextInput.receiveAction(TextInputAction.done);
 
@@ -83,7 +83,7 @@ void main() {
   testWidgets('keeps a sent message in the input until its shuttle shows it', (
     tester,
   ) async {
-    await tester.pumpWidget(const MaterialApp(home: HeroHereExample()));
+    await tester.pumpWidget(const MaterialApp(home: ChatMessageExample()));
     await tester.enterText(_input, 'Hello');
     await tester.testTextInput.receiveAction(TextInputAction.done);
     // Lands, and runs the scroll the send scheduled, even if a check fails.
@@ -115,7 +115,7 @@ void main() {
   testWidgets('shows a sent message as text, without a text field', (
     tester,
   ) async {
-    await tester.pumpWidget(const MaterialApp(home: HeroHereExample()));
+    await tester.pumpWidget(const MaterialApp(home: ChatMessageExample()));
     await tester.enterText(_input, 'Hello');
     await tester.testTextInput.receiveAction(TextInputAction.done);
     await tester.pumpAndSettle();
@@ -186,7 +186,7 @@ void main() {
   testWidgets('moves the input above the keyboard without running a switch', (
     tester,
   ) async {
-    await tester.pumpWidget(const MaterialApp(home: HeroHereExample()));
+    await tester.pumpWidget(const MaterialApp(home: ChatMessageExample()));
     await tester.pumpAndSettle();
     addTearDown(tester.view.resetViewInsets);
     final screenHeight =
@@ -216,7 +216,7 @@ void main() {
   testWidgets('keeps the newest message in view as the keyboard opens', (
     tester,
   ) async {
-    await tester.pumpWidget(const MaterialApp(home: HeroHereExample()));
+    await tester.pumpWidget(const MaterialApp(home: ChatMessageExample()));
     await _sendMessages(tester, 15);
     addTearDown(tester.view.resetViewInsets);
     final newest = find.descendant(
@@ -237,7 +237,7 @@ void main() {
   testWidgets('scrolls to a sent message as it flies, rather than jumping', (
     tester,
   ) async {
-    await tester.pumpWidget(const MaterialApp(home: HeroHereExample()));
+    await tester.pumpWidget(const MaterialApp(home: ChatMessageExample()));
     await _sendMessages(tester, 15);
     final previous = find.descendant(
       of: find.byType(ListView),
@@ -267,7 +267,7 @@ void main() {
     // How far the newest message ends above the input.
     Future<double> gap() async {
       await tester.pumpWidget(
-        MaterialApp(key: UniqueKey(), home: const HeroHereExample()),
+        MaterialApp(key: UniqueKey(), home: const ChatMessageExample()),
       );
       await _sendMessages(tester, 15);
       final newest = find.descendant(
@@ -288,7 +288,7 @@ void main() {
 
   testWidgets('keeps the messages in place as the keyboard opens while the '
       'list shows older ones', (tester) async {
-    await tester.pumpWidget(const MaterialApp(home: HeroHereExample()));
+    await tester.pumpWidget(const MaterialApp(home: ChatMessageExample()));
     await _sendMessages(tester, 15);
     addTearDown(tester.view.resetViewInsets);
     await tester.drag(find.byType(ListView), const Offset(0, 300));

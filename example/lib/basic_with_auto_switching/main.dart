@@ -28,18 +28,18 @@ void main() => runApp(
     debugShowCheckedModeBanner: false,
     theme: ThemeData(useMaterial3: true, brightness: Brightness.light),
     darkTheme: ThemeData(useMaterial3: true, brightness: Brightness.dark),
-    home: const HeroHereExample(),
+    home: const AutoSwitchingExample(),
   ),
 );
 
-class HeroHereExample extends StatefulWidget {
-  const HeroHereExample({super.key});
+class AutoSwitchingExample extends StatefulWidget {
+  const AutoSwitchingExample({super.key});
 
   @override
-  State<HeroHereExample> createState() => _HeroHereExampleState();
+  State<AutoSwitchingExample> createState() => _AutoSwitchingExampleState();
 }
 
-class _HeroHereExampleState extends State<HeroHereExample> {
+class _AutoSwitchingExampleState extends State<AutoSwitchingExample> {
   HeroType _curHeroType = HeroType.red;
   HeroHereFlightRedirect _redirect = HeroHereFlightRedirect.chain;
   bool _paused = true;

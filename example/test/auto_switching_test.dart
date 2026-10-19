@@ -6,7 +6,7 @@ import 'package:hero_here/hero_here.dart';
 
 void main() {
   testWidgets('diverts redirected flights once divert is on', (tester) async {
-    await tester.pumpWidget(const MaterialApp(home: HeroHereExample()));
+    await tester.pumpWidget(const MaterialApp(home: AutoSwitchingExample()));
     await tester.pumpAndSettle();
 
     HeroHereFlightRedirect? redirect() =>
@@ -23,7 +23,7 @@ void main() {
   });
 
   testWidgets('places its heroes off one line', (tester) async {
-    await tester.pumpWidget(const MaterialApp(home: HeroHereExample()));
+    await tester.pumpWidget(const MaterialApp(home: AutoSwitchingExample()));
     await tester.pumpAndSettle();
 
     // Show each hero in turn with its button, which follows the play button.
@@ -46,7 +46,7 @@ void main() {
   testWidgets('repaints nothing in its app bar as its bottom bar changes', (
     tester,
   ) async {
-    await tester.pumpWidget(const MaterialApp(home: HeroHereExample()));
+    await tester.pumpWidget(const MaterialApp(home: AutoSwitchingExample()));
     await tester.pumpAndSettle();
 
     // Count the paints of what's in the app bar.

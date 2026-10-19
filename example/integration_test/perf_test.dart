@@ -1,8 +1,8 @@
 // Measures how long the frames of the examples' flights take on a device.
 // See README.md for how to run it.
 
-import 'package:example/basic_with_auto_switching/main.dart' as auto;
-import 'package:example/chat_message_hero/main.dart' as chat;
+import 'package:example/basic_with_auto_switching/main.dart';
+import 'package:example/chat_message_hero/main.dart';
 import 'package:example/show_details_hero/main.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -26,7 +26,7 @@ void main() {
         }
       });
 
-      await tester.pumpWidget(const MaterialApp(home: chat.HeroHereExample()));
+      await tester.pumpWidget(const MaterialApp(home: ChatMessageExample()));
       await _wait(1000);
       await _measure(binding, tester, 'chat', () async {
         for (var i = 0; i < 10; i++) {
@@ -36,7 +36,7 @@ void main() {
         }
       });
 
-      await tester.pumpWidget(const MaterialApp(home: auto.HeroHereExample()));
+      await tester.pumpWidget(const MaterialApp(home: AutoSwitchingExample()));
       await _wait(1000);
       // The play button, then a button for each hero.
       final buttons = find.descendant(

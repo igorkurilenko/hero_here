@@ -24,18 +24,18 @@ void main() => runApp(
     debugShowCheckedModeBanner: false,
     theme: ThemeData(useMaterial3: true, brightness: Brightness.light),
     darkTheme: ThemeData(useMaterial3: true, brightness: Brightness.dark),
-    home: const HeroHereExample(),
+    home: const ChatMessageExample(),
   ),
 );
 
-class HeroHereExample extends StatefulWidget {
-  const HeroHereExample({super.key});
+class ChatMessageExample extends StatefulWidget {
+  const ChatMessageExample({super.key});
 
   @override
-  State<HeroHereExample> createState() => _HeroHereExampleState();
+  State<ChatMessageExample> createState() => _ChatMessageExampleState();
 }
 
-class _HeroHereExampleState extends State<HeroHereExample> {
+class _ChatMessageExampleState extends State<ChatMessageExample> {
   final _messages = <Message>[];
   // The message being typed. Sending it starts a new one, so the input's
   // hero hands its tag to the sent message, which flies into the list.
