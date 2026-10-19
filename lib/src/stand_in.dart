@@ -195,6 +195,21 @@ class _KeptLook {
           offset: offset,
         ),
         OffsetLayer(:final offset) => () => OffsetLayer(offset: offset),
+        // A link has one leader at a time, so a leader comes back as the
+        // offset it puts what's in it at.
+        LeaderLayer(:final offset) => () => OffsetLayer(offset: offset),
+        FollowerLayer() => switch (_lastTransformOf(layer)) {
+          final transform => () => TransformLayer(transform: transform),
+        },
         _ => null,
       };
+
+  /// The transform [follower] put what's in it through as it last
+  /// composited: to where its leader was, or else by its unlinked offset.
+  static Matrix4 _lastTransformOf(FollowerLayer follower) {
+    final offset = follower.unlinkedOffset ?? Offset.zero;
+    final transform = Matrix4.translationValues(offset.dx, offset.dy, 0);
+    if (follower.getLastTransform() case final last?) transform.multiply(last);
+    return transform;
+  }
 }

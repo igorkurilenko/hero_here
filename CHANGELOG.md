@@ -1,3 +1,9 @@
+## Unreleased
+
+### Fixes
+
+* Show a hero that went away where it was on the frame of its switch when a `CompositedTransformTarget` or a `CompositedTransformFollower` placed it. The stand-in the switch shows for it left out the offset or the transform they put it at, so for that frame it showed elsewhere, such as at the follower's place before it followed.
+
 ## 2.1.1
 
 ### Fixes

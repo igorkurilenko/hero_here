@@ -152,6 +152,72 @@ void _standInsTests() {
     });
   }
 
+  testWidgets('stands in for a hero where a composited transform target puts '
+      'it', (tester) async {
+    _setUpView(tester);
+    final slot = ValueNotifier(0);
+    addTearDown(slot.dispose);
+    final link = LayerLink();
+
+    await tester.pumpWidget(
+      _PlacedSwitcher(
+        slot: slot,
+        place: (hero) => Positioned.fromRect(
+          rect: _clippedRect,
+          child: CompositedTransformTarget(link: link, child: hero),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    await _expectRedIn(tester, _clippedRect);
+
+    slot.value = 1;
+    await tester.pump();
+
+    await _expectRedIn(tester, _clippedRect);
+  });
+
+  testWidgets('stands in for a hero where a composited transform follower '
+      'puts it', (tester) async {
+    _setUpView(tester);
+    final slot = ValueNotifier(0);
+    addTearDown(slot.dispose);
+    final link = LayerLink();
+
+    await tester.pumpWidget(
+      _PlacedSwitcher(
+        slot: slot,
+        others: [
+          Positioned(
+            left: 300,
+            top: 50,
+            child: CompositedTransformTarget(
+              link: link,
+              child: const SizedBox.square(dimension: 10),
+            ),
+          ),
+        ],
+        // Laid out away from the clipped rect, but drawn where the target
+        // is, moved to the clipped rect.
+        place: (hero) => Positioned.fromRect(
+          rect: const Offset(20, 30) & _clippedRect.size,
+          child: CompositedTransformFollower(
+            link: link,
+            offset: _clippedRect.topLeft - const Offset(300, 50),
+            child: hero,
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    await _expectRedIn(tester, _clippedRect);
+
+    slot.value = 1;
+    await tester.pump();
+
+    await _expectRedIn(tester, _clippedRect);
+  });
+
   testWidgets('disposes the layer a stand-in shows once it goes', (
     tester,
   ) async {
@@ -228,6 +294,62 @@ Offset? _paintedAt(Layer layer) {
 }
 
 const _clippedRect = Rect.fromLTWH(100, 100, 200, 200);
+
+/// Expects red at the corners of [rect], just inside it, and in its middle,
+/// and not just outside its top left corner.
+Future<void> _expectRedIn(WidgetTester tester, Rect rect) async {
+  const red = Color(0xFFFF0000);
+  expect(await _pixelAt(tester, rect.center), red);
+  expect(await _pixelAt(tester, rect.topLeft + const Offset(4, 4)), red);
+  expect(await _pixelAt(tester, rect.bottomRight - const Offset(4, 4)), red);
+  expect(await _pixelAt(tester, rect.topLeft - const Offset(4, 4)), isNot(red));
+}
+
+/// Shows a red hero that [place] puts in the switcher's child, or, when
+/// [slot] is 1, a hero with its tag in the third slot of [_slotRects]. The
+/// [others] show either way.
+class _PlacedSwitcher extends StatelessWidget {
+  const _PlacedSwitcher({
+    required this.slot,
+    required this.place,
+    this.others = const [],
+  });
+
+  final ValueNotifier<int> slot;
+  final Widget Function(Widget hero) place;
+  final List<Widget> others;
+
+  @override
+  Widget build(BuildContext context) => MaterialApp(
+    home: ValueListenableBuilder(
+      valueListenable: slot,
+      builder: (context, slot, _) => HeroHereSwitcher(
+        child: Stack(
+          children: [
+            ...others,
+            if (slot == 0)
+              place(
+                const HeroHere(
+                  key: ValueKey(0),
+                  tag: 'hero',
+                  child: ColoredBox(color: Color(0xFFFF0000)),
+                ),
+              )
+            else
+              Positioned.fromRect(
+                rect: _slotRects[2],
+                child: const HeroHere(
+                  key: ValueKey(1),
+                  tag: 'hero',
+                  child: ColoredBox(color: Color(0xFFFF0000)),
+                ),
+              ),
+          ],
+        ),
+      ),
+    ),
+  );
+}
 
 /// Shows a red hero at [_clippedRect], in a clip that rounds its corners from
 /// outside it, or, when [slot] is 1, a hero with its tag in the third slot of
