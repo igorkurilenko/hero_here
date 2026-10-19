@@ -12,8 +12,7 @@ void main() {
   testWidgets('enables the back button once the details have flown open', (
     tester,
   ) async {
-    await tester.pumpWidget(const MaterialApp(home: ShowDetailsExample()));
-    await tester.pumpAndSettle();
+    await _pumpExample(tester);
 
     await tester.tap(find.text('K2'));
     await tester.pump();
@@ -28,10 +27,7 @@ void main() {
   });
 
   testWidgets('keeps the back button when the page rebuilds', (tester) async {
-    await tester.pumpWidget(const MaterialApp(home: ShowDetailsExample()));
-    await tester.pumpAndSettle();
-    await tester.tap(find.text('K2'));
-    await tester.pumpAndSettle();
+    await _openK2Details(tester);
 
     // Rebuild with the details still open, as on a window resize.
     tester.element(find.byType(ShowDetailsExample)).markNeedsBuild();
@@ -44,10 +40,7 @@ void main() {
   testWidgets('fades the back button out when the details close', (
     tester,
   ) async {
-    await tester.pumpWidget(const MaterialApp(home: ShowDetailsExample()));
-    await tester.pumpAndSettle();
-    await tester.tap(find.text('K2'));
-    await tester.pumpAndSettle();
+    await _openK2Details(tester);
 
     await tester.tap(find.byIcon(Icons.chevron_left));
     await tester.pump();
@@ -57,10 +50,7 @@ void main() {
   });
 
   testWidgets('clips the back button\'s fade to the button', (tester) async {
-    await tester.pumpWidget(const MaterialApp(home: ShowDetailsExample()));
-    await tester.pumpAndSettle();
-    await tester.tap(find.text('K2'));
-    await tester.pumpAndSettle();
+    await _openK2Details(tester);
 
     // On the web an opacity layer paints offscreen, even when opaque, as big
     // as the clip around it.
@@ -91,14 +81,9 @@ void main() {
   testWidgets('drags the details without rebuilding their image', (
     tester,
   ) async {
-    // Tall enough to build the title and the description.
-    tester.view.physicalSize = const Size(2400, 4800);
-    addTearDown(tester.view.resetPhysicalSize);
+    _useTallView(tester);
 
-    await tester.pumpWidget(const MaterialApp(home: ShowDetailsExample()));
-    await tester.pumpAndSettle();
-    await tester.tap(find.text('K2'));
-    await tester.pumpAndSettle();
+    await _openK2Details(tester);
 
     final imageWidth = tester.getSize(find.byType(AspectRatio)).width;
     // The alpha of the title's and the description's color.
@@ -147,14 +132,9 @@ void main() {
   testWidgets('paints the open details\' text without opacity layers', (
     tester,
   ) async {
-    // Tall enough to build the title and the description.
-    tester.view.physicalSize = const Size(2400, 4800);
-    addTearDown(tester.view.resetPhysicalSize);
+    _useTallView(tester);
 
-    await tester.pumpWidget(const MaterialApp(home: ShowDetailsExample()));
-    await tester.pumpAndSettle();
-    await tester.tap(find.text('K2'));
-    await tester.pumpAndSettle();
+    await _openK2Details(tester);
 
     final details = find.byType(EightThousanderDetailsHero);
     expect(
@@ -167,13 +147,10 @@ void main() {
 
   testWidgets('fades the flying title and description without opacity '
       'layers', (tester) async {
-    // Tall enough to build the title and the description, so they fly too.
-    tester.view.physicalSize = const Size(2400, 4800);
-    addTearDown(tester.view.resetPhysicalSize);
+    // So the title and the description fly too.
+    _useTallView(tester);
 
-    await tester.pumpWidget(const MaterialApp(home: ShowDetailsExample()));
-    await tester.pumpAndSettle();
-    final k2 = kEightThousanders.firstWhere((x) => x.name == 'K2');
+    await _pumpExample(tester);
     final switcher = find.byType(HeroHereSwitcher);
     // The alphas of the colors of the title and the description that are
     // partway faded.
@@ -181,7 +158,7 @@ void main() {
       for (final text in tester.renderObjectList<RenderParagraph>(
         find.descendant(of: switcher, matching: find.byType(RichText)),
       ))
-        if ([k2.name, k2.description].contains(text.text.toPlainText()) &&
+        if ([_k2.name, _k2.description].contains(text.text.toPlainText()) &&
             text.text.style!.color!.a > 0 &&
             text.text.style!.color!.a < 1)
           text.text.style!.color!.a,
@@ -210,8 +187,7 @@ void main() {
 
   testWidgets('paints the grid without opacity layers of its own while the '
       'details are closed', (tester) async {
-    await tester.pumpWidget(const MaterialApp(home: ShowDetailsExample()));
-    await tester.pumpAndSettle();
+    await _pumpExample(tester);
     expect(_opacityLayersIn(tester, find.byType(ShowDetailsExample)), 0);
 
     await tester.tap(find.text('K2'));
@@ -222,8 +198,7 @@ void main() {
   });
 
   testWidgets('dims the grid while the details are open', (tester) async {
-    await tester.pumpWidget(const MaterialApp(home: ShowDetailsExample()));
-    await tester.pumpAndSettle();
+    await _pumpExample(tester);
     final background = Theme.of(tester.element(find.byType(HeroHereSwitcher)))
         .canvasColor;
     // How opaque the color over the grid is.
@@ -268,8 +243,7 @@ void main() {
         addTearDown(tester.view.reset);
         addTearDown(tester.view.display.reset);
       }
-      await tester.pumpWidget(const MaterialApp(home: ShowDetailsExample()));
-      await tester.pumpAndSettle();
+      await _pumpExample(tester);
       final ratio = tester.view.devicePixelRatio;
 
       final cells = find.byType(EightThousanderPreviewHero);
@@ -302,8 +276,7 @@ void main() {
     tester.view.display.size = const Size(1920, 1080) * 2;
     addTearDown(tester.view.reset);
     addTearDown(tester.view.display.reset);
-    await tester.pumpWidget(const MaterialApp(home: ShowDetailsExample()));
-    await tester.pumpAndSettle();
+    await _pumpExample(tester);
     final image = find.byType(Image).first;
     final wide = _decodedHeightOf(tester, image);
 
@@ -320,9 +293,7 @@ void main() {
     PaintingBinding.instance.imageCache
       ..clear()
       ..clearLiveImages();
-    await tester.pumpWidget(const MaterialApp(home: ShowDetailsExample()));
-    await tester.pumpAndSettle();
-    final k2 = kEightThousanders.firstWhere((it) => it.name == 'K2');
+    await _pumpExample(tester);
     final thumbnail = tester
         .widget<Image>(
           find.descendant(
@@ -348,21 +319,17 @@ void main() {
 
     // The full image loads, as it would in time.
     await tester.runAsync(
-      () => precacheImage(AssetImage(k2.image), tester.element(details)),
+      () => precacheImage(AssetImage(_k2.image), tester.element(details)),
     );
     await tester.pump();
     expect(shown(), isNot(contains(thumbnail)));
   });
 
   testWidgets('closes the details when flung down', (tester) async {
-    // Tall enough to build the title and the description, so they fly too.
-    tester.view.physicalSize = const Size(2400, 4800);
-    addTearDown(tester.view.resetPhysicalSize);
+    // So the title and the description fly too.
+    _useTallView(tester);
 
-    await tester.pumpWidget(const MaterialApp(home: ShowDetailsExample()));
-    await tester.pumpAndSettle();
-    await tester.tap(find.text('K2'));
-    await tester.pumpAndSettle();
+    await _openK2Details(tester);
 
     await tester.fling(find.byType(AspectRatio), const Offset(0, 200), 1000);
     await tester.pumpAndSettle();
@@ -373,10 +340,7 @@ void main() {
   testWidgets('closes the details onto where the cell is after a resize', (
     tester,
   ) async {
-    await tester.pumpWidget(const MaterialApp(home: ShowDetailsExample()));
-    await tester.pumpAndSettle();
-    await tester.tap(find.text('K2'));
-    await tester.pumpAndSettle();
+    await _openK2Details(tester);
 
     // A narrower window moves the cell.
     tester.view.physicalSize = const Size(1200, 1800);
@@ -387,7 +351,7 @@ void main() {
 
     // While the cell is hidden, the image showing is the flight's shuttle.
     // It shows K2's image in full, or as the cell's thumbnail.
-    const k2 = AssetImage('assets/images/k2.jpeg');
+    final k2 = AssetImage(_k2.image);
     final image = find.byWidgetPredicate(
       (widget) =>
           widget is Image &&
@@ -416,8 +380,7 @@ void main() {
   });
 
   testWidgets('shows the scrollbars at the window edge', (tester) async {
-    await tester.pumpWidget(const MaterialApp(home: ShowDetailsExample()));
-    await tester.pumpAndSettle();
+    await _pumpExample(tester);
 
     Rect scrollbarOf(Type scrollView) => tester.getRect(
       find.descendant(
@@ -436,6 +399,27 @@ void main() {
     // So do the details.
     expect(tester.getRect(find.byType(AspectRatio)).left, 120);
   }, variant: TargetPlatformVariant.only(TargetPlatform.macOS));
+}
+
+final _k2 = kEightThousanders.firstWhere((x) => x.name == 'K2');
+
+Future<void> _pumpExample(WidgetTester tester) async {
+  await tester.pumpWidget(const MaterialApp(home: ShowDetailsExample()));
+  await tester.pumpAndSettle();
+}
+
+/// Pumps the example and opens K2's details.
+Future<void> _openK2Details(WidgetTester tester) async {
+  await _pumpExample(tester);
+  await tester.tap(find.text('K2'));
+  await tester.pumpAndSettle();
+}
+
+/// Makes the view tall enough for the details to build their title and
+/// description, below their image, for the rest of the test.
+void _useTallView(WidgetTester tester) {
+  tester.view.physicalSize = const Size(2400, 4800);
+  addTearDown(tester.view.resetPhysicalSize);
 }
 
 /// How many opacity layers the render objects below [finder] paint into.
