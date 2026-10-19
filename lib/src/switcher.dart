@@ -313,8 +313,7 @@ class _Switch extends _SwitchingState {
       // were.
       looks: Map.identity()
         ..addAll({
-          for (final hero in standIns)
-            hero: ?_KeptLook.of(hero, switcher.childLayer),
+          for (final hero in standIns) hero: ?_KeptLook.of(hero, switcher),
         }),
     );
   }

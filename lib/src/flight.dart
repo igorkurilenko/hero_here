@@ -31,7 +31,7 @@ class _FlightWidget extends StatelessWidget {
         animation: flight.animation,
         builder: (context, _) => _ShuttleRect(
           rect: flight.evaluateRect(),
-          space: () => flight._registry.switcher.childBox,
+          space: () => flight.switcher.childBox,
           // The shuttle moves on each frame. In its own layer, it repaints
           // only when it changes, such as when it changes size.
           child: IgnorePointer(
@@ -223,6 +223,9 @@ class _Flight extends ChangeNotifier {
 
   Object get tag => manifest.tag;
 
+  /// The switcher whose flight this is.
+  _Switcher get switcher => _registry.switcher;
+
   _FlightManifest get manifest => _manifest;
 
   factory _Flight.start({
@@ -382,14 +385,13 @@ class _Flight extends ChangeNotifier {
   }
 
   /// The size the switcher's child has now.
-  Size? get _childSize => _registry.switcher.childSize;
+  Size? get _childSize => switcher.childSize;
 
   /// Where [hero] is in the switcher's child, or was at the last switch if
   /// it's nowhere now. A hero that a global key moved into another switcher
   /// is measured where it is, in this flight's switcher's space.
   Rect? _rectOf(_Hero hero) =>
-      hero.computeRectIn(_registry.switcher) ??
-      hero.placeholderRectIn(_registry.switcher);
+      hero.computeRectIn(switcher) ?? hero.placeholderRectIn(switcher);
 
   void _forward({double? from}) {
     _reversed = false;
