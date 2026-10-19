@@ -22,8 +22,6 @@ class EightThousanderPreviewHero extends StatefulWidget {
   final String tag;
   final EightThousander eightThousander;
   final ValueChanged<BuildContext>? onTap;
-  final HeroHereFlightAnimationControllerFactory?
-  imageHeroFlightAnimationControllerFactory;
   final HeroHereFlightAnimationFactory? imageHeroFlightAnimationFactory;
   final HeroHereFlightAnimationStarter? forwardImageHeroFlightAnimation;
 
@@ -32,7 +30,6 @@ class EightThousanderPreviewHero extends StatefulWidget {
     required this.tag,
     required this.eightThousander,
     this.onTap,
-    this.imageHeroFlightAnimationControllerFactory,
     this.imageHeroFlightAnimationFactory,
     this.forwardImageHeroFlightAnimation,
   });
@@ -68,8 +65,6 @@ class _EightThousanderPreviewHeroState
   HeroHere _buildImageHero() => HeroHere(
     key: ValueKey('$kImageHeroTagPrefix$tag'),
     tag: '$kImageHeroTagPrefix$tag',
-    flightAnimationControllerFactory:
-        widget.imageHeroFlightAnimationControllerFactory,
     flightAnimationFactory: widget.imageHeroFlightAnimationFactory,
     forwardFlightAnimation: widget.forwardImageHeroFlightAnimation,
     flightShuttleBuilder: _buildImageHeroFlightShuttle,
