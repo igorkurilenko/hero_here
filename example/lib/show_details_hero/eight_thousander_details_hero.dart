@@ -183,14 +183,7 @@ class _EightThousanderDetailsHeroState
       style: style.copyWith(color: _faded(style.color, opacity * flight)),
     );
 
-    return HeroHere(
-      key: ValueKey('$kDetailsHeroKeyPrefix$kTitleHeroTagPrefix$tag'),
-      tag: '$kTitleHeroTagPrefix$tag',
-      rectTweenFactory: _createTitleOrDescriptionHeroRectTween,
-      flightShuttleBuilder: _buildTitleOrDescriptionHeroFlightShuttle,
-      payload: title,
-      child: title(1),
-    );
+    return _buildTextHero(kTitleHeroTagPrefix, title);
   }
 
   HeroHere _buildDescriptionHero() {
@@ -204,15 +197,19 @@ class _EightThousanderDetailsHeroState
       style: TextStyle(color: _faded(color, opacity * flight)),
     );
 
-    return HeroHere(
-      key: ValueKey('$kDetailsHeroKeyPrefix$kDescriptionHeroTagPrefix$tag'),
-      tag: '$kDescriptionHeroTagPrefix$tag',
-      rectTweenFactory: _createTitleOrDescriptionHeroRectTween,
-      flightShuttleBuilder: _buildTitleOrDescriptionHeroFlightShuttle,
-      payload: text,
-      child: text(1),
-    );
+    return _buildTextHero(kDescriptionHeroTagPrefix, text);
   }
+
+  /// The hero of a text of the details, with [tagPrefix], whose flights fade
+  /// it by [text]'s opacity.
+  HeroHere _buildTextHero(String tagPrefix, FadedText text) => HeroHere(
+    key: ValueKey('$kDetailsHeroKeyPrefix$tagPrefix$tag'),
+    tag: '$tagPrefix$tag',
+    rectTweenFactory: _createTitleOrDescriptionHeroRectTween,
+    flightShuttleBuilder: _buildTitleOrDescriptionHeroFlightShuttle,
+    payload: text,
+    child: text(1),
+  );
 
   /// [color] faded by [opacity], as a drag closes the details or a flight
   /// fades them. Text faded by its color paints without the offscreen layer

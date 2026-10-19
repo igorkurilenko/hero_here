@@ -56,8 +56,8 @@ class _EightThousanderPreviewHeroState
         Expanded(child: _buildImageHero()),
         const SizedBox(height: 8),
         _buildTitle(),
-        _buildFakeTitleHero(),
-        _buildFakeDescriptionHero(),
+        _buildFakeTextHero(kTitleHeroTagPrefix),
+        _buildFakeTextHero(kDescriptionHeroTagPrefix),
       ],
     ),
   );
@@ -82,17 +82,11 @@ class _EightThousanderPreviewHeroState
 
   Text _buildTitle() => Text(widget.eightThousander.name, style: titleStyle);
 
-  HeroHere _buildFakeDescriptionHero() => HeroHere(
-    key: ValueKey('$kDescriptionHeroTagPrefix$tag'),
-    tag: '$kDescriptionHeroTagPrefix$tag',
-    rectTweenFactory: _createTitleOrDescriptionHeroRectTween,
-    flightShuttleBuilder: _buildTitleOrDescriptionHeroFlightShuttle,
-    child: const SizedBox(),
-  );
-
-  HeroHere _buildFakeTitleHero() => HeroHere(
-    key: ValueKey('$kTitleHeroTagPrefix$tag'),
-    tag: '$kTitleHeroTagPrefix$tag',
+  /// An empty hero for a text of the details, with [tagPrefix], which the
+  /// text flies from and back to.
+  HeroHere _buildFakeTextHero(String tagPrefix) => HeroHere(
+    key: ValueKey('$tagPrefix$tag'),
+    tag: '$tagPrefix$tag',
     rectTweenFactory: _createTitleOrDescriptionHeroRectTween,
     flightShuttleBuilder: _buildTitleOrDescriptionHeroFlightShuttle,
     child: const SizedBox(),
