@@ -47,10 +47,13 @@ class _HeroHereSwitcherState extends State<HeroHereSwitcher>
   /// walk of the child, in tree order. Of heroes equal by tag and key, the
   /// first in the tree counts.
   Set<_Hero> findHeroes() {
-    final child = _childKey.currentContext as Element?;
+    final child = childElement;
     if (child == null) return const {};
     return LinkedHashSet.of(_inTreeOrder(_heroes, child));
   }
+
+  /// The element of the switcher's child, which its heroes are below.
+  Element? get childElement => _childKey.currentContext as Element?;
 
   /// The switcher's child. Flights work out their rects in its space, so the
   /// rects don't depend on where the switcher is on the screen, which may not
