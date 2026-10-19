@@ -1600,6 +1600,42 @@ void main() {
     expect(find.byKey(_shuttleKey), findsNothing);
   });
 
+  testWidgets('flies from the hero of its tag that the last switch showed, '
+      'though one that mounted since comes first', (tester) async {
+    final stage = ValueNotifier(0);
+    addTearDown(stage.dispose);
+    await tester.pumpWidget(
+      MaterialApp(
+        home: ValueListenableBuilder(
+          valueListenable: stage,
+          builder: (context, stage, _) => HeroHereSwitcher(
+            // The second stage shows in place, so its new hero mounts with no
+            // switch, before the hero the last switch showed.
+            switchKey: stage < 2 ? 'a' : 'b',
+            child: Stack(
+              children: [
+                if (stage == 1) _heroAt(const ValueKey('b'), _slotRects[1]),
+                if (stage < 2) _heroAt(const ValueKey('a'), _slotRects[0]),
+                if (stage == 2) _heroAt(const ValueKey('c'), _slotRects[2]),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    stage.value = 1;
+    await tester.pumpAndSettle();
+    expect(_boxOf(const ValueKey('a')), findsOneWidget);
+    expect(_boxOf(const ValueKey('b')), findsOneWidget);
+
+    stage.value = 2;
+    await _pumpSwitch(tester);
+
+    expect(tester.getRect(find.byKey(_shuttleKey)), _slotRects[0]);
+  });
+
   testWidgets('hides the earlier of new heroes that share a tag', (
     tester,
   ) async {
