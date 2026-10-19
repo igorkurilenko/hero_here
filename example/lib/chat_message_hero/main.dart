@@ -12,11 +12,11 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-import 'package:example/chat_message_hero/message_widget.dart';
 import 'package:flutter/material.dart';
 import 'package:hero_here/hero_here.dart';
 
 import 'message.dart';
+import 'message_widget.dart';
 
 void main() => runApp(
   MaterialApp(

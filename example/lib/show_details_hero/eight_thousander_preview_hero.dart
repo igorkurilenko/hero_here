@@ -12,10 +12,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-import 'package:example/show_details_hero/config.dart';
 import 'package:flutter/material.dart';
 import 'package:hero_here/hero_here.dart';
 
+import 'config.dart';
 import 'eight_thousander.dart';
 
 class EightThousanderPreviewHero extends StatefulWidget {
