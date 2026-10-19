@@ -61,9 +61,12 @@ class _AutoSwitchingExampleState extends State<AutoSwitchingExample> {
 
   set paused(bool value) {
     if (value == _paused) return;
-    setState(() {
-      (_paused = value) ? _pauseHeroSwitching() : _startHeroSwitching();
-    });
+    setState(() => _paused = value);
+    if (value) {
+      _pauseHeroSwitching();
+    } else {
+      _startHeroSwitching();
+    }
   }
 
   @override
@@ -171,7 +174,7 @@ class _AutoSwitchingExampleState extends State<AutoSwitchingExample> {
               children: [
                 IconButton(
                   onPressed: () => paused = !paused,
-                  icon: Icon(_paused ? Icons.play_arrow : Icons.pause),
+                  icon: Icon(paused ? Icons.play_arrow : Icons.pause),
                 ),
               ],
             ),
