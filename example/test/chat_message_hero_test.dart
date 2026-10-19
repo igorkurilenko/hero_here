@@ -12,13 +12,19 @@ final _input = find.byWidgetPredicate(
   (widget) => widget is TextField && !widget.readOnly,
 );
 
+/// Types [text] into the input and sends it, as the keyboard's done key
+/// does.
+Future<void> _send(WidgetTester tester, String text) async {
+  await tester.enterText(_input, text);
+  await tester.testTextInput.receiveAction(TextInputAction.done);
+}
+
 void main() {
   testWidgets('sends a message into the list and clears the input', (
     tester,
   ) async {
     await tester.pumpWidget(const MaterialApp(home: ChatMessageExample()));
-    await tester.enterText(_input, 'Hello');
-    await tester.testTextInput.receiveAction(TextInputAction.done);
+    await _send(tester, 'Hello');
     await tester.pumpAndSettle();
 
     expect(
@@ -43,8 +49,7 @@ void main() {
     tester,
   ) async {
     await tester.pumpWidget(const MaterialApp(home: ChatMessageExample()));
-    await tester.enterText(_input, 'Hello');
-    await tester.testTextInput.receiveAction(TextInputAction.done);
+    await _send(tester, 'Hello');
     await tester.pumpAndSettle();
 
     await tester.testTextInput.receiveAction(TextInputAction.done);
@@ -57,8 +62,7 @@ void main() {
     tester,
   ) async {
     await tester.pumpWidget(const MaterialApp(home: ChatMessageExample()));
-    await tester.enterText(_input, 'Hello');
-    await tester.testTextInput.receiveAction(TextInputAction.done);
+    await _send(tester, 'Hello');
 
     // Typed before the next frame, as a quick typist would.
     tester.testTextInput.updateEditingValue(
@@ -84,8 +88,7 @@ void main() {
     tester,
   ) async {
     await tester.pumpWidget(const MaterialApp(home: ChatMessageExample()));
-    await tester.enterText(_input, 'Hello');
-    await tester.testTextInput.receiveAction(TextInputAction.done);
+    await _send(tester, 'Hello');
     // Lands, and runs the scroll the send scheduled, even if a check fails.
     addTearDown(tester.pumpAndSettle);
     // What the input laid out on the last frame.
@@ -116,8 +119,7 @@ void main() {
     tester,
   ) async {
     await tester.pumpWidget(const MaterialApp(home: ChatMessageExample()));
-    await tester.enterText(_input, 'Hello');
-    await tester.testTextInput.receiveAction(TextInputAction.done);
+    await _send(tester, 'Hello');
     await tester.pumpAndSettle();
 
     final list = find.byType(ListView);
@@ -245,8 +247,7 @@ void main() {
     );
     final before = tester.getRect(previous).top;
 
-    await tester.enterText(_input, 'Message 15');
-    await tester.testTextInput.receiveAction(TextInputAction.done);
+    await _send(tester, 'Message 15');
     await tester.pump();
     await tester.pump();
     expect(tester.getRect(previous).top, before);
@@ -328,8 +329,7 @@ void _showKeyboard(WidgetTester tester, double height) =>
 /// Sends [count] messages, "Message 0" first, and waits for them to land.
 Future<void> _sendMessages(WidgetTester tester, int count) async {
   for (var i = 0; i < count; i++) {
-    await tester.enterText(_input, 'Message $i');
-    await tester.testTextInput.receiveAction(TextInputAction.done);
+    await _send(tester, 'Message $i');
     await tester.pumpAndSettle();
   }
 }
