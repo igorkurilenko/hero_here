@@ -31,8 +31,16 @@ void main() => runApp(
   ),
 );
 
-/// The largest a grid cell gets, but for a grid of one column.
-const kMaxCellExtent = 250.0;
+/// The grid's `maxCrossAxisExtent`.
+const kMaxCrossAxisExtent = 250.0;
+
+/// The space between the grid's cells.
+const kGridSpacing = 32.0;
+
+/// The largest a grid cell gets, in a grid of one column. A grid's cells can
+/// be wider than its maxCrossAxisExtent, by up to its spacing, since it counts
+/// a spacing for each column but puts one fewer between them.
+const kLargestCellExtent = kMaxCrossAxisExtent + kGridSpacing;
 
 /// The size of the open card, on a screen with room for it.
 const kCardExtent = 360.0;
@@ -89,9 +97,9 @@ class _FlipCardExampleState extends State<FlipCardExample>
             body: GridView.builder(
               padding: const EdgeInsets.all(32),
               gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
-                maxCrossAxisExtent: kMaxCellExtent,
-                mainAxisSpacing: 32,
-                crossAxisSpacing: 32,
+                maxCrossAxisExtent: kMaxCrossAxisExtent,
+                mainAxisSpacing: kGridSpacing,
+                crossAxisSpacing: kGridSpacing,
               ),
               itemCount: kEightThousanders.length,
               itemBuilder: (context, index) => _cardHero(
@@ -245,7 +253,7 @@ class _Photo extends StatelessWidget {
         // cache.
         image: ResizeImage(
           AssetImage(eightThousander.image),
-          height: (kMaxCellExtent * MediaQuery.devicePixelRatioOf(context))
+          height: (kLargestCellExtent * MediaQuery.devicePixelRatioOf(context))
               .ceil(),
         ),
         fit: BoxFit.cover,

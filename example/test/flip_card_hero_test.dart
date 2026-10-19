@@ -218,6 +218,9 @@ void main() {
   for (final (where, window) in [
     ('', null),
     (' on a phone', const Size(402, 874)),
+    // The widest window with two columns, whose cells are then 266 px wide:
+    // a grid's cells can be wider than its maxCrossAxisExtent.
+    (' in two columns at their widest', const Size(628, 874)),
   ]) {
     testWidgets('decodes each photo sharp for its cell, and no taller than '
         'the largest cell$where', (tester) async {
@@ -249,7 +252,7 @@ void main() {
             tester.getSize(find.byWidget(photo)).height * ratio,
           ),
         );
-        expect(height, lessThanOrEqualTo((kMaxCellExtent * ratio).ceil()));
+        expect(height, lessThanOrEqualTo((kLargestCellExtent * ratio).ceil()));
       }
     });
   }
@@ -291,8 +294,9 @@ double _veilOf(WidgetTester tester, EightThousander eightThousander) {
                 (widget.decoration as BoxDecoration).image?.image ==
                     ResizeImage(
                       AssetImage(eightThousander.image),
-                      height: (kMaxCellExtent * tester.view.devicePixelRatio)
-                          .ceil(),
+                      height:
+                          (kLargestCellExtent * tester.view.devicePixelRatio)
+                              .ceil(),
                     ),
           ),
         )
