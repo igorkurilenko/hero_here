@@ -12,8 +12,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-import 'dart:math' as math;
-
 import 'package:flutter/material.dart';
 import 'package:flutter/physics.dart';
 import 'package:hero_here/hero_here.dart';
@@ -189,7 +187,7 @@ HeroHere _cardHero({
   // controller.reverse(), needs a controller with bounds.
   reverseFlightAnimation: (controller, {from}) =>
       controller.animateBackWith(_springTo(0, controller, from: from)),
-  flightShuttleBuilder: _flipShuttleBuilder,
+  flightShuttleBuilder: HeroHereShuttles.flip(),
   child: child,
 );
 
@@ -209,28 +207,6 @@ SpringSimulation _springTo(
   // card looks still, rather than when the spring comes fully to rest, about
   // a third of a second later.
   tolerance: const Tolerance(distance: .005, velocity: .05),
-);
-
-/// Flips the card over as it flies, as heroine's `FlipShuttleBuilder` does.
-/// It turns about its upright axis, and shows the hero it leaves until it's
-/// edge on, then the hero it lands on.
-Widget _flipShuttleBuilder(
-  BuildContext flightContext,
-  Animation<double> animation,
-  HeroHere fromHero,
-  HeroHere toHero,
-) => AnimatedBuilder(
-  animation: animation,
-  builder: (context, _) => Transform(
-    alignment: Alignment.center,
-    transform: Matrix4.identity()
-      ..setEntry(3, 2, .001)
-      ..rotateY(math.pi * animation.value),
-    child: animation.value < .5
-        ? fromHero.child
-        // Mirrored, so it reads the right way round once turned over.
-        : Transform.flip(flipX: true, child: toHero.child),
-  ),
 );
 
 /// The front of an eight-thousander's card: its photo.
