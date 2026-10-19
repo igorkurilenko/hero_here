@@ -1240,9 +1240,7 @@ void main() {
   for (final (edge, flipped) in [('bottom', false), ('right', true)]) {
     testWidgets('keeps a diverted shuttle inside the switcher as it swings '
         'toward its $edge edge', (tester) async {
-      tester.view.devicePixelRatio = 1;
-      tester.view.physicalSize = const Size(800, 600);
-      addTearDown(tester.view.reset);
+      _setUpView(tester);
       final slot = ValueNotifier(0);
       addTearDown(slot.dispose);
       const size = Size(60, 60);
@@ -1817,9 +1815,7 @@ void main() {
     testWidgets('stands in for a hero with the clip around it$how', (
       tester,
     ) async {
-      tester.view.devicePixelRatio = 1;
-      tester.view.physicalSize = const Size(800, 600);
-      addTearDown(tester.view.reset);
+      _setUpView(tester);
       final slot = ValueNotifier(0);
       addTearDown(slot.dispose);
 
@@ -2075,9 +2071,7 @@ void main() {
 
   testWidgets('shows its heroes on each frame of a window resize, even when '
       'sizes are read above it', (tester) async {
-    tester.view.devicePixelRatio = 1;
-    tester.view.physicalSize = const Size(800, 600);
-    addTearDown(tester.view.reset);
+    _setUpView(tester);
 
     // Each frame of the resize rebuilds the switcher, so runs a switch.
     await tester.pumpWidget(
@@ -2284,9 +2278,7 @@ void main() {
   testWidgets('lands on a hidden hero that a resize changes the size of', (
     tester,
   ) async {
-    tester.view.devicePixelRatio = 1;
-    tester.view.physicalSize = const Size(800, 600);
-    addTearDown(tester.view.reset);
+    _setUpView(tester);
     final moved = ValueNotifier(false);
     addTearDown(moved.dispose);
 
@@ -2411,9 +2403,7 @@ void main() {
   testWidgets('flies to where its hero is on the frame of a window resize', (
     tester,
   ) async {
-    tester.view.devicePixelRatio = 1;
-    tester.view.physicalSize = const Size(800, 600);
-    addTearDown(tester.view.reset);
+    _setUpView(tester);
     final moved = ValueNotifier(false);
     addTearDown(moved.dispose);
     late Animation<double> animation;
@@ -2468,9 +2458,7 @@ void main() {
   ]) {
     testWidgets('starts where the hero it leaves would be after the window '
         'shrinks, when that hero was $where', (tester) async {
-      tester.view.devicePixelRatio = 1;
-      tester.view.physicalSize = const Size(800, 600);
-      addTearDown(tester.view.reset);
+      _setUpView(tester);
       final slot = ValueNotifier(0);
       addTearDown(slot.dispose);
 
@@ -2507,9 +2495,7 @@ void main() {
   ]) {
     testWidgets('$how from where its shuttle would be after the window '
         'shrinks', (tester) async {
-      tester.view.devicePixelRatio = 1;
-      tester.view.physicalSize = const Size(800, 600);
-      addTearDown(tester.view.reset);
+      _setUpView(tester);
       final slot = ValueNotifier(0);
       addTearDown(slot.dispose);
       const size = Size(40, 40);
@@ -2602,9 +2588,7 @@ void main() {
 
   testWidgets('flies to where its heroes are on the frame a window resize '
       'moves the switcher', (tester) async {
-    tester.view.devicePixelRatio = 1;
-    tester.view.physicalSize = const Size(800, 600);
-    addTearDown(tester.view.reset);
+    _setUpView(tester);
     final moved = ValueNotifier(false);
     addTearDown(moved.dispose);
     late Animation<double> animation;
@@ -2691,9 +2675,7 @@ void main() {
   });
 
   testWidgets('lets what is behind it show through by default', (tester) async {
-    tester.view.devicePixelRatio = 1;
-    tester.view.physicalSize = const Size(800, 600);
-    addTearDown(tester.view.reset);
+    _setUpView(tester);
     const green = Color(0xFF00FF00);
 
     await tester.pumpWidget(
@@ -3034,6 +3016,14 @@ Future<void> _pumpWebFrame(WidgetTester tester, Duration after) async {
   );
   binding.handleDrawFrame();
   await tester.pump();
+}
+
+/// Sets the view to 800 by 600 logical pixels, at a pixel ratio of 1, for
+/// the rest of the test, which may resize it from there.
+void _setUpView(WidgetTester tester) {
+  tester.view.devicePixelRatio = 1;
+  tester.view.physicalSize = const Size(800, 600);
+  addTearDown(tester.view.reset);
 }
 
 /// Pumps the frames of a switch: the frame of its build, which shows the new
