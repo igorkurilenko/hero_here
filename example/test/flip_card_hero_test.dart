@@ -11,17 +11,13 @@ void main() {
   const card = ValueKey('card-0');
 
   testWidgets('flips a card over as it flies open', (tester) async {
-    await tester.pumpWidget(const MaterialApp(home: FlipCardExample()));
-    await tester.pumpAndSettle();
+    await _pumpExample(tester);
 
-    await tester.tap(find.byKey(cell));
-    await tester.pump();
-    // The flight shows from the frame after the switch.
-    await tester.pump();
+    await _startFlight(tester, find.byKey(cell));
 
     var frontFrames = 0;
     var backFrames = 0;
-    for (var frame = 0; frame < 100 && _flying(); frame++) {
+    for (var frame = 0; frame < _frameLimit && _flying(); frame++) {
       final name = find.descendant(
         of: _flip,
         matching: find.text(everest.name),
@@ -39,7 +35,7 @@ void main() {
       } else {
         frontFrames++;
       }
-      await tester.pump(const Duration(milliseconds: 16));
+      await tester.pump(_frame);
     }
 
     expect(frontFrames, greaterThan(0));
@@ -53,23 +49,18 @@ void main() {
 
   testWidgets('carries a card past its place on a spring, and lands as it '
       'comes to rest', (tester) async {
-    await tester.pumpWidget(const MaterialApp(home: FlipCardExample()));
-    await tester.pumpAndSettle();
+    await _pumpExample(tester);
 
-    await tester.tap(find.byKey(cell));
-    await tester.pump();
-    // The flight shows from the frame after the switch.
-    await tester.pump();
+    await _startFlight(tester, find.byKey(cell));
 
     var widest = 0.0;
     var turnedFarthest = 0.0;
     var flown = Duration.zero;
-    const frame = Duration(milliseconds: 16);
-    for (var i = 0; i < 100 && _flying(); i++) {
+    for (var i = 0; i < _frameLimit && _flying(); i++) {
       widest = math.max(widest, tester.getSize(_flip).width);
       turnedFarthest = math.max(turnedFarthest, _turn(tester));
-      await tester.pump(frame);
-      flown += frame;
+      await tester.pump(_frame);
+      flown += _frame;
     }
 
     final landed = tester.getSize(find.byKey(card));
@@ -82,23 +73,20 @@ void main() {
 
   testWidgets('keeps the words of a card on their lines as it grows in '
       'flight', (tester) async {
-    await tester.pumpWidget(const MaterialApp(home: FlipCardExample()));
-    await tester.pumpAndSettle();
-    await tester.tap(find.byKey(cell));
-    await tester.pump();
-    await tester.pump();
+    await _pumpExample(tester);
+    await _startFlight(tester, find.byKey(cell));
 
     final description = find.descendant(
       of: _flip,
       matching: find.text(everest.description),
     );
     final sizes = <Size>[];
-    for (var frame = 0; frame < 100 && _flying(); frame++) {
+    for (var frame = 0; frame < _frameLimit && _flying(); frame++) {
       // Its size as laid out, before the flight scales it.
       if (description.evaluate().isNotEmpty) {
         sizes.add(tester.getSize(description));
       }
-      await tester.pump(const Duration(milliseconds: 16));
+      await tester.pump(_frame);
     }
 
     expect(sizes, isNotEmpty);
@@ -112,15 +100,12 @@ void main() {
   });
 
   testWidgets('flies a card back onto its cell when tapped', (tester) async {
-    await tester.pumpWidget(const MaterialApp(home: FlipCardExample()));
-    await tester.pumpAndSettle();
+    await _pumpExample(tester);
     final cellRect = tester.getRect(find.byKey(cell));
     await tester.tap(find.byKey(cell));
     await tester.pumpAndSettle();
 
-    await tester.tap(find.byKey(card));
-    await tester.pump();
-    await tester.pump();
+    await _startFlight(tester, find.byKey(card));
     expect(_flying(), isTrue);
     await tester.pumpAndSettle();
 
@@ -129,8 +114,7 @@ void main() {
   });
 
   testWidgets('closes the card on a tap beside it', (tester) async {
-    await tester.pumpWidget(const MaterialApp(home: FlipCardExample()));
-    await tester.pumpAndSettle();
+    await _pumpExample(tester);
     await tester.tap(find.byKey(cell));
     await tester.pumpAndSettle();
 
@@ -147,21 +131,18 @@ void main() {
 
   testWidgets('turns a card back to its cell when closed mid-flight, after '
       'it carries on a little', (tester) async {
-    await tester.pumpWidget(const MaterialApp(home: FlipCardExample()));
-    await tester.pumpAndSettle();
+    await _pumpExample(tester);
     final cellRect = tester.getRect(find.byKey(cell));
-    await tester.tap(find.byKey(cell));
-    await tester.pump();
-    await tester.pump();
+    await _startFlight(tester, find.byKey(cell));
     await tester.pump(const Duration(milliseconds: 100));
     final turnedOnClose = _turn(tester);
 
     await tester.tapAt(const Offset(8, 8));
     await tester.pump();
     var turnedFarthest = turnedOnClose;
-    for (var frame = 0; frame < 100 && _flying(); frame++) {
+    for (var frame = 0; frame < _frameLimit && _flying(); frame++) {
       turnedFarthest = math.max(turnedFarthest, _turn(tester));
-      await tester.pump(const Duration(milliseconds: 16));
+      await tester.pump(_frame);
     }
 
     // It swings round at the speed it had, rather than stopping, and never
@@ -176,8 +157,7 @@ void main() {
   testWidgets('dims a card on its way back to the grid along with the grid, '
       'and brightens one that opens from it, as one card closes and another '
       'opens', (tester) async {
-    await tester.pumpWidget(const MaterialApp(home: FlipCardExample()));
-    await tester.pumpAndSettle();
+    await _pumpExample(tester);
     final k2 = kEightThousanders[1];
     await tester.tap(find.byKey(cell));
     await tester.pumpAndSettle();
@@ -197,8 +177,8 @@ void main() {
     var everestVeil = _veilOf(tester, everest);
     var k2Veil = _veilOf(tester, k2);
     expect(k2Veil, closeTo(greyedK2, .1));
-    for (var frame = 0; frame < 100 && _flying(); frame++) {
-      await tester.pump(const Duration(milliseconds: 16));
+    for (var frame = 0; frame < _frameLimit && _flying(); frame++) {
+      await tester.pump(_frame);
       // As dim as it looked a frame before, give or take a frame's fade,
       // where it flies and as it lands alike.
       expect(_veilOf(tester, everest), closeTo(everestVeil, .1));
@@ -228,8 +208,7 @@ void main() {
         tester.view.physicalSize = window * 3;
         addTearDown(tester.view.reset);
       }
-      await tester.pumpWidget(const MaterialApp(home: FlipCardExample()));
-      await tester.pumpAndSettle();
+      await _pumpExample(tester);
       final ratio = tester.view.devicePixelRatio;
 
       final photos = find.descendant(
@@ -255,6 +234,25 @@ void main() {
       }
     });
   }
+}
+
+const _frame = Duration(milliseconds: 16);
+
+/// The most frames a test pumps while a card flies, so that a flight that
+/// never lands fails it rather than hangs it.
+const _frameLimit = 100;
+
+Future<void> _pumpExample(WidgetTester tester) async {
+  await tester.pumpWidget(const MaterialApp(home: FlipCardExample()));
+  await tester.pumpAndSettle();
+}
+
+/// Taps [card] and pumps until its flight shows, from the frame after the
+/// switch.
+Future<void> _startFlight(WidgetTester tester, Finder card) async {
+  await tester.tap(card);
+  await tester.pump();
+  await tester.pump();
 }
 
 /// The flight's card as it flips over, while one flies: the only transform
@@ -290,13 +288,11 @@ double _veilOf(WidgetTester tester, EightThousander eightThousander) {
             (widget) =>
                 widget is DecoratedBox &&
                 widget.decoration is BoxDecoration &&
-                (widget.decoration as BoxDecoration).image?.image ==
-                    ResizeImage(
-                      AssetImage(eightThousander.image),
-                      height:
-                          (kLargestCellExtent * tester.view.devicePixelRatio)
-                              .ceil(),
-                    ),
+                switch ((widget.decoration as BoxDecoration).image?.image) {
+                  ResizeImage(:final imageProvider) =>
+                    imageProvider == AssetImage(eightThousander.image),
+                  _ => false,
+                },
           ),
         )
         .evaluate(),
