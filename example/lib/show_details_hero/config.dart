@@ -29,7 +29,14 @@ const kGridViewConstraints = BoxConstraints(maxWidth: 560);
 EdgeInsets centerColumnPadding(double width) => EdgeInsets.symmetric(
   horizontal: max(0, (width - kGridViewConstraints.maxWidth) / 2),
 );
+
 const kGridViewPadding = EdgeInsets.all(8);
+const kGridViewDelegate = SliverGridDelegateWithFixedCrossAxisCount(
+  crossAxisCount: 2,
+  childAspectRatio: 0.618,
+  mainAxisSpacing: 16,
+  crossAxisSpacing: 16,
+);
 
 /// How tall a grid cell is with the grid [width] wide, or as wide as
 /// [kGridViewConstraints] lets it be, if that's less.
@@ -67,12 +74,6 @@ ImageProvider thumbnailOf(
 
 const kGridViewScaleWhenDetailsOpen = 1.2;
 const kGridViewOpacityOnOpen = 0.1;
-const kGridViewDelegate = SliverGridDelegateWithFixedCrossAxisCount(
-  crossAxisCount: 2,
-  childAspectRatio: 0.618,
-  mainAxisSpacing: 16,
-  crossAxisSpacing: 16,
-);
 
 const kImageHeroTagPrefix = 'image-';
 const kTitleHeroTagPrefix = 'title-';
