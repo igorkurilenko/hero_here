@@ -12,6 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+import 'dart:math';
+
 import 'package:flutter/material.dart';
 import 'package:hero_here/hero_here.dart';
 
@@ -208,34 +210,23 @@ class _ShowDetailsExampleState extends State<ShowDetailsExample> {
       detailsVisible ? kGridViewScaleWhenDetailsOpen : 1.0;
 
   /// How far the grid slides, in fractions of the page's size, as the
-  /// details of the cell at [cellCenter] open. A cell farther from the
-  /// page's center, across or down, than the margin the grid's scale leaves
-  /// slides it toward the center, along the line from the cell, by that
-  /// margin, so the grid still covers the page. A nearer cell doesn't slide
-  /// it.
+  /// details of the cell at [cellCenter] open: toward the page's center,
+  /// along the line from the cell, all the way, or as far as the margin the
+  /// grid's scale leaves across and down, so the grid still covers the page.
   Offset _computeGridViewSlideOffset(Offset cellCenter) {
     // The page's size rather than MediaQuery's, which would make the page
     // depend on the window's size, so each resize would rebuild it and run a
     // switch.
     final pageSize = context.size!;
-    final pageCenter = pageSize.center(Offset.zero);
-    final xOffset = pageCenter.dx - cellCenter.dx;
-    final yOffset = pageCenter.dy - cellCenter.dy;
-    final maxXOffset = pageSize.width * (kGridViewScaleWhenDetailsOpen - 1) / 2;
-    final maxYOffset =
-        pageSize.height * (kGridViewScaleWhenDetailsOpen - 1) / 2;
-    var target = cellCenter;
+    final toCenter = pageSize.center(Offset.zero) - cellCenter;
+    final margin = pageSize * ((kGridViewScaleWhenDetailsOpen - 1) / 2);
+    // The share of the way to the center that keeps within both margins.
+    final share = [
+      1.0,
+      if (toCenter.dx != 0) margin.width / toCenter.dx.abs(),
+      if (toCenter.dy != 0) margin.height / toCenter.dy.abs(),
+    ].reduce(min);
 
-    if (xOffset.abs() > maxXOffset) {
-      final x = cellCenter.dx + xOffset.sign * maxXOffset;
-      final y = (x - cellCenter.dx) * yOffset / xOffset + cellCenter.dy;
-      target = Offset(x, y);
-    } else if (yOffset.abs() > maxYOffset) {
-      final y = cellCenter.dy + yOffset.sign * maxYOffset;
-      final x = (y - cellCenter.dy) * xOffset / yOffset + cellCenter.dx;
-      target = Offset(x, y);
-    }
-
-    return (target - cellCenter).scale(1 / pageSize.width, 1 / pageSize.height);
+    return (toCenter * share).scale(1 / pageSize.width, 1 / pageSize.height);
   }
 }

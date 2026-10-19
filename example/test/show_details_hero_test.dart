@@ -14,8 +14,6 @@ void main() {
     ('far across', const Size(800, 600), 'K2', const Offset(-.1, .0747)),
     // Its scale's margin down, and across in proportion.
     ('far down', const Size(1600, 600), 'K2', const Offset(-.067, .1)),
-    // Within its scale's margins it doesn't slide.
-    ('near the middle', const Size(1600, 1300), 'Lhotse', Offset.zero),
   ]) {
     testWidgets('slides the grid toward a cell $where as its details open', (
       tester,
@@ -36,6 +34,59 @@ void main() {
       expect(offset.dy, closeTo(slide.dy, .001));
     });
   }
+
+  testWidgets('slides the grid all the way to the middle for a cell near it '
+      'as its details open', (tester) async {
+    tester.view.devicePixelRatio = 1;
+    tester.view.physicalSize = const Size(1600, 1300);
+    addTearDown(tester.view.reset);
+    await _pumpExample(tester);
+    final page = tester.getRect(find.byType(ShowDetailsExample));
+    final cell = find.ancestor(
+      of: find.text('Lhotse'),
+      matching: find.byType(EightThousanderPreviewHero),
+    );
+    final toMiddle = page.center - tester.getCenter(cell);
+    // Nearer the middle, across and down, than the grid's scale leaves a
+    // margin to slide into.
+    final margin = page.size * (kGridViewScaleWhenDetailsOpen - 1) / 2;
+    expect(toMiddle.dx.abs(), lessThan(margin.width));
+    expect(toMiddle.dy.abs(), lessThan(margin.height));
+    expect(toMiddle.distance, greaterThan(10));
+
+    await tester.tap(find.text('Lhotse'));
+    await tester.pump();
+
+    final offset = tester
+        .widget<AnimatedSlide>(find.byType(AnimatedSlide))
+        .offset;
+    expect(offset.dx, closeTo(toMiddle.dx / page.width, .001));
+    expect(offset.dy, closeTo(toMiddle.dy / page.height, .001));
+  });
+
+  testWidgets('slides the grid no farther than its scale leaves a margin, '
+      'for a cell far across and down', (tester) async {
+    await _pumpExample(tester);
+    final page = tester.getRect(find.byType(ShowDetailsExample));
+    // The first cell of the second row, which reaches below the page.
+    final cell = tester.getRect(
+      find.byType(EightThousanderPreviewHero, skipOffstage: false).at(2),
+    );
+    final toMiddle = page.center - cell.center;
+
+    await tester.tapAt(Offset(cell.center.dx, page.bottom - 20));
+    await tester.pump();
+
+    final offset = tester
+        .widget<AnimatedSlide>(find.byType(AnimatedSlide))
+        .offset;
+    final margin = (kGridViewScaleWhenDetailsOpen - 1) / 2;
+    expect(offset.dx.abs(), lessThanOrEqualTo(margin + 1e-9));
+    expect(offset.dy.abs(), lessThanOrEqualTo(margin + 1e-9));
+    // Toward the middle, along the line from the cell.
+    final slid = Offset(offset.dx * page.width, offset.dy * page.height);
+    expect(slid.direction, closeTo(toMiddle.direction, 1e-6));
+  });
 
   testWidgets('enables the back button once the details have flown open', (
     tester,

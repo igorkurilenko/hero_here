@@ -46,6 +46,20 @@ void main() {
     expect(hero(), last);
   });
 
+  testWidgets('stops switching once the page goes away while it plays', (
+    tester,
+  ) async {
+    await tester.pumpWidget(const MaterialApp(home: AutoSwitchingExample()));
+    await tester.pumpAndSettle();
+    await tester.tap(_playButton);
+    await tester.pump();
+
+    await tester.pumpWidget(const SizedBox());
+    // A switch now would set the state of a page that's gone, and a timer
+    // still running once the test ends fails it.
+    await tester.pump(kAutoHeroSwitchingDuration * 2);
+  });
+
   testWidgets('places its heroes off one line', (tester) async {
     await tester.pumpWidget(const MaterialApp(home: AutoSwitchingExample()));
     await tester.pumpAndSettle();

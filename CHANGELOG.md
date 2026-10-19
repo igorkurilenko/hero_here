@@ -1,3 +1,16 @@
+## Unreleased
+
+### Fixes
+
+* Show a hero that equals one before it, with the same tag and key, again after a switch, with its semantics up to date. While a switch waits, it hides every hero of a tag that may fly, but it told only the heroes it plans flights for to show again. Such a hero then showed without the semantics tree knowing, which tripped an assertion with semantics on, as under a screen reader.
+
+### Example
+
+* Give each chat message an id of its own, by counting them. Its hero's tag came from 20 bits of the message's hash, so two messages could share a tag, with about even odds by 1,200 messages, and of heroes that share a tag only the last shows, so the earlier message vanished from the list.
+* Stop the auto-switching example's timer when its page goes away. It kept switching, and set the state of a page that was gone.
+* Slide the details example's grid all the way toward a tapped cell near the page's middle. It didn't slide at all for a cell nearer the middle than the margin its scale leaves, yet slid the whole margin for one just past it.
+* Keep the details example's grid covering the page for a tapped cell far from the middle both across and down, such as one in the second row. Its slide kept within the margin its scale leaves on one axis only, so it could slide far past the other one and show the page's edge.
+
 ## 2.1.0
 
 ### Features

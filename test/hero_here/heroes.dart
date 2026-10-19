@@ -468,53 +468,47 @@ void _heroesTests() {
     expect(visitsBySwitch, 0);
   });
 
-  testWidgets(
-    'flies to the first of heroes with the same tag and key',
-    (tester) async {
-      final stage = ValueNotifier(0);
-      addTearDown(stage.dispose);
-      await tester.pumpWidget(
-        MaterialApp(
-          home: ValueListenableBuilder(
-            valueListenable: stage,
-            builder: (context, stage, _) => HeroHereSwitcher(
-              child: Stack(
-                children: [
-                  if (stage == 0) _heroAt(const ValueKey('x'), _slotRects[0]),
-                  // Under different parents, so their keys don't clash.
-                  if (stage == 1) ...[
-                    Stack(
-                      children: [_heroAt(const ValueKey('a'), _slotRects[1])],
-                    ),
-                    Stack(
-                      children: [_heroAt(const ValueKey('a'), _slotRects[2])],
-                    ),
-                  ],
+  testWidgets('flies to the first of heroes with the same tag and key', (
+    tester,
+  ) async {
+    final stage = ValueNotifier(0);
+    addTearDown(stage.dispose);
+    await tester.pumpWidget(
+      MaterialApp(
+        home: ValueListenableBuilder(
+          valueListenable: stage,
+          builder: (context, stage, _) => HeroHereSwitcher(
+            child: Stack(
+              children: [
+                if (stage == 0) _heroAt(const ValueKey('x'), _slotRects[0]),
+                // Under different parents, so their keys don't clash.
+                if (stage == 1) ...[
+                  Stack(
+                    children: [_heroAt(const ValueKey('a'), _slotRects[1])],
+                  ),
+                  Stack(
+                    children: [_heroAt(const ValueKey('a'), _slotRects[2])],
+                  ),
                 ],
-              ),
+              ],
             ),
           ),
         ),
-      );
-      await tester.pumpAndSettle();
+      ),
+    );
+    await tester.pumpAndSettle();
 
-      stage.value = 1;
-      await _pumpSwitch(tester);
-      await tester.pump(HeroHere.defaultFlightAnimationDuration * 0.99);
+    stage.value = 1;
+    await _pumpSwitch(tester);
+    await tester.pump(HeroHere.defaultFlightAnimationDuration * 0.99);
 
-      // The second, equal to the first, takes no part.
-      expect(
-        (tester.getRect(find.byKey(_shuttleKey)).center - _slotRects[1].center)
-            .distance,
-        lessThan(2),
-      );
-    },
-    // Equal heroes trip a semantics assertion, as the hero hiding by tag and
-    // key hides both, which this test isn't about. A test before it in this
-    // file that fails leaves semantics on, though: testWidgets disposes its
-    // semantics handle only once the test passes. So this one fails too.
-    semanticsEnabled: false,
-  );
+    // The second, equal to the first, takes no part.
+    expect(
+      (tester.getRect(find.byKey(_shuttleKey)).center - _slotRects[1].center)
+          .distance,
+      lessThan(2),
+    );
+  });
 
   testWidgets('starts the flights of a switch in tree order, so a hero flies '
       'under the heroes inside it', (tester) async {

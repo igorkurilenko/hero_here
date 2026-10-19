@@ -79,6 +79,12 @@ class _AutoSwitchingExampleState extends State<AutoSwitchingExample> {
   }
 
   @override
+  void dispose() {
+    _pauseHeroSwitching();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) => Scaffold(
     appBar: AppBar(
       centerTitle: true,
