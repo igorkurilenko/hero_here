@@ -28,3 +28,11 @@ The driver prints the average, 90th and 99th percentile and worst UI-thread (bui
 - **Keep `--no-dds`.** Without it the app can't connect to its own VM service, which it needs to record frames.
 - **Semantics are off**, as for most users, who don't run an assistive technology. Add `--dart-define=SEMANTICS=true` to measure as under a screen reader such as VoiceOver or TalkBack.
 - **Compare runs on the same phone**, plugged in and at a similar temperature. The auto-switching example places its heroes at random, so its flights differ a little from run to run.
+
+## Signing
+
+The example's Xcode projects carry no development team, so a checkout builds as it is, and macOS signs the app to run locally. To run it on an iPhone, put your team ID in a file that git ignores:
+```
+echo 'DEVELOPMENT_TEAM = <your team ID>' > ios/Flutter/Signing.xcconfig
+```
+`macos/Runner/Configs/Signing.xcconfig` does the same for macOS. Set the team there rather than in Xcode's Signing & Capabilities tab, which writes it into the project for everyone.
