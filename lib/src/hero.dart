@@ -49,8 +49,8 @@ class _HeroHereState extends State<HeroHere> {
   Rect? placeholderRectIn(_Switcher switcher) =>
       _placeholder?.within(switcher.childSize);
 
-  // Runs once the hero mounts, and again when a global key moves it into
-  // another switcher, or out of one.
+  // Runs once the hero mounts, and again each time a global key moves it:
+  // within its switcher, into another one, or out of one.
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();

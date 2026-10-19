@@ -107,13 +107,11 @@ class _Shuttle extends StatelessWidget {
   Widget build(BuildContext context) => builder(context, animation, from, to);
 }
 
-/// Sizes its child to [rect] and paints it there. The [rect] is global, so
-/// the flight lands on its heroes wherever the switcher's sky is placed.
-/// Places a shuttle at [rect], in the space of the switcher's child, which
-/// [space] gives. It works out where that is on the screen when it paints,
-/// once the whole screen is laid out, so the shuttle is where its heroes are
-/// even when the switcher moves on the frame, such as on a window resize
-/// that lays the switcher out anew.
+/// Sizes its child to [rect] and places it there, in the space of the
+/// switcher's child, which [space] gives. It works out where that is on the
+/// screen when it paints, once the whole screen is laid out, so the shuttle
+/// is where its heroes are even when the switcher moves on the frame, such
+/// as on a window resize that lays the switcher out anew.
 class _ShuttleRect extends SingleChildRenderObjectWidget {
   final Rect rect;
   final RenderBox? Function() space;
