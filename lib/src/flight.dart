@@ -569,12 +569,5 @@ class _FlightManifest {
   _FlightManifest get reversed => _FlightManifest(tag: tag, from: to, to: from);
 
   @override
-  int get hashCode => Object.hash(from, to);
-
-  @override
-  bool operator ==(Object other) =>
-      (other is _FlightManifest && from == other.from) && to == other.to;
-
-  @override
   String toString() => '_FlightManifest(from: $from, to: $to)';
 }
