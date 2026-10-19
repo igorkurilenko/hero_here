@@ -623,7 +623,9 @@ void main() {
       );
     },
     // Equal heroes trip a semantics assertion, as the hero hiding by tag and
-    // key hides both, which this test isn't about.
+    // key hides both, which this test isn't about. A test before it in this
+    // file that fails leaves semantics on, though: testWidgets disposes its
+    // semantics handle only once the test passes. So this one fails too.
     semanticsEnabled: false,
   );
 
