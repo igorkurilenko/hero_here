@@ -20,6 +20,7 @@ import '../hero_here.dart';
 
 part 'crossfade.dart';
 part 'flip.dart';
+part 'scale.dart';
 
 /// Ready-made builders of what a flight shows as it flies, for
 /// [HeroHere.flightShuttleBuilder].
@@ -43,4 +44,16 @@ abstract final class HeroHereShuttles {
   /// it past its place and back.
   static HeroHereFlightShuttleBuilder flip({Axis axis = Axis.vertical}) =>
       _flip(axis);
+
+  /// Lays the child of the hero a flight flies to out once, at that hero's
+  /// size, and scales it to the shuttle as it flies, as [fit] and
+  /// [alignment] say: by default, it stretches to fill the shuttle. So what
+  /// it shows keeps its layout in flight, such as where its text wraps,
+  /// rather than being laid out anew at each size the shuttle takes. It lays
+  /// the child out anew when that hero's size changes mid-flight, such as on
+  /// a window resize. See [HeroHere.toHeroSizeOf].
+  static HeroHereFlightShuttleBuilder scale({
+    BoxFit fit = BoxFit.fill,
+    AlignmentGeometry alignment = Alignment.center,
+  }) => _scale(fit, alignment);
 }

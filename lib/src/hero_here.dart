@@ -214,6 +214,16 @@ class HeroHere extends StatefulWidget {
   /// neither of its heroes sets [flightRedirect].
   static const defaultFlightRedirect = HeroHereFlightRedirect.chain;
 
+  /// The size of `toHero`, the hero a flight flies to, for a widget in the
+  /// shuttle that [flightShuttleBuilder] builds with the flight's
+  /// `flightContext`: its size on this frame, or where it was if it's
+  /// nowhere now. Null outside a shuttle. A widget that asks builds again
+  /// when the size changes, so a shuttle can lay out what it shows once, at
+  /// that size, and scale it to the shuttle's, as `HeroHereShuttles.scale`
+  /// does.
+  static Size? toHeroSizeOf(BuildContext context) =>
+      context.dependOnInheritedWidgetOfExactType<_ToHeroSize>()?.size;
+
   /// What the hero flies by. When a switch brings a hero with this tag and
   /// another key, it flies from where the hero with this tag was.
   ///

@@ -21,7 +21,7 @@ Flutter's `Hero` flies a widget to its place on a new route, as the `Navigator` 
 - `HeroHereSwitcher` and `HeroHere`, which work like `AnimatedSwitcher` and `Hero`.
 - Customizable flights: their duration, curve, path and shuttle, and what drives them, such as a spring.
 - Flights that change course mid-flight, either landing on each hero in turn or diverting straight to the new one.
-- Ready-made shuttles: a crossfade, and a flip like a card's.
+- Ready-made shuttles: a crossfade, a flip like a card's, and a scale that keeps text from reflowing in flight.
 - Flights that follow their heroes as they move, such as on a scroll or a window resize.
 - Android, iOS, web, macOS, Windows and Linux. Wasm-ready, with no dependencies beyond Flutter.
 
@@ -160,6 +160,7 @@ A flight shows a shuttle as it flies: by default, the child of the hero it flies
 
 - `HeroHereShuttles.crossfade()` fades the hero a flight leaves out over the hero it flies to.
 - `HeroHereShuttles.flip()` turns the shuttle over like a card, and shows the hero it flies to once it's edge on. Pass `axis: Axis.horizontal` to turn it top over bottom.
+- `HeroHereShuttles.scale()` lays out the hero it flies to once, at that hero's size, and stretches it to the shuttle, so its text keeps its line breaks as the shuttle grows or shrinks. Pass `fit` and `alignment` to scale it another way.
 
 ```dart
 HeroHere(
