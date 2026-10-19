@@ -1,4 +1,8 @@
-## Unreleased
+## 2.1.0
+
+### Features
+
+* Add `HeroHereShuttles`, ready-made builders of what a flight shows as it flies, for `HeroHere.flightShuttleBuilder`. `HeroHereShuttles.crossfade()` fades the hero a flight leaves out over the hero it flies to. `HeroHereShuttles.flip()` turns the shuttle over like a card, about the vertical axis or, with `axis: Axis.horizontal`, the horizontal one. It shows the hero the flight leaves until it's edge on, then the hero it flies to, mirrored so it reads the right way round. Each follows the flight's animation itself, since a flight builds its shuttle once per leg rather than on each frame.
 
 ### Fixes
 
@@ -6,22 +10,13 @@
 
 ### Example
 
+* Add an example whose photo cards flip over as they fly open on a bouncy spring, and back: `example/lib/flip_card_hero/`. Its heroes drive their flights with a `SpringSimulation` on an unbounded controller, so a card swings past its place and back, and a card closed mid-flight carries on a little before it turns back. They fly with `HeroHereShuttles.flip()`, which turns the card about its upright axis. The card's back is laid out at the open card's size and scaled to the shuttle's, so its words keep their lines as it grows and shrinks in flight. Each card dims its own faces while another card is open, rather than lie under a layer that dims the grid, which flights fly over, so a card on its way back to the grid dims along with it when another card opens meanwhile.
+* Decode the details example's grid thumbnails for the cells the device's display shows, rather than for the grid's largest cells. On a phone held upright the cells are smaller, so the 14 thumbnails take about 55 MiB at 3× rather than 111 MiB, within the image cache's 100 MiB, and scrolling no longer evicts and decodes them again. The size follows the wider of the window and the display, so a window's resize still decodes nothing anew, and a phone on its side still gets sharp thumbnails.
+* Sign the example apps with each checkout's own development team, which a `Signing.xcconfig` that git ignores sets, rather than with the team the iOS project carried. Without one, a checkout builds as it is, and macOS signs the app to run locally.
 * Give each chat message an id of its own, by counting them. Its hero's tag came from 20 bits of the message's hash, so two messages could share a tag, with about even odds by 1,200 messages, and of heroes that share a tag only the last shows, so the earlier message vanished from the list.
 * Stop the auto-switching example's timer when its page goes away. It kept switching, and set the state of a page that was gone.
 * Slide the details example's grid all the way toward a tapped cell near the page's middle. It didn't slide at all for a cell nearer the middle than the margin its scale leaves, yet slid the whole margin for one just past it.
 * Keep the details example's grid covering the page for a tapped cell far from the middle both across and down, such as one in the second row. Its slide kept within the margin its scale leaves on one axis only, so it could slide far past the other one and show the page's edge.
-
-## 2.1.0
-
-### Features
-
-* Add `HeroHereShuttles`, ready-made builders of what a flight shows as it flies, for `HeroHere.flightShuttleBuilder`. `HeroHereShuttles.crossfade()` fades the hero a flight leaves out over the hero it flies to. `HeroHereShuttles.flip()` turns the shuttle over like a card, about the vertical axis or, with `axis: Axis.horizontal`, the horizontal one. It shows the hero the flight leaves until it's edge on, then the hero it flies to, mirrored so it reads the right way round. Each follows the flight's animation itself, since a flight builds its shuttle once per leg rather than on each frame.
-
-### Example
-
-* Add an example whose photo cards flip over as they fly open on a bouncy spring, and back: `example/lib/flip_card_hero/`. Its heroes drive their flights with a `SpringSimulation` on an unbounded controller, so a card swings past its place and back, and a card closed mid-flight carries on a little before it turns back. They fly with `HeroHereShuttles.flip()`, which turns the card about its upright axis. The card's back is laid out at the open card's size and scaled to the shuttle's, so its words keep their lines as it grows and shrinks in flight. Each card dims its own faces while another card is open, rather than lie under a layer that dims the grid, which flights fly over, so a card on its way back to the grid dims along with it when another card opens meanwhile.
-* Decode the details example's grid thumbnails for the cells the device's display shows, rather than for the grid's largest cells. On a phone held upright the cells are smaller, so the 14 thumbnails take about 55 MiB at 3× rather than 111 MiB, within the image cache's 100 MiB, and scrolling no longer evicts and decodes them again. The size follows the wider of the window and the display, so a window's resize still decodes nothing anew, and a phone on its side still gets sharp thumbnails.
-* Sign the example apps with each checkout's own development team, which a `Signing.xcconfig` that git ignores sets, rather than with the team the iOS project carried. Without one, a checkout builds as it is, and macOS signs the app to run locally.
 
 ## 2.0.0
 
