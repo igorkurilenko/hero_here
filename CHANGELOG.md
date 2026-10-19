@@ -1,3 +1,9 @@
+## Unreleased
+
+### Fixes
+
+* Hide the hero a flight leaves when a global key moved it into another switcher, with a disabled `HeroMode` around the whole app too. Asking whether a disabled hero mode left that hero out of the switches, the flight looked past its own switcher, up to the hero mode around the app, so the hero showed under the shuttle that flew from it.
+
 ## 2.2.0
 
 ### Features

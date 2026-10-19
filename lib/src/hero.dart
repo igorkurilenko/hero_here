@@ -50,7 +50,8 @@ class _HeroHereState extends State<HeroHere> {
 
   /// Whether a disabled [HeroMode] between the hero and [switcher]'s child
   /// leaves the hero out of switches, as [_Switcher.findHeroes] leaves it
-  /// out. A hero that went away isn't left out.
+  /// out. A hero that went away isn't left out, nor is one that a global key
+  /// moved out of [switcher]'s child, whatever hero modes are above it.
   bool isLeftOutOf(_Switcher switcher) {
     final root = switcher.childElement;
     if (root == null || wentAway) return false;

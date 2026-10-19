@@ -133,6 +133,51 @@ void _heroesTests() {
     );
   });
 
+  for (final offAround in [false, true]) {
+    testWidgets('hides a hero that a global key moves into another switcher '
+        'while a flight leaves it there'
+        '${offAround ? ', under a disabled hero mode around the app' : ''}', (
+      tester,
+    ) async {
+      final moving = GlobalKey();
+      // 0: the hero in the left switcher; 1: moved into the right one, at the
+      // same place in it, as the left one brings another hero of its tag.
+      Widget app(int stage) {
+        final app = MaterialApp(
+          home: Row(
+            children: [
+              for (final right in [false, true])
+                SizedBox(
+                  width: 400,
+                  height: 600,
+                  child: HeroHereSwitcher(
+                    child: Stack(
+                      children: [
+                        if (stage == (right ? 1 : 0))
+                          _heroAt(moving, _slotRects[0]),
+                        if (!right && stage == 1)
+                          _heroAt(const ValueKey('other'), _slotRects[1]),
+                      ],
+                    ),
+                  ),
+                ),
+            ],
+          ),
+        );
+        return offAround ? HeroMode(enabled: false, child: app) : app;
+      }
+
+      await tester.pumpWidget(app(0));
+      await tester.pumpAndSettle();
+      await tester.pumpWidget(app(1));
+      await _pumpSwitch(tester);
+      await tester.pump(_frame * 3);
+
+      expect(find.byKey(_shuttleKey), findsOneWidget);
+      expect(_painted(tester, _boxOf(moving, skipOffstage: false)), isFalse);
+    });
+  }
+
   testWidgets('hides a hero that a global key moves into a switcher while its '
       'tag flies there, until the flight lands', (tester) async {
     final moving = GlobalKey();
