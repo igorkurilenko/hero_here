@@ -9,6 +9,21 @@ import 'package:hero_here/hero_here.dart';
 
 const _shuttleKey = ValueKey('shuttle');
 
+/// A shuttle that fills its rect, with [_shuttleKey], so a test can find
+/// where a flight is.
+Widget _shuttleBox(
+  BuildContext _,
+  Animation<double> _,
+  HeroHere _,
+  HeroHere _,
+) => const SizedBox.expand(key: _shuttleKey);
+
+/// The widget keyed [box] inside the shuttle with [_shuttleKey].
+Finder _inShuttle(String box) => find.descendant(
+  of: find.byKey(_shuttleKey),
+  matching: find.byKey(ValueKey(box)),
+);
+
 /// A frame at 60 frames a second.
 const _frame = Duration(milliseconds: 16);
 
@@ -2009,12 +2024,8 @@ void main() {
       // Each shows the new child on the frame of the rebuild.
       await tester.pump();
 
-      Finder shuttled(String box) => find.descendant(
-        of: find.byKey(_shuttleKey),
-        matching: find.byKey(ValueKey(box)),
-      );
-      expect(shuttled('box1b'), findsOneWidget);
-      expect(shuttled('box1a'), findsNothing);
+      expect(_inShuttle('box1b'), findsOneWidget);
+      expect(_inShuttle('box1a'), findsNothing);
     });
   }
 
@@ -2033,12 +2044,8 @@ void main() {
     look.value = 'b';
     await tester.pump();
 
-    Finder shuttled(String box) => find.descendant(
-      of: find.byKey(_shuttleKey),
-      matching: find.byKey(ValueKey(box)),
-    );
-    expect(shuttled('boxb'), findsOneWidget);
-    expect(shuttled('boxa'), findsNothing);
+    expect(_inShuttle('boxb'), findsOneWidget);
+    expect(_inShuttle('boxa'), findsNothing);
   });
 
   testWidgets('builds the shuttle of a leg once, not on each frame', (
@@ -2647,8 +2654,7 @@ void main() {
                   child: HeroHere(
                     key: ValueKey(moved),
                     tag: 'hero',
-                    flightShuttleBuilder: (_, _, _, _) =>
-                        const SizedBox.expand(key: _shuttleKey),
+                    flightShuttleBuilder: _shuttleBox,
                     child: const SizedBox(width: 20, height: 20),
                   ),
                 ),
@@ -2759,8 +2765,7 @@ void main() {
                   child: HeroHere(
                     key: ValueKey(moved),
                     tag: 'hero',
-                    flightShuttleBuilder: (_, _, _, _) =>
-                        const SizedBox.expand(key: _shuttleKey),
+                    flightShuttleBuilder: _shuttleBox,
                     child: const SizedBox(width: 20, height: 20),
                   ),
                 ),
@@ -2799,8 +2804,7 @@ void main() {
                 child: HeroHere(
                   key: ValueKey(moved),
                   tag: 'hero',
-                  flightShuttleBuilder: (_, _, _, _) =>
-                      const SizedBox.expand(key: _shuttleKey),
+                  flightShuttleBuilder: _shuttleBox,
                   child: const SizedBox(width: 40, height: 40),
                 ),
               ),
@@ -2853,8 +2857,7 @@ void main() {
                     child: HeroHere(
                       key: ValueKey(moved),
                       tag: 'hero',
-                      flightShuttleBuilder: (_, _, _, _) =>
-                          const SizedBox.expand(key: _shuttleKey),
+                      flightShuttleBuilder: _shuttleBox,
                       child: const SizedBox(width: 40, height: 40),
                     ),
                   ),
@@ -3118,8 +3121,7 @@ class _ChainSwitcher extends StatelessWidget {
                   final hero = HeroHere(
                     key: ValueKey(slot),
                     tag: 'hero',
-                    flightShuttleBuilder: (_, _, _, _) =>
-                        const SizedBox.expand(key: _shuttleKey),
+                    flightShuttleBuilder: _shuttleBox,
                     child: ColoredBox(
                       key: ValueKey('box$slot'),
                       color: const Color(0xFF2196F3),
@@ -3154,8 +3156,7 @@ class _RemountSwitcher extends StatelessWidget {
         Widget hero = HeroHere(
           key: ValueKey(slot),
           tag: 'hero',
-          flightShuttleBuilder: (_, _, _, _) =>
-              const SizedBox.expand(key: _shuttleKey),
+          flightShuttleBuilder: _shuttleBox,
           child: ColoredBox(
             key: ValueKey('box$slot'),
             color: const Color(0xFF2196F3),
@@ -3378,8 +3379,7 @@ class _AlignSwitcher extends StatelessWidget {
             key: ValueKey(slot),
             tag: 'hero',
             flightRedirect: redirect,
-            flightShuttleBuilder: (_, _, _, _) =>
-                const SizedBox.expand(key: _shuttleKey),
+            flightShuttleBuilder: _shuttleBox,
             child: SizedBox.fromSize(size: spots[slot].size),
           ),
         ),
@@ -3505,8 +3505,7 @@ class _LabelSwitcher extends StatelessWidget {
               child: HeroHere(
                 key: ValueKey(slot),
                 tag: 'hero',
-                flightShuttleBuilder: (_, _, _, _) =>
-                    const SizedBox.expand(key: _shuttleKey),
+                flightShuttleBuilder: _shuttleBox,
                 child: ColoredBox(
                   key: ValueKey('box$slot'),
                   color: const Color(0xFF2196F3),
@@ -3596,8 +3595,7 @@ class _GoneSwitcher extends StatelessWidget {
         Widget hero(String key) => HeroHere(
           key: ValueKey(key),
           tag: 'hero',
-          flightShuttleBuilder: (_, _, _, _) =>
-              const SizedBox.expand(key: _shuttleKey),
+          flightShuttleBuilder: _shuttleBox,
           child: const ColoredBox(color: Color(0xFF2196F3)),
         );
 
@@ -3665,9 +3663,7 @@ class _SlotSwitcher extends StatelessWidget {
                     key: ValueKey(slot),
                     tag: 'hero',
                     flightRedirect: redirect,
-                    flightShuttleBuilder:
-                        shuttleBuilder ??
-                        (_, _, _, _) => const SizedBox.expand(key: _shuttleKey),
+                    flightShuttleBuilder: shuttleBuilder ?? _shuttleBox,
                     child: ColoredBox(
                       key: ValueKey('box$slot'),
                       color: const Color(0xFF2196F3),
@@ -3736,8 +3732,7 @@ class _StaySwitcher extends StatelessWidget {
         Widget hero(String key) => HeroHere(
           key: ValueKey(key),
           tag: 'hero',
-          flightShuttleBuilder: (_, _, _, _) =>
-              const SizedBox.expand(key: _shuttleKey),
+          flightShuttleBuilder: _shuttleBox,
           child: const ColoredBox(color: Color(0xFF2196F3)),
         );
 
@@ -3779,8 +3774,7 @@ class _LeftSwitcher extends StatelessWidget {
         Widget hero(String key) => HeroHere(
           key: ValueKey(key),
           tag: 'hero',
-          flightShuttleBuilder: (_, _, _, _) =>
-              const SizedBox.expand(key: _shuttleKey),
+          flightShuttleBuilder: _shuttleBox,
           child: ColoredBox(
             key: ValueKey('box-$key'),
             color: const Color(0xFF2196F3),
@@ -3826,8 +3820,7 @@ class _TurnSwitcher extends StatelessWidget {
         Widget hero(String key) => HeroHere(
           key: ValueKey(key),
           tag: 'hero',
-          flightShuttleBuilder: (_, _, _, _) =>
-              const SizedBox.expand(key: _shuttleKey),
+          flightShuttleBuilder: _shuttleBox,
           child: ColoredBox(
             key: ValueKey('box-$key'),
             color: const Color(0xFF2196F3),
@@ -3878,8 +3871,7 @@ class _NewTagSwitcher extends StatelessWidget {
                   child: HeroHere(
                     key: ValueKey(slot),
                     tag: 'hero',
-                    flightShuttleBuilder: (_, _, _, _) =>
-                        const SizedBox.expand(key: _shuttleKey),
+                    flightShuttleBuilder: _shuttleBox,
                     child: ColoredBox(
                       key: ValueKey('box$slot'),
                       color: const Color(0xFF2196F3),
@@ -3932,8 +3924,7 @@ class _TwinSwitcher extends StatelessWidget {
   Widget _buildHero(String name, Widget child) => HeroHere(
     key: ValueKey(name),
     tag: 'hero',
-    flightShuttleBuilder: (_, _, _, _) =>
-        const SizedBox.expand(key: _shuttleKey),
+    flightShuttleBuilder: _shuttleBox,
     child: child,
   );
 }
@@ -4036,9 +4027,7 @@ class _QuarterWidthSwitcher extends StatelessWidget {
           child: HeroHere(
             key: ValueKey(moved),
             tag: 'hero',
-            flightShuttleBuilder:
-                shuttleBuilder ??
-                (_, _, _, _) => const SizedBox.expand(key: _shuttleKey),
+            flightShuttleBuilder: shuttleBuilder ?? _shuttleBox,
             child: FractionallySizedBox(
               key: ValueKey('box-$moved'),
               widthFactor: moved ? 0.25 : null,
@@ -4105,8 +4094,7 @@ class _PageSwitcher extends StatelessWidget {
   static Widget _hero(Key key) => HeroHere(
     key: key,
     tag: 'hero',
-    flightShuttleBuilder: (_, _, _, _) =>
-        const SizedBox.expand(key: _shuttleKey),
+    flightShuttleBuilder: _shuttleBox,
     child: const SizedBox(width: 40, height: 40),
   );
 }
@@ -4136,8 +4124,7 @@ class _OffsetSwitcher extends StatelessWidget {
                   child: HeroHere(
                     key: ValueKey(moved),
                     tag: 'hero',
-                    flightShuttleBuilder: (_, _, _, _) =>
-                        const SizedBox.expand(key: _shuttleKey),
+                    flightShuttleBuilder: _shuttleBox,
                     child: const ColoredBox(color: Color(0xFF2196F3)),
                   ),
                 ),
@@ -4233,8 +4220,7 @@ Widget _heroAt(Key key, Rect rect) => Positioned.fromRect(
   child: HeroHere(
     key: key,
     tag: 'hero',
-    flightShuttleBuilder: (_, _, _, _) =>
-        const SizedBox.expand(key: _shuttleKey),
+    flightShuttleBuilder: _shuttleBox,
     child: const ColoredBox(color: Color(0xFF2196F3)),
   ),
 );
