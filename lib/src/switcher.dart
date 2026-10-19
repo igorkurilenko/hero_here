@@ -405,7 +405,11 @@ class _SwitchPlan {
   /// The next heroes that hide, since another hero with their tag shows.
   final Set<_Hero> hiddenHeroes;
 
-  _SwitchPlan._(this.flights, this.stoppedTags, this.hiddenHeroes);
+  _SwitchPlan._({
+    required this.flights,
+    required this.stoppedTags,
+    required this.hiddenHeroes,
+  });
 
   /// Plans the switch from [curHeroes] to [nextHeroes], given the heroes of
   /// the last switch and the manifests of the flights [flying], by tag.
@@ -441,19 +445,19 @@ class _SwitchPlan {
         to.tag: _FlightManifest(tag: to.tag, from: sourceOf(to), to: to),
     };
 
-    // A flight under way goes on while a next hero has its tag, even when it
-    // flies back to the hero it left, as a diverted flight may.
     return _SwitchPlan._(
-      {
+      // A flight under way goes on while a next hero has its tag, even when
+      // it flies back to the hero it left, as a diverted flight may.
+      flights: {
         for (final manifest in manifests.values)
           if (!manifest.isIdle || flying.containsKey(manifest.tag))
             manifest.tag: manifest,
       },
-      {
+      stoppedTags: {
         for (final tag in flying.keys)
           if (!manifests.containsKey(tag)) tag,
       },
-      {
+      hiddenHeroes: {
         for (final hero in nextHeroes)
           if (manifests[hero.tag]!.from != hero &&
               manifests[hero.tag]!.to != hero)
