@@ -4,6 +4,10 @@
 
 * Show a hero that went away where it was on the frame of its switch when a `CompositedTransformTarget` or a `CompositedTransformFollower` placed it. The stand-in the switch shows for it left out the offset or the transform they put it at, so for that frame it showed elsewhere, such as at the follower's place before it followed.
 
+### Docs
+
+* Say that a hero builds its child while it hides too, so a `GlobalKey` in a child that a shuttle shows, as the default shuttle does, is in the tree twice while the flight flies. Such a hero needs a `flightShuttleBuilder` that builds what the child shows without the key.
+
 ## 2.1.1
 
 ### Fixes

@@ -223,6 +223,13 @@ class HeroHere extends StatefulWidget {
 
   /// What the hero shows. The default shuttle shows the child of the hero a
   /// flight flies to.
+  ///
+  /// A hero builds its child while it hides too, so the child keeps its
+  /// state and its size. A shuttle that shows the child builds it a second
+  /// time, so a [GlobalKey] in it would be in the tree twice while the
+  /// flight flies, which Flutter doesn't allow. For a child with a global
+  /// key, set a [flightShuttleBuilder] that builds what it shows without the
+  /// key.
   final Widget child;
 
   /// How long a flight takes. Defaults to [defaultFlightAnimationDuration].
