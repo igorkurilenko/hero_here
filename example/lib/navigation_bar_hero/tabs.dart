@@ -16,6 +16,7 @@
 // main.dart places.
 
 import 'package:flutter/material.dart';
+import 'package:hero_here/hero_here.dart';
 
 import '../style/style.dart';
 
@@ -31,7 +32,7 @@ const List<NavTab> kTabs = [
 ];
 
 /// The page of [tab]: its icon and its name. It fades out, then the next
-/// tab's fades in.
+/// tab's fades in, as the indicator flies to the next tab.
 class TabPage extends StatelessWidget {
   const TabPage(this.tab, {super.key});
 
@@ -39,7 +40,7 @@ class TabPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => AnimatedSwitcher(
-    duration: const Duration(milliseconds: 300),
+    duration: HeroHere.defaultFlightAnimationDuration,
     switchInCurve: const Interval(.5, 1),
     switchOutCurve: const Interval(.5, 1),
     child: Center(

@@ -27,11 +27,14 @@ void main() {
     expect(counting, lessThan(kPeriods.last.steps));
     final growing = tester.getSize(_bars.first).height;
     expect(growing, greaterThan(firstBar));
-    expect(growing, lessThan(200 * kPeriods.last.bars.first));
+    expect(growing, lessThan(kChartHeight * kPeriods.last.bars.first.share));
 
     await tester.pumpAndSettle();
     expect(tester.getCenter(_thumb).dx, month);
-    expect(tester.getSize(_bars.first).height, 200 * kPeriods.last.bars.first);
+    expect(
+      tester.getSize(_bars.first).height,
+      kChartHeight * kPeriods.last.bars.first.share,
+    );
     expect(find.text('243,980'), findsOneWidget);
   });
 

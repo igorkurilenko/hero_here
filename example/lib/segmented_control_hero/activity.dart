@@ -23,39 +23,62 @@ import 'package:hero_here/hero_here.dart';
 import '../style/style.dart';
 
 /// A period of the activity: the steps walked in it, and a bar of the chart
-/// for each part of it, as a share of the tallest bar.
-typedef Period = ({
-  String label,
-  int steps,
-  List<double> bars,
-  List<String> barLabels,
-});
+/// for each part of it.
+typedef Period = ({String label, int steps, List<Bar> bars});
+
+/// A bar of the chart: the part of the period it stands for, and its height,
+/// as a share of the chart's.
+typedef Bar = ({String label, double share});
 
 /// The periods the segmented control switches between.
 const List<Period> kPeriods = [
   (
     label: 'Day',
     steps: 8432,
-    bars: [.15, .5, .9, .6, .8, .4, .1],
-    barLabels: ['6', '9', '12', '15', '18', '21', '24'],
+    bars: [
+      (label: '6', share: .15),
+      (label: '9', share: .5),
+      (label: '12', share: .9),
+      (label: '15', share: .6),
+      (label: '18', share: .8),
+      (label: '21', share: .4),
+      (label: '24', share: .1),
+    ],
   ),
   (
     label: 'Week',
     steps: 61207,
-    bars: [.6, .8, .5, .9, .7, 1.0, .4],
-    barLabels: ['M', 'T', 'W', 'T', 'F', 'S', 'S'],
+    bars: [
+      (label: 'M', share: .6),
+      (label: 'T', share: .8),
+      (label: 'W', share: .5),
+      (label: 'T', share: .9),
+      (label: 'F', share: .7),
+      (label: 'S', share: 1.0),
+      (label: 'S', share: .4),
+    ],
   ),
   (
     label: 'Month',
     steps: 243980,
-    bars: [.7, .45, .8, .6, .95, .75, .55],
-    barLabels: ['1', '5', '10', '15', '20', '25', '30'],
+    bars: [
+      (label: '1', share: .7),
+      (label: '5', share: .45),
+      (label: '10', share: .8),
+      (label: '15', share: .6),
+      (label: '20', share: .95),
+      (label: '25', share: .75),
+      (label: '30', share: .55),
+    ],
   ),
 ];
 
 /// How long the chart takes to change to another period: as long as the
 /// thumb's flight to its segment.
 const kChartDuration = HeroHere.defaultFlightAnimationDuration;
+
+/// The chart's height: a bar's at a share of 1.
+const kChartHeight = 200.0;
 
 /// The segmented control's track, which the segments lie on.
 class SegmentTrack extends StatelessWidget {
@@ -143,7 +166,7 @@ class StepsChart extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final tallest = period.bars.reduce(math.max);
+    final tallest = period.bars.map((bar) => bar.share).reduce(math.max);
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -169,11 +192,12 @@ class StepsChart extends StatelessWidget {
         ),
         G.h32,
         SizedBox(
-          height: 240,
+          // With room for the labels under the bars.
+          height: kChartHeight + S.s8,
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.end,
             children: [
-              for (final (index, bar) in period.bars.indexed)
+              for (final bar in period.bars)
                 Expanded(
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.end,
@@ -182,10 +206,10 @@ class StepsChart extends StatelessWidget {
                         duration: kChartDuration,
                         curve: HeroHere.defaultFlightAnimationCurve,
                         width: S.s6,
-                        height: 200 * bar,
+                        height: kChartHeight * bar.share,
                         decoration: ShapeDecoration(
                           // The tallest bar stands out.
-                          color: bar == tallest
+                          color: bar.share == tallest
                               ? theme.colorScheme.primary
                               : theme.colorScheme.onSurface.withValues(
                                   alpha: .1,
@@ -195,7 +219,7 @@ class StepsChart extends StatelessWidget {
                       ),
                       G.h8,
                       Text(
-                        period.barLabels[index],
+                        bar.label,
                         style: theme.textTheme.labelMedium?.copyWith(
                           color: theme.colorScheme.onSurfaceVariant,
                         ),

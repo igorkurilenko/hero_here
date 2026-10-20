@@ -32,27 +32,17 @@ abstract final class S {
 abstract final class G {
   static const Widget h4 = SizedBox(height: S.s1);
   static const Widget h8 = SizedBox(height: S.s2);
-  static const Widget h12 = SizedBox(height: S.s3);
   static const Widget h16 = SizedBox(height: S.s4);
   static const Widget h24 = SizedBox(height: S.s6);
   static const Widget h32 = SizedBox(height: S.s7);
-  static const Widget w4 = SizedBox(width: S.s1);
-  static const Widget w8 = SizedBox(width: S.s2);
   static const Widget w12 = SizedBox(width: S.s3);
-  static const Widget w16 = SizedBox(width: S.s4);
 }
 
 /// Corner radii, as rose_app's.
 abstract final class R {
-  static const double xs = 4;
-  static const double sm = 6;
   static const double md = 8;
   static const double lg = 12;
   static const double xl = 16;
-  static const double xl2 = 20;
-  static const double xl3 = 24;
-  static const double xl4 = 32;
-  static const double full = 999;
 }
 
 /// Font sizes, as rose_app's type scale.
