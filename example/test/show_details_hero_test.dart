@@ -208,6 +208,45 @@ void main() {
     await tester.pumpAndSettle();
   }, variant: TargetPlatformVariant.only(TargetPlatform.iOS));
 
+  testWidgets(
+    'pulls the details down with the finger',
+    (tester) async {
+      _useTallView(tester);
+
+      await _openK2Details(tester);
+
+      final title = find.descendant(
+        of: find.byType(ListView),
+        matching: find.text('K2'),
+      );
+      final gesture = await tester.startGesture(
+        tester.getCenter(find.byType(AspectRatio)),
+      );
+      await gesture.moveBy(const Offset(0, 20)); // Past the touch slop.
+      await tester.pump();
+      final top = tester.getTopLeft(title).dy;
+
+      // Pull the details down, slowly enough not to close.
+      for (var i = 0; i < 10; i++) {
+        await gesture.moveBy(const Offset(0, 6));
+        await tester.pump(const Duration(milliseconds: 16));
+      }
+
+      // As far as the finger went, rather than less, or not at all.
+      expect(
+        tester.getTopLeft(title).dy,
+        moreOrLessEquals(top + 60, epsilon: 1),
+      );
+
+      await gesture.up();
+      await tester.pumpAndSettle();
+    },
+    variant: TargetPlatformVariant({
+      TargetPlatform.android,
+      TargetPlatform.iOS,
+    }),
+  );
+
   testWidgets('paints the open details\' text without opacity layers', (
     tester,
   ) async {

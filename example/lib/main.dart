@@ -15,120 +15,96 @@
 import 'package:flutter/material.dart';
 import 'package:hero_here/hero_here.dart';
 
-const kHeroTag = 'hero';
+import 'add_to_cart/shop.dart';
+import 'style/style.dart';
 
 void main() => runApp(
   MaterialApp(
     title: 'HeroHere Example',
     debugShowCheckedModeBanner: false,
-    theme: ThemeData(useMaterial3: true, brightness: Brightness.light),
-    darkTheme: ThemeData(useMaterial3: true, brightness: Brightness.dark),
-    home: const HeroHereExample(),
+    theme: exampleTheme,
+    home: const AddToCartExample(),
   ),
 );
 
-enum HeroType { red, green }
-
-class HeroHereExample extends StatefulWidget {
-  const HeroHereExample({super.key});
+/// A shop whose products' pictures fly into the cart, and back, within the
+/// page:
+///
+/// 1. A [HeroHereSwitcher] wraps the page.
+/// 2. Each product's picture is a [HeroHere], on its card or in the cart:
+///    with the product's name as its tag, and a key of its own in each place.
+/// 3. Adding a product to the cart, or taking it out, moves its hero, and
+///    the switcher flies the picture there.
+class AddToCartExample extends StatefulWidget {
+  const AddToCartExample({super.key});
 
   @override
-  State<HeroHereExample> createState() => _HeroHereExampleState();
+  State<AddToCartExample> createState() => _AddToCartExampleState();
 }
 
-class _HeroHereExampleState extends State<HeroHereExample> {
-  HeroType _curHeroType = HeroType.red;
-
-  HeroType get curHeroType => _curHeroType;
-
-  set curHeroType(HeroType value) {
-    if (_curHeroType == value) return;
-    setState(() => _curHeroType = value);
-  }
+class _AddToCartExampleState extends State<AddToCartExample> {
+  final _cart = <Product>[];
 
   @override
-  Widget build(BuildContext context) => Scaffold(
-    body: HeroHereSwitcher(
-      child: Center(
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-          children: [
-            SizedBox(
-              width: 100,
-              height: 100,
-              child: curHeroType == HeroType.red
-                  ? HeroHere(
-                      key: const ValueKey(HeroType.red),
-                      tag: kHeroTag,
-                      flightShuttleBuilder: HeroHereShuttles.crossfade(),
-                      child: Container(
-                        decoration: BoxDecoration(
-                          color: Colors.red,
-                          borderRadius: BorderRadius.circular(75),
-                        ),
-                      ),
-                    )
-                  : null,
-            ),
-            SizedBox(
-              width: 150,
-              height: 150,
-              child: curHeroType == HeroType.green
-                  ? HeroHere(
-                      key: const ValueKey(HeroType.green),
-                      tag: kHeroTag,
-                      flightShuttleBuilder: HeroHereShuttles.crossfade(),
-                      child: Container(
-                        decoration: BoxDecoration(
-                          color: Colors.green,
-                          borderRadius: BorderRadius.circular(75),
-                        ),
-                      ),
-                    )
-                  : null,
-            ),
-          ],
-        ),
-      ),
-    ),
-    bottomNavigationBar: BottomAppBar(
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+  Widget build(BuildContext context) => HeroHereSwitcher(
+    // 1. The switcher.
+    child: Scaffold(
+      appBar: AppBar(title: const Text('Shop')),
+      body: ProductGrid(
         children: [
-          Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              IconButton(
-                onPressed: () => curHeroType = HeroType.red,
-                icon: Icon(
-                  curHeroType == HeroType.red
-                      ? Icons.circle
-                      : Icons.radio_button_off,
-                ),
-                color: curHeroType == HeroType.red
-                    ? Colors.red
-                    : Theme.of(context).colorScheme.secondary,
+          for (final product in kProducts)
+            ProductCard(
+              product,
+              inCart: _cart.contains(product),
+              // 3. Adds the product to the cart, or takes it out.
+              onToggle: () => _toggle(product),
+              // 2. The product's picture on its card, while it's out of the
+              // cart. In the cart, the card keeps its place, empty.
+              picture: _cart.contains(product)
+                  ? null
+                  : HeroHere(
+                      key: ValueKey('card-${product.name}'),
+                      tag: product.name,
+                      // Lands on a soft spring.
+                      flightAnimationControllerFactory: softSpring.controller,
+                      flightAnimationFactory: softSpring.animation,
+                      forwardFlightAnimation: softSpring.forward,
+                      reverseFlightAnimation: softSpring.reverse,
+                      child: ProductPicture(product),
+                    ),
+            ),
+        ],
+      ),
+      bottomNavigationBar: CartBar(
+        total: _total,
+        children: [
+          for (final (position, product) in _cart.indexed)
+            CartItem(
+              // 3. A tap takes the product out of the cart.
+              onTap: () => _toggle(product),
+              // 2. The product's picture in the cart, while it's in: the same
+              // tag as on its card, with another key. With its position in
+              // the key, it flies along when one before it leaves the cart,
+              // as a hero with a new key flies.
+              picture: HeroHere(
+                key: ValueKey('cart-${product.name}-$position'),
+                tag: product.name,
+                // Lands on a soft spring.
+                flightAnimationControllerFactory: softSpring.controller,
+                flightAnimationFactory: softSpring.animation,
+                forwardFlightAnimation: softSpring.forward,
+                reverseFlightAnimation: softSpring.reverse,
+                child: ProductPicture(product),
               ),
-            ],
-          ),
-          Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              IconButton(
-                onPressed: () => curHeroType = HeroType.green,
-                icon: Icon(
-                  curHeroType == HeroType.green
-                      ? Icons.circle
-                      : Icons.radio_button_off,
-                ),
-                color: curHeroType == HeroType.green
-                    ? Colors.green
-                    : Theme.of(context).colorScheme.secondary,
-              ),
-            ],
-          ),
+            ),
         ],
       ),
     ),
+  );
+
+  int get _total => _cart.fold(0, (total, product) => total + product.price);
+
+  void _toggle(Product product) => setState(
+    () => _cart.contains(product) ? _cart.remove(product) : _cart.add(product),
   );
 }

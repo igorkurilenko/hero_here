@@ -1,3 +1,4 @@
+import 'dart:math' as math;
 import 'dart:typed_data';
 import 'dart:ui' as ui;
 
@@ -8,6 +9,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:hero_here/hero_here.dart';
+
+import 'flight_helpers.dart';
 
 final _input = find.byWidgetPredicate(
   (widget) => widget is TextField && !widget.readOnly,
@@ -41,6 +44,32 @@ void main() {
       findsOneWidget,
     );
     expect(tester.widget<TextField>(_input).controller!.text, isEmpty);
+  });
+
+  testWidgets('lands a sent message in the chat on a soft spring, a little '
+      'past its place and back', (tester) async {
+    await tester.pumpWidget(const MaterialApp(home: ChatMessageExample()));
+    await _send(tester, 'Hello');
+
+    // How high the message goes, on each frame.
+    final highs = await pumpFrames(
+      tester,
+      60,
+      () => rectsOf(
+        tester,
+        find.text('Hello'),
+      ).map((rect) => rect.top).reduce(math.min),
+    );
+
+    final landed = tester
+        .getTopLeft(
+          find.descendant(
+            of: find.byType(ListView),
+            matching: find.text('Hello'),
+          ),
+        )
+        .dy;
+    expect(highs.reduce(math.min), lessThan(landed - 1));
   });
 
   testWidgets('keeps the typed text when the page rebuilds', (tester) async {

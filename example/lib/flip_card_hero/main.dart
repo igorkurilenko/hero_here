@@ -13,10 +13,10 @@
 // limitations under the License.
 
 import 'package:flutter/material.dart';
-import 'package:flutter/physics.dart';
 import 'package:hero_here/hero_here.dart';
 
 import '../show_details_hero/eight_thousander.dart';
+import '../style/motion.dart';
 
 void main() => runApp(
   MaterialApp(
@@ -43,12 +43,6 @@ const kLargestCellExtent = kMaxCrossAxisExtent + kGridSpacing;
 const kCardExtent = 360.0;
 
 const _borderRadius = BorderRadius.all(Radius.circular(32));
-
-/// A bouncy spring, as heroine's default motion, `CupertinoMotion.bouncy()`.
-final _spring = SpringDescription.withDurationAndBounce(
-  duration: const Duration(milliseconds: 500),
-  bounce: 0.3,
-);
 
 class FlipCardExample extends StatefulWidget {
   const FlipCardExample({super.key});
@@ -99,9 +93,17 @@ class _FlipCardExampleState extends State<FlipCardExample>
                 crossAxisSpacing: kGridSpacing,
               ),
               itemCount: kEightThousanders.length,
-              itemBuilder: (context, index) => _cardHero(
+              // A card in its cell: the cell's index as its tag, and a key of
+              // its own.
+              itemBuilder: (context, index) => HeroHere(
                 key: ValueKey('cell-$index'),
-                index: index,
+                tag: index,
+                // Flips over as it flies, on a bouncy spring.
+                flightShuttleBuilder: HeroHereShuttles.flip(),
+                flightAnimationControllerFactory: bouncySpring.controller,
+                flightAnimationFactory: bouncySpring.animation,
+                forwardFlightAnimation: bouncySpring.forward,
+                reverseFlightAnimation: bouncySpring.reverse,
                 child: _Photo(
                   kEightThousanders[index],
                   dim: _dims[index],
@@ -128,11 +130,18 @@ class _FlipCardExampleState extends State<FlipCardExample>
                   ),
                   child: AspectRatio(
                     aspectRatio: 1,
-                    // The same tag as the cell's, with another key, so the
-                    // card flies from the cell here, and back once it closes.
-                    child: _cardHero(
+                    // The open card: the same tag as its cell's, with another
+                    // key, so it flies from the cell here, and back once it
+                    // closes. It takes the cell's options too, since a flight
+                    // takes them from the hero it lands on.
+                    child: HeroHere(
                       key: ValueKey('card-$openIndex'),
-                      index: openIndex,
+                      tag: openIndex,
+                      flightShuttleBuilder: HeroHereShuttles.flip(),
+                      flightAnimationControllerFactory: bouncySpring.controller,
+                      flightAnimationFactory: bouncySpring.animation,
+                      forwardFlightAnimation: bouncySpring.forward,
+                      reverseFlightAnimation: bouncySpring.reverse,
                       child: _Details(
                         kEightThousanders[openIndex],
                         dim: _dims[openIndex],
@@ -164,49 +173,6 @@ class _FlipCardExampleState extends State<FlipCardExample>
     }
   }
 }
-
-/// A hero of the card of the eight-thousander at [index], whose flights flip
-/// the card over on a spring. The cell's hero and the open card's take the
-/// same options, since a flight takes them from the hero it lands on.
-HeroHere _cardHero({
-  required Key key,
-  required int index,
-  required Widget child,
-}) => HeroHere(
-  key: key,
-  tag: index,
-  // Unbounded, so the spring can carry the card past its place and back.
-  flightAnimationControllerFactory: (vsync, _) =>
-      AnimationController.unbounded(vsync: vsync),
-  // The spring is the curve.
-  flightAnimationFactory: (controller) => controller,
-  forwardFlightAnimation: (controller, {from}) =>
-      controller.animateWith(_springTo(1, controller, from: from)),
-  // A card closed mid-flight turns back on the spring too. The default,
-  // controller.reverse(), needs a controller with bounds.
-  reverseFlightAnimation: (controller, {from}) =>
-      controller.animateBackWith(_springTo(0, controller, from: from)),
-  flightShuttleBuilder: HeroHereShuttles.flip(),
-  child: child,
-);
-
-/// Springs [controller] to [end], from [from] or else from where it is, at
-/// the speed it has, so a card sent back mid-flight swings round rather than
-/// stops.
-SpringSimulation _springTo(
-  double end,
-  AnimationController controller, {
-  double? from,
-}) => SpringSimulation(
-  _spring,
-  from ?? controller.value,
-  end,
-  controller.velocity,
-  // The cards take no taps until their flight lands, so it lands once the
-  // card looks still, rather than when the spring comes fully to rest, about
-  // a third of a second later.
-  tolerance: const Tolerance(distance: .005, velocity: .05),
-);
 
 /// The front of an eight-thousander's card: its photo.
 class _Photo extends StatelessWidget {
