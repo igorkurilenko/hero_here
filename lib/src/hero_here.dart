@@ -100,6 +100,13 @@ enum HeroHereFlightRedirect {
   /// with the key, tag and payload of the hero the flight left, so a shuttle
   /// that fades `fromHero` into `toHero` fades from what it showed.
   divert,
+
+  /// Flies from where the shuttle is to the new hero, the hero it left too,
+  /// over the flight's whole duration, as a flight from a hero there would:
+  /// the shuttle sets off from rest rather than at the speed it had. Its
+  /// `fromHero` becomes a stand-in for the shuttle as it was, as when a
+  /// flight diverts.
+  restart,
 }
 
 /// Flies [HeroHere] widgets between their places in [child] when [child]
@@ -286,8 +293,8 @@ class HeroHere extends StatefulWidget {
 
   /// Anything a [flightShuttleBuilder] needs to know about the hero, which it
   /// reads from `fromHero` and `toHero`, such as each hero's corner radius to
-  /// tween between. A flight that diverts keeps the payload of the hero it
-  /// left on the stand-in it shows for it.
+  /// tween between. A flight that diverts or restarts keeps the payload of
+  /// the hero it left on the stand-in it shows for it.
   final Object? payload;
 
   /// Creates a hero with [tag] that shows [child].

@@ -164,6 +164,7 @@ void _layoutTests() {
 
   for (final (redirect, how, course) in [
     (HeroHereFlightRedirect.divert, 'diverts', [2]),
+    (HeroHereFlightRedirect.restart, 'restarts', [2]),
     (HeroHereFlightRedirect.chain, 'turns back', [0]),
     (HeroHereFlightRedirect.chain, 'turns around again', [0, 1]),
   ]) {

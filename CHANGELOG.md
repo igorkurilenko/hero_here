@@ -1,3 +1,9 @@
+## Unreleased
+
+### Features
+
+* Add `HeroHereFlightRedirect.restart`. When the hero a flight flies to changes mid-flight, the flight flies from where its shuttle is to the new hero, setting off from rest, over the flight's whole duration, as a flight from a hero there would. Unlike with `divert`, the shuttle doesn't carry on at the speed it had, so it neither runs on past where it was nor swings out to the side. Unlike with `chain`, it doesn't land on the hero it was flying to first. As with `divert`, its `fromHero` becomes a stand-in for the shuttle as it was.
+
 ## 2.2.2
 
 ### Fixes

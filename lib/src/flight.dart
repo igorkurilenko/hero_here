@@ -278,10 +278,10 @@ class _Flight extends ChangeNotifier {
       _forward();
     } else if (manifest.to == _target) {
       _nextHero = null;
-    } else if (_style.redirect == HeroHereFlightRedirect.divert) {
-      _divert(manifest.to);
-    } else {
+    } else if (_style.redirect == HeroHereFlightRedirect.chain) {
       _nextHero = manifest.to;
+    } else {
+      _divert(manifest.to);
     }
   }
 
@@ -380,9 +380,13 @@ class _Flight extends ChangeNotifier {
       _reversed && (_manifest.to == manifest.to);
 
   /// Flies on to [hero] from where the shuttle is, at the speed it has, and
-  /// from what it shows.
+  /// from what it shows. A flight that restarts diverts too, from rest.
   void _divert(_Hero hero) {
-    _path.divert(to: _rectOf(hero), size: _childSize);
+    if (_style.redirect == HeroHereFlightRedirect.restart) {
+      _path.beginLeg(onHero: false, size: _childSize);
+    } else {
+      _path.divert(to: _rectOf(hero), size: _childSize);
+    }
     _divertedFrom = _freezeShuttle();
     _manifest.to = hero;
     notifyListeners();
