@@ -1,7 +1,7 @@
 part of '../hero_here_test.dart';
 
-/// Flights that change course: chained, turned back, diverted, and on
-/// the frame they land, as on the web.
+/// Flights that change course: chained, turned back, diverted, restarted,
+/// and on the frame they land, as on the web.
 void _redirectsTests() {
   testWidgets('flies a redirected hero on from where its shuttle is', (
     tester,
@@ -304,33 +304,36 @@ void _redirectsTests() {
     expect(find.byKey(const ValueKey('box1')), findsOneWidget);
   });
 
-  testWidgets('diverts a flight on the frame it lands, as on the web', (
-    tester,
-  ) async {
-    final slot = ValueNotifier(0);
-    addTearDown(slot.dispose);
+  for (final (redirect, how) in [
+    (HeroHereFlightRedirect.divert, 'diverts'),
+    (HeroHereFlightRedirect.restart, 'restarts'),
+  ]) {
+    testWidgets('$how a flight on the frame it lands, as on the web', (
+      tester,
+    ) async {
+      final slot = ValueNotifier(0);
+      addTearDown(slot.dispose);
 
-    await tester.pumpWidget(
-      _SlotSwitcher(slot: slot, redirect: HeroHereFlightRedirect.divert),
-    );
-    await tester.pumpAndSettle();
+      await tester.pumpWidget(_SlotSwitcher(slot: slot, redirect: redirect));
+      await tester.pumpAndSettle();
 
-    slot.value = 2;
-    await _pumpSwitch(tester);
-    await tester.pump(HeroHere.defaultFlightAnimationDuration - _frame);
+      slot.value = 2;
+      await _pumpSwitch(tester);
+      await tester.pump(HeroHere.defaultFlightAnimationDuration - _frame);
 
-    // Redirect the flight to the middle slot on the frame it lands.
-    slot.value = 1;
-    await _pumpWebFrame(tester, _frame * 2);
+      // Redirect the flight to the middle slot on the frame it lands.
+      slot.value = 1;
+      await _pumpWebFrame(tester, _frame * 2);
 
-    // It flies on to the middle slot rather than landing on it at once.
-    final shuttle = find.byKey(_shuttleKey);
-    expect(shuttle, findsOneWidget);
-    expect(find.byKey(const ValueKey('box1')), findsNothing);
-    await tester.pumpAndSettle();
-    expect(shuttle, findsNothing);
-    expect(find.byKey(const ValueKey('box1')), findsOneWidget);
-  });
+      // It flies on to the middle slot rather than landing on it at once.
+      final shuttle = find.byKey(_shuttleKey);
+      expect(shuttle, findsOneWidget);
+      expect(find.byKey(const ValueKey('box1')), findsNothing);
+      await tester.pumpAndSettle();
+      expect(shuttle, findsNothing);
+      expect(find.byKey(const ValueKey('box1')), findsOneWidget);
+    });
+  }
 
   testWidgets('stops a flight on the frame it lands, as on the web', (
     tester,
@@ -629,74 +632,139 @@ void _redirectsTests() {
     expect(find.byKey(const ValueKey('box0')), findsOneWidget);
   });
 
-  testWidgets('shuttles what its shuttle showed when it diverts', (
-    tester,
-  ) async {
-    final slot = ValueNotifier(0);
-    addTearDown(slot.dispose);
-    final fromHeroes = <HeroHere>[];
+  for (final back in [false, true]) {
+    testWidgets(
+      'restarts a hero sent ${back ? 'back to the hero it left' : 'on'} '
+      'from rest where its shuttle is',
+      (tester) async {
+        final slot = ValueNotifier(0);
+        addTearDown(slot.dispose);
 
-    await tester.pumpWidget(
-      _SlotSwitcher(
-        slot: slot,
-        redirect: HeroHereFlightRedirect.divert,
-        // Fades the hero the flight leaves out into the one it lands on.
-        shuttleBuilder: (_, animation, fromHero, toHero) {
-          fromHeroes.add(fromHero);
-          return Stack(
-            fit: StackFit.expand,
-            children: [
-              toHero.child,
-              FadeTransition(
-                opacity: ReverseAnimation(animation),
-                child: fromHero.child,
-              ),
-            ],
-          );
-        },
-      ),
+        await tester.pumpWidget(
+          _SlotSwitcher(slot: slot, redirect: HeroHereFlightRedirect.restart),
+        );
+        await tester.pumpAndSettle();
+
+        slot.value = 2;
+        await _pumpSwitch(tester);
+        await tester.pump(HeroHere.defaultFlightAnimationDuration ~/ 2);
+
+        // At full speed past the middle slot, send the flight to a slot behind
+        // it.
+        final shuttle = find.byKey(_shuttleKey);
+        final leftBefore = tester.getRect(shuttle).left;
+        await tester.pump(_frame);
+        final leftAtRestart = tester.getRect(shuttle).left;
+        expect(leftAtRestart - leftBefore, greaterThan(10));
+        expect(leftAtRestart, greaterThan(_slotRects[1].left));
+        final heading = back ? 0 : 1;
+        slot.value = heading;
+        await _pumpSwitch(tester);
+
+        final rects = <Rect>[];
+        for (var frame = 0; frame < 40 && tester.any(shuttle); frame++) {
+          rects.add(tester.getRect(shuttle));
+          await tester.pump(_frame);
+        }
+
+        // It starts over from where it was, toward that slot only: it neither
+        // carries on at the speed it had nor swings out to the side. It takes
+        // the full duration, as a flight from a hero there would, rather than
+        // turning back over the way it came.
+        final lefts = [for (final rect in rects) rect.left];
+        expect(lefts.first, closeTo(leftAtRestart, 1));
+        for (var i = 1; i < lefts.length; i++) {
+          expect(lefts[i], lessThanOrEqualTo(lefts[i - 1]), reason: '$lefts');
+        }
+        expect([
+          for (final rect in rects) rect.top,
+        ], everyElement(closeTo(_slotRects[heading].top, 1)));
+        expect(lefts.last, closeTo(_slotRects[heading].left, 1));
+        expect(
+          lefts.length * _frame.inMilliseconds,
+          greaterThanOrEqualTo(
+            HeroHere.defaultFlightAnimationDuration.inMilliseconds,
+          ),
+        );
+        expect(shuttle, findsNothing);
+        expect(find.byKey(ValueKey('box$heading')), findsOneWidget);
+      },
     );
-    await tester.pumpAndSettle();
+  }
 
-    slot.value = 2;
-    await _pumpSwitch(tester);
-    await tester.pump(HeroHere.defaultFlightAnimationDuration ~/ 4);
+  for (final (redirect, how) in [
+    (HeroHereFlightRedirect.divert, 'diverts'),
+    (HeroHereFlightRedirect.restart, 'restarts'),
+  ]) {
+    testWidgets('shuttles what its shuttle showed when it $how', (
+      tester,
+    ) async {
+      final slot = ValueNotifier(0);
+      addTearDown(slot.dispose);
+      final fromHeroes = <HeroHere>[];
 
-    final box0 = find.byKey(const ValueKey('box0'));
-    final box2 = find.byKey(const ValueKey('box2'));
-    final box0Opacity = _opacityOf(tester, box0);
-    expect(box0Opacity, inExclusiveRange(0, 1));
+      await tester.pumpWidget(
+        _SlotSwitcher(
+          slot: slot,
+          redirect: redirect,
+          // Fades the hero the flight leaves out into the one it lands on.
+          shuttleBuilder: (_, animation, fromHero, toHero) {
+            fromHeroes.add(fromHero);
+            return Stack(
+              fit: StackFit.expand,
+              children: [
+                toHero.child,
+                FadeTransition(
+                  opacity: ReverseAnimation(animation),
+                  child: fromHero.child,
+                ),
+              ],
+            );
+          },
+        ),
+      );
+      await tester.pumpAndSettle();
 
-    slot.value = 1;
-    await _pumpSwitch(tester);
+      slot.value = 2;
+      await _pumpSwitch(tester);
+      await tester.pump(HeroHere.defaultFlightAnimationDuration ~/ 4);
 
-    // The new leg starts from the shuttle as it was: the hero it left half
-    // faded out over the one it flew to, then fades that out.
-    expect(_opacityOf(tester, box0), closeTo(box0Opacity, 0.001));
-    expect(_opacityOf(tester, box2), 1);
-    expect(fromHeroes.last.tag, 'hero');
-    expect(fromHeroes.last.key, const ValueKey(0));
+      final box0 = find.byKey(const ValueKey('box0'));
+      final box2 = find.byKey(const ValueKey('box2'));
+      final box0Opacity = _opacityOf(tester, box0);
+      expect(box0Opacity, inExclusiveRange(0, 1));
 
-    // Back to the first slot, so the hero it leaves is the one it lands on.
-    // The new leg starts from the shuttle as it was again.
-    await tester.pump(HeroHere.defaultFlightAnimationDuration ~/ 4);
-    final box1 = find.byKey(const ValueKey('box1'));
-    final box2Opacity = _opacityOf(tester, box2);
-    expect(box2Opacity, inExclusiveRange(0, 1));
-    expect(_opacityOf(tester, box1), 1);
+      slot.value = 1;
+      await _pumpSwitch(tester);
 
-    slot.value = 0;
-    await _pumpSwitch(tester);
+      // The new leg starts from the shuttle as it was: the hero it left half
+      // faded out over the one it flew to, then fades that out.
+      expect(_opacityOf(tester, box0), closeTo(box0Opacity, 0.001));
+      expect(_opacityOf(tester, box2), 1);
+      expect(fromHeroes.last.tag, 'hero');
+      expect(fromHeroes.last.key, const ValueKey(0));
 
-    expect(_opacityOf(tester, box2), closeTo(box2Opacity, 0.001));
-    expect(_opacityOf(tester, box1), 1);
-    expect(fromHeroes.last.key, const ValueKey(0));
+      // Back to the first slot, so the hero it leaves is the one it lands on.
+      // The new leg starts from the shuttle as it was again.
+      await tester.pump(HeroHere.defaultFlightAnimationDuration ~/ 4);
+      final box1 = find.byKey(const ValueKey('box1'));
+      final box2Opacity = _opacityOf(tester, box2);
+      expect(box2Opacity, inExclusiveRange(0, 1));
+      expect(_opacityOf(tester, box1), 1);
 
-    await tester.pumpAndSettle();
-    expect(box1, findsNothing);
-    expect(box2, findsNothing);
-    expect(box0, findsOneWidget);
-  });
+      slot.value = 0;
+      await _pumpSwitch(tester);
+
+      expect(_opacityOf(tester, box2), closeTo(box2Opacity, 0.001));
+      expect(_opacityOf(tester, box1), 1);
+      expect(fromHeroes.last.key, const ValueKey(0));
+
+      await tester.pumpAndSettle();
+      expect(box1, findsNothing);
+      expect(box2, findsNothing);
+      expect(box0, findsOneWidget);
+    });
+  }
 
   testWidgets('flies back, then on to where its child changes next', (
     tester,

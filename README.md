@@ -20,7 +20,7 @@ Flutter's `Hero` flies a widget to its place on a new route, as the `Navigator` 
 - Hero transitions within one page, with no `Navigator` or routes.
 - `HeroHereSwitcher` and `HeroHere`, which work like `AnimatedSwitcher` and `Hero`.
 - Customizable flights: their duration, curve, path and shuttle, and what drives them, such as a spring.
-- Flights that change course mid-flight, either landing on each hero in turn or diverting straight to the new one.
+- Flights that change course mid-flight: landing on each hero in turn, turning toward the new one at the speed they had, or starting over toward it from where they are.
 - Ready-made shuttles: a crossfade, a flip like a card's, and a scale that keeps text from reflowing in flight.
 - Flights that follow their heroes as they move, such as on a scroll or a window resize.
 - Android, iOS, web, macOS, Windows and Linux. Wasm-ready, with no dependencies beyond Flutter.
@@ -139,7 +139,13 @@ Yes, within one page. It's the idea behind SwiftUI's `matchedGeometryEffect`, Je
 
 ## Redirected flights
 
-When the switcher's child changes again while a hero flies, the hero's flight changes course. By default, it lands on the hero it was flying to, then flies on to the new one (`HeroHereFlightRedirect.chain`). To fly from where the shuttle is to the new hero instead, turning toward it at the speed the shuttle had, set `flightRedirect` on the heroes:
+When the switcher's child changes again while a hero flies, the hero's flight changes course, as the heroes' `flightRedirect` says:
+
+| `HeroHereFlightRedirect` | The flight |
+|---|---|
+| `chain`, the default | Lands on the hero it was flying to, then flies on to the new one. |
+| `divert` | Flies from where the shuttle is to the new hero, turning toward it at the speed the shuttle had. |
+| `restart` | Flies from where the shuttle is to the new hero, setting off from rest, as a flight from a hero there would. |
 
 ```dart
 HeroHere(
@@ -150,9 +156,9 @@ HeroHere(
 )
 ```
 
-When a flight diverts, its shuttle's `fromHero` becomes a stand-in for the shuttle as it was, so a shuttle that fades `fromHero` into `toHero` fades from what it showed.
+A flight that diverts or restarts takes its whole duration to get to the new hero. Its shuttle's `fromHero` becomes a stand-in for the shuttle as it was, so a shuttle that fades `fromHero` into `toHero` fades from what it showed.
 
-With `chain`, a flight sent back to the hero it left turns back from where it is. With `divert`, it swings around to that hero, as to any hero behind it.
+With `chain`, a flight sent back to the hero it left turns back from where it is. With `divert`, it swings around to that hero, as to any hero behind it. With `restart`, it sets off back to that hero from rest.
 
 ## Shuttles
 
