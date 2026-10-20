@@ -15,6 +15,7 @@
 import 'package:flutter/material.dart';
 import 'package:hero_here/hero_here.dart';
 
+import '../style/motion.dart';
 import 'message.dart';
 import 'message_widget.dart';
 
@@ -78,65 +79,69 @@ class _ChatMessageExampleState extends State<ChatMessageExample> {
                   controller: _scrollController,
                   physics: const _KeepNewestInView(),
                   itemCount: _messages.length,
-                  itemBuilder: (context, index) => Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 32),
-                    child: _buildMessage(_messages[index]),
-                  ),
+                  itemBuilder: (context, index) {
+                    final message = _messages[index];
+                    return Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 32),
+                      // A sent message: the tag the draft had, and a key of
+                      // its own, so it flies here from the input.
+                      child: HeroHere(
+                        tag: '$message',
+                        key: ValueKey('published-$message'),
+                        // It lands on a soft spring. A flight takes its
+                        // options from the hero it lands on, so the draft's
+                        // hero needs none.
+                        flightAnimationControllerFactory: softSpringController,
+                        flightAnimationFactory: softSpringAnimation,
+                        forwardFlightAnimation: softSpringForward,
+                        reverseFlightAnimation: softSpringReverse,
+                        child: MessageWidget.readOnly(
+                          text: message.textOrEmpty,
+                          decoration: const InputDecoration(
+                            border: OutlineInputBorder(
+                              borderSide: BorderSide.none,
+                            ),
+                          ),
+                        ),
+                      ),
+                    );
+                  },
                 ),
               ),
             ),
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 32),
-              child: _buildMessageInput(),
+              child: _InputBox(
+                child: Stack(
+                  children: [
+                    // The draft: where it flies from once sent. It paints
+                    // nothing: the field shows the text until the flight's
+                    // shuttle does.
+                    Positioned.fill(
+                      child: HeroHere(
+                        tag: '$_draft',
+                        key: ValueKey('$_draft'),
+                        child: const SizedBox.expand(),
+                      ),
+                    ),
+                    MessageWidget.input(
+                      controller: _inputController,
+                      focusNode: _focusNode,
+                      onSubmitted: _onMessageSubmitted,
+                      decoration: const InputDecoration(
+                        hintText: 'Message',
+                        border: OutlineInputBorder(
+                          borderSide: BorderSide.none,
+                          borderRadius: BorderRadius.all(Radius.circular(32)),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
             ),
           ],
         ),
-      ),
-    ),
-  );
-
-  Widget _buildMessage(Message message) => HeroHere(
-    tag: '$message',
-    key: ValueKey('published-$message'),
-    child: MessageWidget.readOnly(
-      text: message.textOrEmpty,
-      decoration: const InputDecoration(
-        border: OutlineInputBorder(borderSide: BorderSide.none),
-      ),
-    ),
-  );
-
-  Widget _buildMessageInput() => Container(
-    decoration: BoxDecoration(
-      color: Theme.of(context).colorScheme.surfaceContainer,
-      borderRadius: BorderRadius.circular(32),
-    ),
-    child: Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16),
-      child: Stack(
-        children: [
-          // Where the draft flies from once sent. It paints nothing: the
-          // field shows the text until the flight's shuttle does.
-          Positioned.fill(
-            child: HeroHere(
-              tag: '$_draft',
-              key: ValueKey('$_draft'),
-              child: const SizedBox.expand(),
-            ),
-          ),
-          MessageWidget.input(
-            controller: _inputController,
-            focusNode: _focusNode,
-            onSubmitted: _onMessageSubmitted,
-            decoration: const InputDecoration(
-              hintText: 'Message',
-              border: OutlineInputBorder(
-                borderSide: BorderSide.none,
-                borderRadius: BorderRadius.all(Radius.circular(32)),
-              ),
-            ),
-          ),
-        ],
       ),
     ),
   );
@@ -218,4 +223,23 @@ class _KeepNewestInView extends ScrollPhysics {
       velocity: velocity,
     );
   }
+}
+
+/// The input's rounded box.
+class _InputBox extends StatelessWidget {
+  const _InputBox({required this.child});
+
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) => Container(
+    decoration: BoxDecoration(
+      color: Theme.of(context).colorScheme.surfaceContainer,
+      borderRadius: BorderRadius.circular(32),
+    ),
+    child: Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16),
+      child: child,
+    ),
+  );
 }

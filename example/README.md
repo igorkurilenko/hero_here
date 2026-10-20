@@ -1,10 +1,13 @@
 # hero_here examples
 
-- `lib/main.dart`: the basic example, also on pub.dev's Example tab.
-- `lib/basic_with_auto_switching/`: heroes that switch on a timer, with flights that chain or divert when they change course.
+- `lib/main.dart`: a shop whose products' pictures fly from their cards into the cart, landing on a soft spring, and back once they're taken out, as the products after them in the cart slide along. It's also on pub.dev's Example tab.
+- `lib/navigation_bar_hero/`: a bottom navigation bar whose indicator flies to the tapped tab, under the icons, and starts over to a tab tapped mid-flight, from where it is.
+- `lib/segmented_control_hero/`: a segmented control whose thumb flies to the tapped period, under the labels, as a chart's bars grow and shrink, and the steps count to the period's total.
+- `lib/splash_logo_hero/`: once the app has loaded, the splash screen's logo and name fly into the app bar. Tap them to see the splash screen again.
 - `lib/chat_message_hero/`: a sent message flies from the input into the chat.
-- `lib/show_details_hero/`: a grid of mountains whose photo, name and description fly into a details view and back.
+- `lib/show_details_hero/`: a grid of mountains whose photo, name and description fly into a details view, and back as a pull on the photo collapses it.
 - `lib/flip_card_hero/`: tap a photo in a grid, and its card flies to the middle on a bouncy spring, flipping over to show the mountain's name and description. Tap it again, or beside it, and it flies back. It's the effect of heroine's showcase, within one page.
+- `lib/style/`: the new examples' look, as rose_app's, kept apart from what they show: the theme, its tokens, Geist (in `assets/fonts/`, under the SIL Open Font License) and [Unicons](https://iconscout.com/unicons) 4.0.0 line icons (under the Apache License 2.0), painted from their SVG paths. Each new example's `main.dart` places its heroes, with numbered steps, and a file beside it draws the rest.
 
 Run one with `flutter run -t <file>`, such as `flutter run -t lib/show_details_hero/main.dart`.
 
@@ -13,7 +16,8 @@ Run one with `flutter run -t <file>`, such as `flutter run -t lib/show_details_h
 `integration_test/perf_test.dart` runs the examples' flights for real and records how long each frame takes:
 - **details:** opens K2's details and closes them, five times;
 - **chat:** sends ten messages;
-- **switches:** taps through the auto-switching example's heroes, every other tap mid-flight, so the flight changes course.
+- **cart:** adds the four products to the cart, then takes them out, the first in the cart each time, so the others slide along;
+- **tabs:** taps through the navigation bar's tabs, every other tap mid-flight, so the indicator starts over to the newly tapped tab.
 
 ```sh
 flutter drive --profile --no-dds -d <device id> \
@@ -27,7 +31,7 @@ The driver prints the average, 90th and 99th percentile and worst UI-thread (bui
 - **Connect a phone with a cable.** Over Wi‑Fi, the Mac can find the app but may fail to connect to it. An iPhone asks on the first launch to find devices on the local network: allow it. Keep the phone unlocked while it runs.
 - **Keep `--no-dds`.** Without it the app can't connect to its own VM service, which it needs to record frames.
 - **Semantics are off**, as for most users, who don't run an assistive technology. Add `--dart-define=SEMANTICS=true` to measure as under a screen reader such as VoiceOver or TalkBack.
-- **Compare runs on the same phone**, plugged in and at a similar temperature. The auto-switching example places its heroes at random, so its flights differ a little from run to run.
+- **Compare runs on the same phone**, plugged in and at a similar temperature.
 
 ## Signing
 

@@ -89,7 +89,9 @@ class _EightThousanderDetailsHeroState
     behavior: kScrollBehavior,
     child: ListView(
       controller: _scrollController,
-      physics: const AlwaysScrollableScrollPhysics(),
+      physics: const _PullDownScrollPhysics(
+        parent: AlwaysScrollableScrollPhysics(),
+      ),
       padding: centerColumnPadding(screenSize.width),
       children: [
         SizedBox(
@@ -271,4 +273,23 @@ class _EightThousanderDetailsHeroState
 
     widget.onClose?.call(_imageDragVelocityTracker!.getVelocity());
   }
+}
+
+/// Pulls the details down with the finger past their top, on every platform,
+/// and bounces them back up if they're let go before they close. Bouncing
+/// alone would resist the pull, and the clamping off Apple's platforms
+/// wouldn't let it past the top at all.
+class _PullDownScrollPhysics extends BouncingScrollPhysics {
+  const _PullDownScrollPhysics({super.parent});
+
+  @override
+  _PullDownScrollPhysics applyTo(ScrollPhysics? ancestor) =>
+      _PullDownScrollPhysics(parent: buildParent(ancestor));
+
+  @override
+  double applyPhysicsToUserOffset(ScrollMetrics position, double offset) =>
+      // A pull down past the top goes as far as the finger does.
+      offset > 0 && position.pixels <= position.minScrollExtent
+      ? offset
+      : super.applyPhysicsToUserOffset(position, offset);
 }

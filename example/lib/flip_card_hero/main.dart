@@ -99,9 +99,17 @@ class _FlipCardExampleState extends State<FlipCardExample>
                 crossAxisSpacing: kGridSpacing,
               ),
               itemCount: kEightThousanders.length,
-              itemBuilder: (context, index) => _cardHero(
+              // A card in its cell: the cell's index as its tag, and a key of
+              // its own.
+              itemBuilder: (context, index) => HeroHere(
                 key: ValueKey('cell-$index'),
-                index: index,
+                tag: index,
+                // Flips over as it flies, on a bouncy spring.
+                flightShuttleBuilder: HeroHereShuttles.flip(),
+                flightAnimationControllerFactory: _springController,
+                flightAnimationFactory: _springAnimation,
+                forwardFlightAnimation: _springForward,
+                reverseFlightAnimation: _springReverse,
                 child: _Photo(
                   kEightThousanders[index],
                   dim: _dims[index],
@@ -128,11 +136,18 @@ class _FlipCardExampleState extends State<FlipCardExample>
                   ),
                   child: AspectRatio(
                     aspectRatio: 1,
-                    // The same tag as the cell's, with another key, so the
-                    // card flies from the cell here, and back once it closes.
-                    child: _cardHero(
+                    // The open card: the same tag as its cell's, with another
+                    // key, so it flies from the cell here, and back once it
+                    // closes. It takes the cell's options too, since a flight
+                    // takes them from the hero it lands on.
+                    child: HeroHere(
                       key: ValueKey('card-$openIndex'),
-                      index: openIndex,
+                      tag: openIndex,
+                      flightShuttleBuilder: HeroHereShuttles.flip(),
+                      flightAnimationControllerFactory: _springController,
+                      flightAnimationFactory: _springAnimation,
+                      forwardFlightAnimation: _springForward,
+                      reverseFlightAnimation: _springReverse,
                       child: _Details(
                         kEightThousanders[openIndex],
                         dim: _dims[openIndex],
@@ -165,30 +180,21 @@ class _FlipCardExampleState extends State<FlipCardExample>
   }
 }
 
-/// A hero of the card of the eight-thousander at [index], whose flights flip
-/// the card over on a spring. The cell's hero and the open card's take the
-/// same options, since a flight takes them from the hero it lands on.
-HeroHere _cardHero({
-  required Key key,
-  required int index,
-  required Widget child,
-}) => HeroHere(
-  key: key,
-  tag: index,
-  // Unbounded, so the spring can carry the card past its place and back.
-  flightAnimationControllerFactory: (vsync, _) =>
-      AnimationController.unbounded(vsync: vsync),
-  // The spring is the curve.
-  flightAnimationFactory: (controller) => controller,
-  forwardFlightAnimation: (controller, {from}) =>
-      controller.animateWith(_springTo(1, controller, from: from)),
-  // A card closed mid-flight turns back on the spring too. The default,
-  // controller.reverse(), needs a controller with bounds.
-  reverseFlightAnimation: (controller, {from}) =>
-      controller.animateBackWith(_springTo(0, controller, from: from)),
-  flightShuttleBuilder: HeroHereShuttles.flip(),
-  child: child,
-);
+/// Unbounded, so the spring can carry a card past its place and back.
+AnimationController _springController(TickerProvider vsync, Duration _) =>
+    AnimationController.unbounded(vsync: vsync);
+
+/// The spring is the curve.
+Animation<double> _springAnimation(AnimationController controller) =>
+    controller;
+
+TickerFuture _springForward(AnimationController controller, {double? from}) =>
+    controller.animateWith(_springTo(1, controller, from: from));
+
+/// A card closed mid-flight turns back on the spring too. The default,
+/// controller.reverse(), needs a controller with bounds.
+TickerFuture _springReverse(AnimationController controller, {double? from}) =>
+    controller.animateBackWith(_springTo(0, controller, from: from));
 
 /// Springs [controller] to [end], from [from] or else from where it is, at
 /// the speed it has, so a card sent back mid-flight swings round rather than

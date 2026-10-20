@@ -1,10 +1,14 @@
 // Measures how long the frames of the examples' flights take on a device.
 // See README.md for how to run it.
 
-import 'package:example/basic_with_auto_switching/main.dart';
+import 'package:example/add_to_cart/shop.dart';
 import 'package:example/chat_message_hero/main.dart';
+import 'package:example/main.dart';
+import 'package:example/navigation_bar_hero/main.dart';
+import 'package:example/navigation_bar_hero/tabs.dart';
 import 'package:example/show_details_hero/main.dart';
 import 'package:flutter/material.dart';
+import 'package:hero_here/hero_here.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:integration_test/integration_test.dart';
 
@@ -36,17 +40,34 @@ void main() {
         }
       });
 
-      await tester.pumpWidget(const MaterialApp(home: AutoSwitchingExample()));
+      await tester.pumpWidget(const MaterialApp(home: AddToCartExample()));
       await _wait(1000);
-      // The play button, then a button for each hero.
-      final buttons = find.descendant(
-        of: find.byType(BottomAppBar),
-        matching: find.byType(IconButton),
-      );
-      await _measure(binding, tester, 'switches', () async {
+      await _measure(binding, tester, 'cart', () async {
+        for (var i = 0; i < kProducts.length; i++) {
+          await tester.tap(find.byTooltip('Add to cart').first);
+          await _wait(600);
+        }
+        // Takes out the first product in the cart each time, so the others
+        // fly along.
+        for (final product in kProducts) {
+          await tester.tap(find.byKey(ValueKey('cart-${product.name}-0')));
+          await _wait(600);
+        }
+      });
+
+      await tester.pumpWidget(const MaterialApp(home: NavigationBarExample()));
+      await _wait(1000);
+      await _measure(binding, tester, 'tabs', () async {
         for (var i = 0; i < 12; i++) {
-          await tester.tap(buttons.at(1 + (i + 1) % HeroType.values.length));
-          // Every other tap comes mid-flight, so the flight changes course.
+          final tab = kTabs[(i + 2) % kTabs.length];
+          await tester.tap(
+            find.descendant(
+              of: find.byType(HeroHereSwitcher),
+              matching: find.text(tab.label),
+            ),
+          );
+          // Every other tap comes mid-flight, so the indicator starts over to
+          // the newly tapped tab, from where it is.
           await _wait(i.isEven ? 150 : 600);
         }
       });

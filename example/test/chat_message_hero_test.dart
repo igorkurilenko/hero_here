@@ -1,3 +1,4 @@
+import 'dart:math' as math;
 import 'dart:typed_data';
 import 'dart:ui' as ui;
 
@@ -41,6 +42,33 @@ void main() {
       findsOneWidget,
     );
     expect(tester.widget<TextField>(_input).controller!.text, isEmpty);
+  });
+
+  testWidgets('lands a sent message in the chat on a soft spring, a little '
+      'past its place and back', (tester) async {
+    await tester.pumpWidget(const MaterialApp(home: ChatMessageExample()));
+    await _send(tester, 'Hello');
+
+    var highest = double.infinity;
+    for (var frame = 0; frame < 60; frame++) {
+      await tester.pump(const Duration(milliseconds: 16));
+      for (final element in find.text('Hello').evaluate()) {
+        highest = math.min(
+          highest,
+          tester.getTopLeft(find.byElementPredicate((e) => e == element)).dy,
+        );
+      }
+    }
+
+    final landed = tester
+        .getTopLeft(
+          find.descendant(
+            of: find.byType(ListView),
+            matching: find.text('Hello'),
+          ),
+        )
+        .dy;
+    expect(highest, lessThan(landed - 1));
   });
 
   testWidgets('keeps the typed text when the page rebuilds', (tester) async {

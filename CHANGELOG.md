@@ -1,3 +1,18 @@
+## Unreleased
+
+### Example
+
+* Make the example on pub.dev's Example tab a shop whose products' pictures fly from their cards into the cart and back, in place of two circles.
+* Add a bottom navigation bar whose indicator flies to the tapped tab, under the icons, and starts over to a tab tapped mid-flight from where it is, with `HeroHereFlightRedirect.restart`, a segmented control whose thumb flies to the tapped period, under the labels, as a chart's bars grow and shrink and its steps count to the period's total, both with `HeroHereSwitcher.skyUnderLayoutBuilder`, and a splash screen whose logo and name fly into the app bar once the app has loaded. The shop's and the splash screen's heroes land on a soft spring, as the chat's sent messages now do too.
+* Pull the details example's details down with the finger on every platform. They followed it past their top only on Apple's platforms, and there more slowly than the finger, rather than with it. Let go before they close, and they bounce back.
+* Remove the auto-switching example. The navigation bar shows a flight that changes course, when a tab is tapped mid-flight, and its perf run replaces the auto-switching one.
+* Give the new examples rose_app's look, kept apart in `lib/style/`: Geist, neutral grays with Pinterest's red as the one accent, flat controls with squircle corners, and Unicons 4.0.0 line icons, under the Apache License 2.0, painted from their SVG paths with no icon font or SVG package. Each new example's `main.dart` places its heroes, in numbered steps, and a file beside it draws the rest.
+
+### Docs
+
+* Rewrite the Example tab around the shop: what it does and its code in three steps, then each other example with its animation, a table of the options each one shows, and answers to the questions people ask.
+* Show every example in the README with an animation recorded at 60 fps in a phone frame, as WebP in place of the GIFs, and say in the words people search with what each one does.
+
 ## 2.3.0
 
 ### Features
