@@ -91,10 +91,10 @@ class _ChatMessageExampleState extends State<ChatMessageExample> {
                         // It lands on a soft spring. A flight takes its
                         // options from the hero it lands on, so the draft's
                         // hero needs none.
-                        flightAnimationControllerFactory: softSpringController,
-                        flightAnimationFactory: softSpringAnimation,
-                        forwardFlightAnimation: softSpringForward,
-                        reverseFlightAnimation: softSpringReverse,
+                        flightAnimationControllerFactory: softSpring.controller,
+                        flightAnimationFactory: softSpring.animation,
+                        forwardFlightAnimation: softSpring.forward,
+                        reverseFlightAnimation: softSpring.reverse,
                         child: MessageWidget.readOnly(
                           text: message.textOrEmpty,
                           decoration: const InputDecoration(

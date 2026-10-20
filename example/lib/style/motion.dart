@@ -12,59 +12,72 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// A soft spring for flights, which carries a hero a little past its place
-// and back as it lands. A hero takes it through four of its options:
+// Springs for flights, which carry a hero a little past its place and back
+// as it lands. A hero takes one through four of its options:
 //
-//   flightAnimationControllerFactory: softSpringController,
-//   flightAnimationFactory: softSpringAnimation,
-//   forwardFlightAnimation: softSpringForward,
-//   reverseFlightAnimation: softSpringReverse,
+//   flightAnimationControllerFactory: softSpring.controller,
+//   flightAnimationFactory: softSpring.animation,
+//   forwardFlightAnimation: softSpring.forward,
+//   reverseFlightAnimation: softSpring.reverse,
 
 import 'package:flutter/animation.dart';
 import 'package:flutter/physics.dart';
 
 /// A soft spring: it settles in about half a second, with a little bounce.
-final _softSpring = SpringDescription.withDurationAndBounce(
-  duration: const Duration(milliseconds: 500),
-  bounce: .25,
+final softSpring = FlightSpring(
+  SpringDescription.withDurationAndBounce(
+    duration: const Duration(milliseconds: 500),
+    bounce: .25,
+  ),
 );
 
-/// An unbounded controller, so the spring can carry a flight past its end
-/// and back.
-AnimationController softSpringController(
-  TickerProvider tickerProvider,
-  Duration _,
-) => AnimationController.unbounded(vsync: tickerProvider);
-
-/// The spring is the curve.
-Animation<double> softSpringAnimation(AnimationController controller) =>
-    controller;
-
-/// Springs a flight to its end.
-TickerFuture softSpringForward(
-  AnimationController controller, {
-  double? from,
-}) => controller.animateWith(_springTo(1, controller, from: from));
-
-/// Springs a flight back to its start, as when it's sent back mid-flight.
-TickerFuture softSpringReverse(
-  AnimationController controller, {
-  double? from,
-}) => controller.animateBackWith(_springTo(0, controller, from: from));
-
-/// Springs [controller] to [end], from [from] or else from where it is, at
-/// the speed it has, so a flight sent back mid-flight swings round rather
-/// than stops.
-SpringSimulation _springTo(
-  double end,
-  AnimationController controller, {
-  double? from,
-}) => SpringSimulation(
-  _softSpring,
-  from ?? controller.value,
-  end,
-  controller.velocity,
-  // Lands once the hero looks still, rather than when the spring comes fully
-  // to rest, a while later.
-  tolerance: const Tolerance(distance: .005, velocity: .05),
+/// A bouncy spring, as heroine's default motion, `CupertinoMotion.bouncy()`.
+final bouncySpring = FlightSpring(
+  SpringDescription.withDurationAndBounce(
+    duration: const Duration(milliseconds: 500),
+    bounce: .3,
+  ),
 );
+
+/// A spring that drives a hero's flight, in place of its curve.
+class FlightSpring {
+  FlightSpring(this.description);
+
+  /// The spring's mass, stiffness and damping.
+  final SpringDescription description;
+
+  /// An unbounded controller, so the spring can carry a flight past its end
+  /// and back.
+  AnimationController controller(TickerProvider vsync, Duration _) =>
+      AnimationController.unbounded(vsync: vsync);
+
+  /// The spring is the curve.
+  Animation<double> animation(AnimationController controller) => controller;
+
+  /// Springs a flight to its end.
+  TickerFuture forward(AnimationController controller, {double? from}) =>
+      controller.animateWith(_to(1, controller, from: from));
+
+  /// Springs a flight back to its start, as when it's sent back mid-flight.
+  /// The default, `controller.reverse()`, needs a controller with bounds.
+  TickerFuture reverse(AnimationController controller, {double? from}) =>
+      controller.animateBackWith(_to(0, controller, from: from));
+
+  /// Springs [controller] to [end], from [from] or else from where it is, at
+  /// the speed it has, so a flight sent back mid-flight swings round rather
+  /// than stops.
+  SpringSimulation _to(
+    double end,
+    AnimationController controller, {
+    double? from,
+  }) => SpringSimulation(
+    description,
+    from ?? controller.value,
+    end,
+    controller.velocity,
+    // Lands once the hero looks still, rather than when the spring comes
+    // fully to rest, a while later, so what waits for the landing, such as
+    // the flip card's taps, doesn't lag behind what shows.
+    tolerance: const Tolerance(distance: .005, velocity: .05),
+  );
+}

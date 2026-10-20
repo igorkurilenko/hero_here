@@ -13,10 +13,10 @@
 // limitations under the License.
 
 import 'package:flutter/material.dart';
-import 'package:flutter/physics.dart';
 import 'package:hero_here/hero_here.dart';
 
 import '../show_details_hero/eight_thousander.dart';
+import '../style/motion.dart';
 
 void main() => runApp(
   MaterialApp(
@@ -43,12 +43,6 @@ const kLargestCellExtent = kMaxCrossAxisExtent + kGridSpacing;
 const kCardExtent = 360.0;
 
 const _borderRadius = BorderRadius.all(Radius.circular(32));
-
-/// A bouncy spring, as heroine's default motion, `CupertinoMotion.bouncy()`.
-final _spring = SpringDescription.withDurationAndBounce(
-  duration: const Duration(milliseconds: 500),
-  bounce: 0.3,
-);
 
 class FlipCardExample extends StatefulWidget {
   const FlipCardExample({super.key});
@@ -106,10 +100,10 @@ class _FlipCardExampleState extends State<FlipCardExample>
                 tag: index,
                 // Flips over as it flies, on a bouncy spring.
                 flightShuttleBuilder: HeroHereShuttles.flip(),
-                flightAnimationControllerFactory: _springController,
-                flightAnimationFactory: _springAnimation,
-                forwardFlightAnimation: _springForward,
-                reverseFlightAnimation: _springReverse,
+                flightAnimationControllerFactory: bouncySpring.controller,
+                flightAnimationFactory: bouncySpring.animation,
+                forwardFlightAnimation: bouncySpring.forward,
+                reverseFlightAnimation: bouncySpring.reverse,
                 child: _Photo(
                   kEightThousanders[index],
                   dim: _dims[index],
@@ -144,10 +138,10 @@ class _FlipCardExampleState extends State<FlipCardExample>
                       key: ValueKey('card-$openIndex'),
                       tag: openIndex,
                       flightShuttleBuilder: HeroHereShuttles.flip(),
-                      flightAnimationControllerFactory: _springController,
-                      flightAnimationFactory: _springAnimation,
-                      forwardFlightAnimation: _springForward,
-                      reverseFlightAnimation: _springReverse,
+                      flightAnimationControllerFactory: bouncySpring.controller,
+                      flightAnimationFactory: bouncySpring.animation,
+                      forwardFlightAnimation: bouncySpring.forward,
+                      reverseFlightAnimation: bouncySpring.reverse,
                       child: _Details(
                         kEightThousanders[openIndex],
                         dim: _dims[openIndex],
@@ -179,40 +173,6 @@ class _FlipCardExampleState extends State<FlipCardExample>
     }
   }
 }
-
-/// Unbounded, so the spring can carry a card past its place and back.
-AnimationController _springController(TickerProvider vsync, Duration _) =>
-    AnimationController.unbounded(vsync: vsync);
-
-/// The spring is the curve.
-Animation<double> _springAnimation(AnimationController controller) =>
-    controller;
-
-TickerFuture _springForward(AnimationController controller, {double? from}) =>
-    controller.animateWith(_springTo(1, controller, from: from));
-
-/// A card closed mid-flight turns back on the spring too. The default,
-/// controller.reverse(), needs a controller with bounds.
-TickerFuture _springReverse(AnimationController controller, {double? from}) =>
-    controller.animateBackWith(_springTo(0, controller, from: from));
-
-/// Springs [controller] to [end], from [from] or else from where it is, at
-/// the speed it has, so a card sent back mid-flight swings round rather than
-/// stops.
-SpringSimulation _springTo(
-  double end,
-  AnimationController controller, {
-  double? from,
-}) => SpringSimulation(
-  _spring,
-  from ?? controller.value,
-  end,
-  controller.velocity,
-  // The cards take no taps until their flight lands, so it lands once the
-  // card looks still, rather than when the spring comes fully to rest, about
-  // a third of a second later.
-  tolerance: const Tolerance(distance: .005, velocity: .05),
-);
 
 /// The front of an eight-thousander's card: its photo.
 class _Photo extends StatelessWidget {
