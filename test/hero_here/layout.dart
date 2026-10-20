@@ -74,43 +74,45 @@ void _layoutTests() {
     expect(shuttleRect.width, closeTo(heroRect.width, 2));
   });
 
-  testWidgets('flies to where its hero is on the frame of a window resize', (
-    tester,
-  ) async {
-    _setUpView(tester);
-    final moved = ValueNotifier(false);
-    addTearDown(moved.dispose);
-    late Animation<double> animation;
+  for (final (sky, layoutBuilder) in _layoutBuilders) {
+    testWidgets('flies to where its hero is on the frame of a window resize, '
+        'with the sky $sky its child', (tester) async {
+      _setUpView(tester);
+      final moved = ValueNotifier(false);
+      addTearDown(moved.dispose);
+      late Animation<double> animation;
 
-    await tester.pumpWidget(
-      _QuarterWidthSwitcher(
-        moved: moved,
-        shuttleBuilder: (_, flight, _, _) {
-          animation = flight;
-          return const SizedBox.expand(key: _shuttleKey);
-        },
-      ),
-    );
-    await tester.pumpAndSettle();
-    final fromRect = tester.getRect(find.byKey(const ValueKey('box-false')));
+      await tester.pumpWidget(
+        _QuarterWidthSwitcher(
+          moved: moved,
+          layoutBuilder: layoutBuilder,
+          shuttleBuilder: (_, flight, _, _) {
+            animation = flight;
+            return const SizedBox.expand(key: _shuttleKey);
+          },
+        ),
+      );
+      await tester.pumpAndSettle();
+      final fromRect = tester.getRect(find.byKey(const ValueKey('box-false')));
 
-    moved.value = true;
-    await _pumpSwitch(tester);
-    await tester.pump(HeroHere.defaultFlightAnimationDuration ~/ 2);
+      moved.value = true;
+      await _pumpSwitch(tester);
+      await tester.pump(HeroHere.defaultFlightAnimationDuration ~/ 2);
 
-    // The hero the flight lands on is a quarter of the window wide.
-    tester.view.physicalSize = const Size(400, 600);
-    await tester.pump(_frame);
+      // The hero the flight lands on is a quarter of the window wide.
+      tester.view.physicalSize = const Size(400, 600);
+      await tester.pump(_frame);
 
-    final toRect = tester.getRect(
-      find.byKey(const ValueKey('box-true'), skipOffstage: false),
-    );
-    expect(toRect, const Rect.fromLTWH(300, 0, 100, 40));
-    expect(
-      tester.getRect(find.byKey(_shuttleKey)),
-      _rectMoreOrLessEquals(Rect.lerp(fromRect, toRect, animation.value)!),
-    );
-  });
+      final toRect = tester.getRect(
+        find.byKey(const ValueKey('box-true'), skipOffstage: false),
+      );
+      expect(toRect, const Rect.fromLTWH(300, 0, 100, 40));
+      expect(
+        tester.getRect(find.byKey(_shuttleKey)),
+        _rectMoreOrLessEquals(Rect.lerp(fromRect, toRect, animation.value)!),
+      );
+    });
+  }
 
   for (final (where, spot, start) in [
     (
@@ -348,64 +350,132 @@ void _layoutTests() {
     expect(tester.getRect(switcher), centered);
   });
 
-  testWidgets('lets what is behind it show through by default', (tester) async {
-    _setUpView(tester);
-    const green = Color(0xFF00FF00);
+  for (final (sky, layoutBuilder) in _layoutBuilders) {
+    testWidgets('lets what is behind it show through, with the sky $sky its '
+        'child', (tester) async {
+      _setUpView(tester);
+      const green = Color(0xFF00FF00);
 
-    await tester.pumpWidget(
-      const MaterialApp(
-        home: ColoredBox(
-          color: green,
-          child: HeroHereSwitcher(child: SizedBox.expand()),
-        ),
-      ),
-    );
-
-    expect(await _pixelAt(tester, const Offset(400, 300)), green);
-  });
-
-  testWidgets('gives its child a material for ink by default', (tester) async {
-    var taps = 0;
-    await tester.pumpWidget(
-      Directionality(
-        textDirection: TextDirection.ltr,
-        child: HeroHereSwitcher(
-          child: Center(
-            // An ink well needs a material above it.
-            child: InkWell(onTap: () => taps++, child: const Text('ink')),
+      await tester.pumpWidget(
+        MaterialApp(
+          home: ColoredBox(
+            color: green,
+            child: HeroHereSwitcher(
+              layoutBuilder: layoutBuilder,
+              child: const SizedBox.expand(),
+            ),
           ),
         ),
-      ),
-    );
-    await tester.tap(find.text('ink'));
-    await tester.pump();
+      );
 
-    expect(tester.takeException(), isNull);
-    expect(taps, 1);
-  });
+      expect(await _pixelAt(tester, const Offset(400, 300)), green);
+    });
 
-  testWidgets('keeps taps on its empty space from what is behind it by '
-      'default', (tester) async {
-    var behind = 0;
-    await tester.pumpWidget(
-      MaterialApp(
-        home: Stack(
-          children: [
-            Positioned.fill(
-              child: GestureDetector(
-                behavior: HitTestBehavior.opaque,
-                onTap: () => behind++,
+    testWidgets('gives its child a material for ink, with the sky $sky its '
+        'child', (tester) async {
+      var taps = 0;
+      await tester.pumpWidget(
+        Directionality(
+          textDirection: TextDirection.ltr,
+          child: HeroHereSwitcher(
+            layoutBuilder: layoutBuilder,
+            child: Center(
+              // An ink well needs a material above it.
+              child: InkWell(onTap: () => taps++, child: const Text('ink')),
+            ),
+          ),
+        ),
+      );
+      await tester.tap(find.text('ink'));
+      await tester.pump();
+
+      expect(tester.takeException(), isNull);
+      expect(taps, 1);
+    });
+
+    testWidgets('keeps taps on its empty space from what is behind it, with '
+        'the sky $sky its child', (tester) async {
+      var behind = 0;
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Stack(
+            children: [
+              Positioned.fill(
+                child: GestureDetector(
+                  behavior: HitTestBehavior.opaque,
+                  onTap: () => behind++,
+                ),
+              ),
+              HeroHereSwitcher(
+                layoutBuilder: layoutBuilder,
+                child: const SizedBox.expand(),
+              ),
+            ],
+          ),
+        ),
+      );
+      await tester.tapAt(const Offset(400, 300));
+
+      expect(behind, 0);
+    });
+
+    testWidgets('flies $sky its child with the sky $sky it', (tester) async {
+      _setUpView(tester);
+      final moved = ValueNotifier(false);
+      addTearDown(moved.dispose);
+      const green = Color(0xFF00FF00);
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: ValueListenableBuilder(
+            valueListenable: moved,
+            builder: (context, moved, _) => HeroHereSwitcher(
+              layoutBuilder: layoutBuilder,
+              child: Stack(
+                children: [
+                  // A label in the middle of the flight's path.
+                  const Positioned(
+                    left: 390,
+                    top: 290,
+                    width: 20,
+                    height: 20,
+                    child: ColoredBox(color: green),
+                  ),
+                  Positioned(
+                    left: moved ? 740 : 0,
+                    top: 270,
+                    child: HeroHere(
+                      key: ValueKey(moved),
+                      tag: 'hero',
+                      flightShuttleBuilder: (_, _, _, _) =>
+                          const ColoredBox(key: _shuttleKey, color: _heroColor),
+                      child: const SizedBox(width: 60, height: 60),
+                    ),
+                  ),
+                ],
               ),
             ),
-            const HeroHereSwitcher(child: SizedBox.expand()),
-          ],
+          ),
         ),
-      ),
-    );
-    await tester.tapAt(const Offset(400, 300));
+      );
+      await tester.pumpAndSettle();
 
-    expect(behind, 0);
-  });
+      moved.value = true;
+      await _pumpSwitch(tester);
+      await tester.pump(HeroHere.defaultFlightAnimationDuration ~/ 2);
+
+      // Halfway, the shuttle covers the label, and shows around it.
+      expect(
+        tester.getRect(find.byKey(_shuttleKey)),
+        _rectMoreOrLessEquals(const Rect.fromLTWH(370, 270, 60, 60)),
+      );
+      expect(await _pixelAt(tester, const Offset(375, 300)), _heroColor);
+      expect(
+        await _pixelAt(tester, const Offset(400, 300)),
+        sky == 'over' ? _heroColor : green,
+      );
+    });
+  }
 
   testWidgets('clips its flights to it when its layout builder sizes the sky', (
     tester,
@@ -506,46 +576,48 @@ void _layoutTests() {
       const Size(40, 40),
     ),
   ]) {
-    testWidgets('flies in a switcher sized to its intrinsic $intrinsic', (
-      tester,
-    ) async {
-      final moved = ValueNotifier(false);
-      addTearDown(moved.dispose);
+    for (final (sky, layoutBuilder) in _layoutBuilders) {
+      testWidgets('flies in a switcher sized to its intrinsic $intrinsic, with '
+          'the sky $sky its child', (tester) async {
+        final moved = ValueNotifier(false);
+        addTearDown(moved.dispose);
 
-      await tester.pumpWidget(
-        MaterialApp(
-          home: Align(
-            alignment: Alignment.topLeft,
-            child: wrap(
-              ValueListenableBuilder(
-                valueListenable: moved,
-                builder: (context, moved, _) => HeroHereSwitcher(
-                  child: Align(
-                    alignment: moved ? Alignment.topRight : Alignment.topLeft,
-                    child: HeroHere(
-                      key: ValueKey(moved),
-                      tag: 'hero',
-                      flightShuttleBuilder: _shuttleBox,
-                      child: const SizedBox(width: 40, height: 40),
+        await tester.pumpWidget(
+          MaterialApp(
+            home: Align(
+              alignment: Alignment.topLeft,
+              child: wrap(
+                ValueListenableBuilder(
+                  valueListenable: moved,
+                  builder: (context, moved, _) => HeroHereSwitcher(
+                    layoutBuilder: layoutBuilder,
+                    child: Align(
+                      alignment: moved ? Alignment.topRight : Alignment.topLeft,
+                      child: HeroHere(
+                        key: ValueKey(moved),
+                        tag: 'hero',
+                        flightShuttleBuilder: _shuttleBox,
+                        child: const SizedBox(width: 40, height: 40),
+                      ),
                     ),
                   ),
                 ),
               ),
             ),
           ),
-        ),
-      );
-      await tester.pumpAndSettle();
+        );
+        await tester.pumpAndSettle();
 
-      moved.value = true;
-      await _pumpSwitch(tester);
-      await tester.pump(HeroHere.defaultFlightAnimationDuration ~/ 2);
+        moved.value = true;
+        await _pumpSwitch(tester);
+        await tester.pump(HeroHere.defaultFlightAnimationDuration ~/ 2);
 
-      expect(tester.getSize(find.byKey(_shuttleKey)), const Size(40, 40));
-      expect(tester.getSize(find.byType(HeroHereSwitcher)), size);
-      await tester.pumpAndSettle();
-      expect(find.byKey(_shuttleKey), findsNothing);
-    });
+        expect(tester.getSize(find.byKey(_shuttleKey)), const Size(40, 40));
+        expect(tester.getSize(find.byType(HeroHereSwitcher)), size);
+        await tester.pumpAndSettle();
+        expect(find.byKey(_shuttleKey), findsNothing);
+      });
+    }
   }
 }
 
@@ -636,12 +708,24 @@ class _HeaderSwitcher extends StatelessWidget {
   }
 }
 
+/// The ready-made layout builders, by where each puts the sky: over the
+/// switcher's child or under it.
+const _layoutBuilders = [
+  ('over', HeroHereSwitcher.defaultLayoutBuilder),
+  ('under', HeroHereSwitcher.skyUnderLayoutBuilder),
+];
+
 /// Shows a 40 px hero at the top left, or, when [moved], a hero a quarter of
 /// the window wide at the top right.
 class _QuarterWidthSwitcher extends StatelessWidget {
-  const _QuarterWidthSwitcher({required this.moved, this.shuttleBuilder});
+  const _QuarterWidthSwitcher({
+    required this.moved,
+    this.layoutBuilder = HeroHereSwitcher.defaultLayoutBuilder,
+    this.shuttleBuilder,
+  });
 
   final ValueNotifier<bool> moved;
+  final HeroHereSwitcherLayoutBuilder layoutBuilder;
   final HeroHereFlightShuttleBuilder? shuttleBuilder;
 
   @override
@@ -649,6 +733,7 @@ class _QuarterWidthSwitcher extends StatelessWidget {
     home: ValueListenableBuilder(
       valueListenable: moved,
       builder: (context, moved, _) => HeroHereSwitcher(
+        layoutBuilder: layoutBuilder,
         child: Align(
           alignment: moved ? Alignment.topRight : Alignment.topLeft,
           child: HeroHere(
