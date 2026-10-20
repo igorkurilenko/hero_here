@@ -10,6 +10,8 @@ import 'package:flutter/rendering.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:hero_here/hero_here.dart';
 
+import 'flight_helpers.dart';
+
 final _input = find.byWidgetPredicate(
   (widget) => widget is TextField && !widget.readOnly,
 );
@@ -49,16 +51,15 @@ void main() {
     await tester.pumpWidget(const MaterialApp(home: ChatMessageExample()));
     await _send(tester, 'Hello');
 
-    var highest = double.infinity;
-    for (var frame = 0; frame < 60; frame++) {
-      await tester.pump(const Duration(milliseconds: 16));
-      for (final element in find.text('Hello').evaluate()) {
-        highest = math.min(
-          highest,
-          tester.getTopLeft(find.byElementPredicate((e) => e == element)).dy,
-        );
-      }
-    }
+    // How high the message goes, on each frame.
+    final highs = await pumpFrames(
+      tester,
+      60,
+      () => rectsOf(
+        tester,
+        find.text('Hello'),
+      ).map((rect) => rect.top).reduce(math.min),
+    );
 
     final landed = tester
         .getTopLeft(
@@ -68,7 +69,7 @@ void main() {
           ),
         )
         .dy;
-    expect(highest, lessThan(landed - 1));
+    expect(highs.reduce(math.min), lessThan(landed - 1));
   });
 
   testWidgets('keeps the typed text when the page rebuilds', (tester) async {

@@ -5,6 +5,8 @@ import 'package:example/splash_logo_hero/main.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
+import 'flight_helpers.dart';
+
 void main() {
   testWidgets('flies the logo and the name into the app bar once the app has '
       'loaded', (tester) async {
@@ -14,7 +16,7 @@ void main() {
 
     await tester.pump(kLoadingDuration);
     await tester.pump();
-    await tester.pump(const Duration(milliseconds: 150));
+    await tester.pump(midFlight);
 
     final logo = tester.getRect(_logo);
     expect(logo.center.dy, lessThan(splash.center.dy - 50));
@@ -45,10 +47,8 @@ void main() {
     await tester.pumpAndSettle();
     final inAppBar = tester.getRect(_logo);
 
-    await tester.tap(_logo);
-    await tester.pump();
-    await tester.pump();
-    await tester.pump(const Duration(milliseconds: 150));
+    await startFlight(tester, _logo);
+    await tester.pump(midFlight);
 
     final logo = tester.getRect(_logo);
     expect(logo.center.dy, greaterThan(inAppBar.center.dy + 50));
@@ -69,14 +69,15 @@ void main() {
     await tester.pump(kLoadingDuration);
     await tester.pump();
 
-    var highest = double.infinity;
-    for (var frame = 0; frame < 60; frame++) {
-      await tester.pump(const Duration(milliseconds: 16));
-      highest = math.min(highest, tester.getCenter(_logo).dy);
-    }
+    // How high the logo goes, on each frame.
+    final highs = await pumpFrames(
+      tester,
+      60,
+      () => tester.getCenter(_logo).dy,
+    );
 
     final landed = tester.getCenter(_logo).dy;
-    expect(highest, lessThan(landed - 1));
+    expect(highs.reduce(math.min), lessThan(landed - 1));
   });
 }
 

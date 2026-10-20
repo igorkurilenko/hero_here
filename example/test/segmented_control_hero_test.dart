@@ -3,6 +3,8 @@ import 'package:example/segmented_control_hero/main.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
+import 'flight_helpers.dart';
+
 void main() {
   testWidgets('flies the thumb to the tapped segment, as the chart\'s bars '
       'grow and shrink to its period\'s', (tester) async {
@@ -12,10 +14,8 @@ void main() {
     expect(tester.getCenter(_thumb).dx, day);
     final firstBar = tester.getSize(_bars.first).height;
 
-    await tester.tap(find.text('Month'));
-    await tester.pump();
-    await tester.pump();
-    await tester.pump(const Duration(milliseconds: 150));
+    await startFlight(tester, find.text('Month'));
+    await tester.pump(midFlight);
 
     final halfway = tester.getCenter(_thumb).dx;
     expect(halfway, greaterThan(day + 50));
@@ -45,14 +45,10 @@ void main() {
 
     for (final label in ['Week', 'Month', 'Day']) {
       await tester.tap(find.text(label));
-      for (var frame = 0; frame < 30; frame++) {
-        await tester.pump(const Duration(milliseconds: 16));
-        for (final element in _steps.evaluate()) {
-          expect(
-            tester.getTopLeft(find.byElementPredicate((e) => e == element)).dx,
-            left,
-            reason: 'On frame $frame to $label',
-          );
+      for (var i = 0; i < 30; i++) {
+        await tester.pump(frame);
+        for (final rect in rectsOf(tester, _steps)) {
+          expect(rect.left, left, reason: 'On frame $i to $label');
         }
       }
     }
@@ -61,9 +57,7 @@ void main() {
   testWidgets('keeps the thumb on its way to its segment on the frame of a '
       'window resize', (tester) async {
     await tester.pumpWidget(const MaterialApp(home: SegmentedControlExample()));
-    await tester.tap(find.text('Month'));
-    await tester.pump();
-    await tester.pump();
+    await startFlight(tester, find.text('Month'));
     await tester.pump(const Duration(milliseconds: 280));
 
     // A narrower window moves the segment the thumb flies to.
@@ -72,7 +66,7 @@ void main() {
       tester.view.physicalSize.height,
     );
     addTearDown(tester.view.resetPhysicalSize);
-    await tester.pump(const Duration(milliseconds: 16));
+    await tester.pump(frame);
 
     // Placed by this frame's layout, though the sky lies under the segments,
     // rather than by the frame before's, when the segment was twice as far.

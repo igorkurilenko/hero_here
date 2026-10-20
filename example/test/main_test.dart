@@ -7,6 +7,8 @@ import 'package:example/style/style.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
+import 'flight_helpers.dart';
+
 void main() {
   final headphones = kProducts[0];
   final camera = kProducts[1];
@@ -19,8 +21,8 @@ void main() {
     final cardRect = tester.getRect(productCard);
     final card = tester.getRect(find.byKey(const ValueKey('card-Camera')));
 
-    await _startFlight(tester, _buttonOf(camera));
-    await tester.pump(const Duration(milliseconds: 150));
+    await startFlight(tester, _buttonOf(camera));
+    await tester.pump(midFlight);
 
     // Only the picture in flight, on its way down: none on the card.
     final pictures = _pictures(tester, camera);
@@ -49,8 +51,8 @@ void main() {
     );
     final second = tester.getCenter(find.byKey(const ValueKey('cart-Watch-1')));
 
-    await _startFlight(tester, find.byKey(const ValueKey('cart-Headphones-0')));
-    await tester.pump(const Duration(milliseconds: 150));
+    await startFlight(tester, find.byKey(const ValueKey('cart-Headphones-0')));
+    await tester.pump(midFlight);
 
     // The watch's picture slides along the cart, a place to the left.
     final sliding = _pictures(
@@ -83,20 +85,19 @@ void main() {
   testWidgets('lands a product\'s picture in the cart on a soft spring, a '
       'little past its place and back', (tester) async {
     await tester.pumpWidget(const MaterialApp(home: AddToCartExample()));
-    await _startFlight(tester, _buttonOf(camera));
+    await startFlight(tester, _buttonOf(camera));
 
-    var lowest = 0.0;
-    for (var frame = 0; frame < 60; frame++) {
-      await tester.pump(const Duration(milliseconds: 16));
-      for (final at in _pictures(tester, camera)) {
-        lowest = math.max(lowest, at.dy);
-      }
-    }
+    // How low the picture goes, on each frame.
+    final lows = await pumpFrames(
+      tester,
+      60,
+      () => _pictures(tester, camera).map((at) => at.dy).reduce(math.max),
+    );
 
     final landed = tester.getCenter(
       find.byKey(const ValueKey('cart-Camera-0')),
     );
-    expect(lowest, greaterThan(landed.dy + 1));
+    expect(lows.reduce(math.max), greaterThan(landed.dy + 1));
   });
 
   test('shows the code of lib/main.dart on its pub.dev page', () {
@@ -120,19 +121,11 @@ Finder _buttonOf(Product product) => find.descendant(
 
 /// Where [product]'s pictures show: on its card, in the cart or in flight.
 List<Offset> _pictures(WidgetTester tester, Product product) => [
-  for (final element
-      in find
-          .byWidgetPredicate(
-            (widget) => widget is Unicon && widget.data == product.icon,
-          )
-          .evaluate())
-    tester.getCenter(find.byElementPredicate((each) => each == element)),
+  for (final rect in rectsOf(
+    tester,
+    find.byWidgetPredicate(
+      (widget) => widget is Unicon && widget.data == product.icon,
+    ),
+  ))
+    rect.center,
 ];
-
-/// Taps [target] and pumps until the flight it starts shows, from the frame
-/// after the switch.
-Future<void> _startFlight(WidgetTester tester, Finder target) async {
-  await tester.tap(target);
-  await tester.pump();
-  await tester.pump();
-}
