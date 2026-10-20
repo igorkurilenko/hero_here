@@ -131,14 +131,16 @@ class HeroHereSwitcher extends StatefulWidget {
   final Widget? child;
 
   /// Lays out the switcher's [child] and its sky, the layer its flights fly
-  /// in. Defaults to [defaultLayoutBuilder].
+  /// in. Defaults to [defaultLayoutBuilder], which puts the sky over the
+  /// child. [skyUnderLayoutBuilder] puts it under the child.
   ///
-  /// Put the sky after the child in a [Stack], as the default does. The stack
-  /// paints the sky over the child and lays it out after the child, so on
-  /// each frame a flight finds its heroes where that frame's layout puts
-  /// them. A sky laid out before the child, such as one before it in a stack
-  /// that doesn't position it, places its shuttles by the layout of the frame
-  /// before, so on a window resize they lag a frame behind their heroes.
+  /// Lay the sky out after the child, as both do: after the child in a
+  /// [Stack], or positioned in it, since a stack lays out its positioned
+  /// children last. Then on each frame a flight finds its heroes where that
+  /// frame's layout puts them. A sky laid out before the child, such as one
+  /// before it in a stack that doesn't position it, places its shuttles by
+  /// the layout of the frame before, so on a window resize they lag a frame
+  /// behind their heroes.
   ///
   /// Shuttles fly where their heroes are on the screen, wherever the sky is.
   /// The sky takes the smallest size its constraints allow, so it doesn't
@@ -188,6 +190,26 @@ class HeroHereSwitcher extends StatefulWidget {
     child: MetaData(
       behavior: HitTestBehavior.opaque,
       child: Stack(children: [child, sky]),
+    ),
+  );
+
+  /// Puts the sky under the child, so shuttles fly under what the child
+  /// shows, such as a segmented control's thumb under its labels. Otherwise
+  /// it's like [defaultLayoutBuilder].
+  ///
+  /// The sky fills the switcher, as a positioned child of the [Stack], so
+  /// the stack still lays it out after the child, and the shuttles keep up
+  /// with their heroes on a window resize.
+  static Widget skyUnderLayoutBuilder(Widget child, Widget sky) => Material(
+    type: MaterialType.transparency,
+    child: MetaData(
+      behavior: HitTestBehavior.opaque,
+      child: Stack(
+        children: [
+          Positioned.fill(child: sky),
+          child,
+        ],
+      ),
     ),
   );
 }

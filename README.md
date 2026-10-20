@@ -181,7 +181,9 @@ To build your own, wrap what changes in an `AnimatedBuilder` or a transition, su
 
 ## Layout
 
-`HeroHereSwitcher` puts the layer its flights fly in, its sky, over its child in a `Stack`, in a transparent `Material`. The material gives them a default text style and a surface for ink, but paints no background, so what's behind the switcher shows through. To lay them out yourself, set `layoutBuilder`. Keep the sky after the child in the stack, so it paints over the child and lays out after it: then on each frame, such as on a window resize, flights find their heroes where that frame's layout puts them.
+`HeroHereSwitcher` puts the layer its flights fly in, its sky, over its child in a `Stack`, in a transparent `Material`. The material gives them a default text style and a surface for ink, but paints no background, so what's behind the switcher shows through. For shuttles that fly under the child, such as a segmented control's thumb under its labels, set `layoutBuilder: HeroHereSwitcher.skyUnderLayoutBuilder`. It's the same as the default, but with the sky under the child.
+
+To lay them out yourself, set `layoutBuilder` to a builder of your own. Lay the sky out after the child: after it in the stack, or positioned in it, since a stack lays out its positioned children last. Then on each frame, such as on a window resize, flights find their heroes where that frame's layout puts them.
 
 Shuttles fly where their heroes are on the screen, wherever the sky is. The sky takes the smallest size it may, so it doesn't size the switcher. To clip the flights to the switcher, give the sky the switcher's size:
 
