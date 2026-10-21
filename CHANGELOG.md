@@ -1,5 +1,9 @@
 ## Unreleased
 
+### Docs
+
+* Lead the library's documentation with hero animations within the same page, and say how a flight starts: a hero that shows up in another place, with the same tag and a key of its own.
+
 ### Example
 
 * Lift the shop's flying picture off the page with a shadow, from a shuttle of its own: the shadow grows as the picture takes off and fades as it lands, so none shows at either end.
