@@ -1,3 +1,9 @@
+## Unreleased
+
+### Docs
+
+* Say in the API docs of `HeroHereSwitcher` and `HeroHere` what starts a flight, as the library's documentation does: a hero that shows up in another place, with the tag of one that showed before and a key of its own, rather than any change of the switcher's child.
+
 ## 2.3.3
 
 ### Docs
