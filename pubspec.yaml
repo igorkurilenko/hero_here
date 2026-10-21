@@ -1,6 +1,6 @@
 name: hero_here
 description: "Hero animation within the same page: tag a widget's old and new places alike, change state, and it flies from one to the other. No Navigator or routes."
-version: 2.3.3
+version: 2.3.4
 repository: https://github.com/igorkurilenko/hero_here
 topics:
   - animation
