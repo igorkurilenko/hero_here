@@ -15,7 +15,10 @@
 // What the add to cart example looks like, apart from its heroes, which
 // main.dart places.
 
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
+import 'package:hero_here/hero_here.dart';
 
 import '../style/style.dart';
 
@@ -206,6 +209,37 @@ class CartItem extends StatelessWidget {
     child: SizedBox.square(dimension: kCartPictureExtent, child: picture),
   );
 }
+
+/// A product's picture in flight, lifted off the page: a shadow grows under
+/// it as it leaves its place and fades as it lands, so it has none at either
+/// end, and nothing jumps as it takes off or lands.
+Widget liftedPicture(
+  BuildContext flightContext,
+  Animation<double> animation,
+  HeroHere fromHero,
+  HeroHere toHero,
+) => AnimatedBuilder(
+  animation: animation,
+  builder: (context, picture) {
+    // 0 at either end of the flight and 1 halfway. Past its end, as the
+    // spring carries it, it's landed.
+    final lift = math.sin(math.pi * animation.value.clamp(0.0, 1.0));
+    return DecoratedBox(
+      decoration: ShapeDecoration(
+        shape: squircle(R.lg),
+        shadows: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: .2 * lift),
+            blurRadius: S.s6 * lift,
+            offset: Offset(0, S.s3 * lift),
+          ),
+        ],
+      ),
+      child: picture,
+    );
+  },
+  child: toHero.child,
+);
 
 /// A product's picture: its icon on its color, at any size, so it shrinks
 /// and grows as it flies between its card and the cart.

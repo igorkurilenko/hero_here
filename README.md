@@ -30,7 +30,7 @@ hero_here is a Flutter package for a hero animation on the same page, or the sam
       <img src="https://github.com/igorkurilenko/hero_here/blob/main/assets/hero_here_add_to_cart.webp?raw=true"
         alt="Flutter add to cart animation: a product's image flies from its card into the cart, and back" width="220"/>
       <p><b>Add to cart animation</b></p>
-      <p>Tap add to cart, and the product's image flies from its card into the cart, landing on a soft spring, as in an e-commerce app. Remove it, and it flies back, as the items after it in the cart slide along. <a href="https://github.com/igorkurilenko/hero_here/tree/main/example/lib/add_to_cart_hero">See the code ›</a></p>
+      <p>Tap add to cart, and the product's image lifts off its card and flies into the cart, landing on a soft spring, as in an e-commerce app. Remove it, and it flies back, as the items after it in the cart slide along. <a href="https://github.com/igorkurilenko/hero_here/tree/main/example/lib/add_to_cart_hero">See the code ›</a></p>
     </td>
     <td align="center" valign="top" width="50%">
       <img src="https://github.com/igorkurilenko/hero_here/blob/main/assets/hero_here_splash_logo.webp?raw=true"

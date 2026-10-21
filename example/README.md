@@ -1,7 +1,7 @@
 # hero_here examples
 
 - `lib/main.dart`: the flippers photo from Flutter's hero animations guide flies from the middle of the page into its corner, and back, on a tap, with no route. It's also on pub.dev's Example tab. The photo, `images/flippers.png`, comes from the guide, under the license in `images/LICENSE`.
-- `lib/add_to_cart_hero/`: a shop whose products' pictures fly from their cards into the cart, landing on a soft spring, and back once they're taken out, as the products after them in the cart slide along.
+- `lib/add_to_cart_hero/`: a shop whose products' pictures lift off their cards with a shadow and fly into the cart, landing on a soft spring, and back once they're taken out, as the products after them in the cart slide along.
 - `lib/navigation_bar_hero/`: a bottom navigation bar whose indicator flies to the tapped tab, under the icons, and starts over to a tab tapped mid-flight, from where it is.
 - `lib/segmented_control_hero/`: a segmented control whose thumb flies to the tapped period, under the labels, as a chart's bars grow and shrink, and the steps count to the period's total.
 - `lib/splash_logo_hero/`: once the app has loaded, the splash screen's logo and name fly into the app bar. Tap them to see the splash screen again.
