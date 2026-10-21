@@ -12,9 +12,16 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-/// Hero flights within one screen, with no navigation: a [HeroHereSwitcher]
-/// flies the [HeroHere] widgets in its child between their places whenever
-/// its child changes.
+/// Hero animations within the same page, with no Navigator or routes.
+///
+/// Wrap the part of the page whose widgets move in a [HeroHereSwitcher], and
+/// put a [HeroHere] in each place a widget may be: with the same tag in every
+/// place, and a key of its own in each. When the page changes its state and
+/// a hero shows up in another place, the switcher flies it there from where
+/// it was.
+///
+/// [HeroHereShuttles] has ready-made shuttles for flights: a crossfade, a
+/// flip like a card's, and a scale that keeps text from reflowing.
 library;
 
 export 'src/hero_here.dart';
