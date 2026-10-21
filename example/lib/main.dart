@@ -1,4 +1,4 @@
-// Copyright 2024 Igor Kurilenko
+// Copyright 2026 Igor Kurilenko
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -15,96 +15,64 @@
 import 'package:flutter/material.dart';
 import 'package:hero_here/hero_here.dart';
 
-import 'add_to_cart/shop.dart';
-import 'style/style.dart';
-
 void main() => runApp(
-  MaterialApp(
+  const MaterialApp(
     title: 'HeroHere Example',
     debugShowCheckedModeBanner: false,
-    theme: exampleTheme,
-    home: const AddToCartExample(),
+    home: FlippersExample(),
   ),
 );
 
-/// A shop whose products' pictures fly into the cart, and back, within the
-/// page:
+/// The flippers photo from Flutter's hero animations guide, flying between
+/// the middle of the page and its corner, within the page:
 ///
-/// 1. A [HeroHereSwitcher] wraps the page.
-/// 2. Each product's picture is a [HeroHere], on its card or in the cart:
-///    with the product's name as its tag, and a key of its own in each place.
-/// 3. Adding a product to the cart, or taking it out, moves its hero, and
-///    the switcher flies the picture there.
-class AddToCartExample extends StatefulWidget {
-  const AddToCartExample({super.key});
+/// 1. A [HeroHereSwitcher] wraps the page's body.
+/// 2. The photo is a [HeroHere], in the middle or in the corner: with the
+///    same tag in both places, and a key of its own in each.
+/// 3. A tap moves the photo to the other place, and the switcher flies it
+///    there.
+class FlippersExample extends StatefulWidget {
+  const FlippersExample({super.key});
 
   @override
-  State<AddToCartExample> createState() => _AddToCartExampleState();
+  State<FlippersExample> createState() => _FlippersExampleState();
 }
 
-class _AddToCartExampleState extends State<AddToCartExample> {
-  final _cart = <Product>[];
+class _FlippersExampleState extends State<FlippersExample> {
+  var _inCorner = false;
 
   @override
-  Widget build(BuildContext context) => HeroHereSwitcher(
-    // 1. The switcher.
-    child: Scaffold(
-      appBar: AppBar(title: const Text('Shop')),
-      body: ProductGrid(
-        children: [
-          for (final product in kProducts)
-            ProductCard(
-              product,
-              inCart: _cart.contains(product),
-              // 3. Adds the product to the cart, or takes it out.
-              onToggle: () => _toggle(product),
-              // 2. The product's picture on its card, while it's out of the
-              // cart. In the cart, the card keeps its place, empty.
-              picture: _cart.contains(product)
-                  ? null
-                  : HeroHere(
-                      key: ValueKey('card-${product.name}'),
-                      tag: product.name,
-                      // Lands on a soft spring.
-                      flightAnimationControllerFactory: softSpring.controller,
-                      flightAnimationFactory: softSpring.animation,
-                      forwardFlightAnimation: softSpring.forward,
-                      reverseFlightAnimation: softSpring.reverse,
-                      child: ProductPicture(product),
-                    ),
-            ),
-        ],
-      ),
-      bottomNavigationBar: CartBar(
-        total: _total,
-        children: [
-          for (final (position, product) in _cart.indexed)
-            CartItem(
-              // 3. A tap takes the product out of the cart.
-              onTap: () => _toggle(product),
-              // 2. The product's picture in the cart, while it's in: the same
-              // tag as on its card, with another key. With its position in
-              // the key, it flies along when one before it leaves the cart,
-              // as a hero with a new key flies.
-              picture: HeroHere(
-                key: ValueKey('cart-${product.name}-$position'),
-                tag: product.name,
-                // Lands on a soft spring.
-                flightAnimationControllerFactory: softSpring.controller,
-                flightAnimationFactory: softSpring.animation,
-                forwardFlightAnimation: softSpring.forward,
-                reverseFlightAnimation: softSpring.reverse,
-                child: ProductPicture(product),
+  Widget build(BuildContext context) => Scaffold(
+    appBar: AppBar(title: const Text('Basic Hero Animation')),
+    body: GestureDetector(
+      // 3. A tap moves the photo to the other place.
+      onTap: () => setState(() => _inCorner = !_inCorner),
+      // 1. The switcher.
+      child: HeroHereSwitcher(
+        // 2. The photo, in the corner or in the middle.
+        child: _inCorner
+            ? Align(
+                alignment: Alignment.topLeft,
+                child: SizedBox(
+                  width: 100,
+                  child: HeroHere(
+                    key: const ValueKey('corner'), // Its own key in each place.
+                    tag: 'flippers', // The same tag in both places.
+                    child: Image.asset('images/flippers.png'),
+                  ),
+                ),
+              )
+            : Center(
+                child: SizedBox(
+                  width: 300,
+                  child: HeroHere(
+                    key: const ValueKey('center'),
+                    tag: 'flippers',
+                    child: Image.asset('images/flippers.png'),
+                  ),
+                ),
               ),
-            ),
-        ],
       ),
     ),
-  );
-
-  int get _total => _cart.fold(0, (total, product) => total + product.price);
-
-  void _toggle(Product product) => setState(
-    () => _cart.contains(product) ? _cart.remove(product) : _cart.add(product),
   );
 }

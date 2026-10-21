@@ -26,6 +26,9 @@ flutter:
 
   assets:
     - assets/images/
+    # The flippers photo from Flutter's hero animations guide. Its license
+    # is images/LICENSE.
+    - images/flippers.png
 
   # Geist, the examples' type, as rose_app's. Its license is
   # assets/fonts/OFL.txt.

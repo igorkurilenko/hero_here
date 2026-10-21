@@ -71,8 +71,9 @@ class _SegmentedControlExampleState extends State<SegmentedControlExample> {
                             ? HeroHere(
                                 key: ValueKey(index), // Its own in each.
                                 tag: 'thumb', // The same in every segment.
-                                // A tap mid-flight turns it to the new one.
-                                flightRedirect: HeroHereFlightRedirect.divert,
+                                // A tap mid-flight starts it over to the new
+                                // one, from where it is.
+                                flightRedirect: HeroHereFlightRedirect.restart,
                                 child: const SegmentThumb(),
                               )
                             : null,

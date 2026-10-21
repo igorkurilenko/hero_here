@@ -1,3 +1,14 @@
+## Unreleased
+
+### Example
+
+* Make the example on pub.dev's Example tab the flippers photo from Flutter's hero animations guide, which flies from the middle of the page into its corner and back, on the same page rather than to a second route. The shop moves to `lib/add_to_cart_hero/`.
+
+### Docs
+
+* Lead the README with the examples in pairs, each with its animation, and give the quick start the guide's flippers photo.
+* Describe the examples in the words people search with, such as a Pinterest-style grid and a flash card, rather than by what the demos show.
+
 ## 2.3.1
 
 ### Example

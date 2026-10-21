@@ -1,113 +1,125 @@
-# hero_here: Hero animations on the same page
+<h1 align="center">hero_here: Hero animations on the same page</h1>
 
-Like Flutter's `Hero`, but with no `Navigator` and no routes.
+<p align="center">Like Flutter's <code>Hero</code>, but with no <code>Navigator</code> and no routes.</p>
+
+<p align="center">
+  <a href="#quick-start">Get started ›</a>&emsp;<a href="https://pub.dev/packages/hero_here/example">See the examples ›</a>
+</p>
 
 hero_here is a Flutter package for a hero animation on the same page, or the same screen: a hero transition without navigation. Flutter's `Hero` widget flies a widget to its place on a new route, as the `Navigator` pushes or pops it. When the page you're on changes instead, such as when a tab is selected, a product goes into the cart, a grid item opens into its details in place, or a sent message joins the chat, the widget just jumps to its new place. hero_here makes it fly there: as with `Hero`, give its old and new places the same tag, then change state.
 
-<p>
-  <img src="https://github.com/igorkurilenko/hero_here/blob/main/assets/hero_here_add_to_cart.webp?raw=true"
-    alt="A product's picture flies from its card into the cart, and back" width="180"/>
-  &nbsp;
-  <img src="https://github.com/igorkurilenko/hero_here/blob/main/assets/hero_here_navigation_bar.webp?raw=true"
-    alt="A tap on a tab of a bottom navigation bar slides its indicator to it" width="180"/>
-  &nbsp;
-  <img src="https://github.com/igorkurilenko/hero_here/blob/main/assets/hero_here_segmented_control.webp?raw=true"
-    alt="A segmented control's thumb slides to the tapped period as a chart's bars grow and shrink" width="180"/>
-  &nbsp;
-  <img src="https://github.com/igorkurilenko/hero_here/blob/main/assets/hero_here_splash_logo.webp?raw=true"
-    alt="A splash screen's logo and name fly into the app bar once the app has loaded" width="180"/>
-</p>
+## Flutter hero animation examples
 
-## Features
+<table>
+  <tr>
+    <td align="center" valign="top" width="50%">
+      <img src="https://github.com/igorkurilenko/hero_here/blob/main/assets/hero_here_flip_card.webp?raw=true"
+        alt="Flip card animation: a tapped card flies to the middle on a bouncy spring and flips over to show its back" width="220"/>
+      <p><b>Flip card animation</b></p>
+      <p>Tap a card in a grid, and it flies to the middle of the screen on a bouncy spring, turning over in a card flip animation to show its back, like a flash card. Tap it again, and it flies back to the grid. <a href="https://github.com/igorkurilenko/hero_here/tree/main/example/lib/flip_card_hero">See the code ›</a></p>
+    </td>
+    <td align="center" valign="top" width="50%">
+      <img src="https://github.com/igorkurilenko/hero_here/blob/main/assets/hero_here_show_details.webp?raw=true"
+        alt="Pinterest-style shared element transition on the same screen: a tapped image opens into its details, and back on a pull" width="220"/>
+      <p><b>Pinterest-style image details</b></p>
+      <p>A shared element transition from a Pinterest-style grid: tap an image, and it opens into its details, with its title and description flying along, as in a container transform or an open container animation, but with no route. Pull the image down, and this card expand animation runs back into the grid. <a href="https://github.com/igorkurilenko/hero_here/tree/main/example/lib/show_details_hero">See the code ›</a></p>
+    </td>
+  </tr>
+  <tr>
+    <td align="center" valign="top" width="50%">
+      <img src="https://github.com/igorkurilenko/hero_here/blob/main/assets/hero_here_add_to_cart.webp?raw=true"
+        alt="Flutter add to cart animation: a product's image flies from its card into the cart, and back" width="220"/>
+      <p><b>Add to cart animation</b></p>
+      <p>Tap add to cart, and the product's image flies from its card into the cart, landing on a soft spring, as in an e-commerce app. Remove it, and it flies back, as the items after it in the cart slide along. <a href="https://github.com/igorkurilenko/hero_here/tree/main/example/lib/add_to_cart_hero">See the code ›</a></p>
+    </td>
+    <td align="center" valign="top" width="50%">
+      <img src="https://github.com/igorkurilenko/hero_here/blob/main/assets/hero_here_splash_logo.webp?raw=true"
+        alt="Splash screen logo animation: the logo and the app name fly into the app bar once the app has loaded" width="220"/>
+      <p><b>Splash screen animation</b></p>
+      <p>Once the app has loaded, the logo and the app name fly from the middle of the splash screen into the app bar, landing on a soft spring: an animated splash screen with a logo animation, on the same page as the content, with no route of its own. <a href="https://github.com/igorkurilenko/hero_here/tree/main/example/lib/splash_logo_hero">See the code ›</a></p>
+    </td>
+  </tr>
+  <tr>
+    <td align="center" valign="top" width="50%">
+      <img src="https://github.com/igorkurilenko/hero_here/blob/main/assets/hero_here_navigation_bar.webp?raw=true"
+        alt="Animated bottom navigation bar: the sliding indicator flies to the tapped tab" width="220"/>
+      <p><b>Animated bottom navigation bar</b></p>
+      <p>Tap a tab, and its sliding indicator flies there under the icons, in a bottom navigation bar animation with no offsets to compute. Tap another before it lands, and it starts over toward that one from where it is. <a href="https://github.com/igorkurilenko/hero_here/tree/main/example/lib/navigation_bar_hero">See the code ›</a></p>
+    </td>
+    <td align="center" valign="top" width="50%">
+      <img src="https://github.com/igorkurilenko/hero_here/blob/main/assets/hero_here_segmented_control.webp?raw=true"
+        alt="Sliding segmented control: the thumb slides under the labels to the tapped segment" width="220"/>
+      <p><b>Sliding segmented control</b></p>
+      <p>A sliding segmented control, or animated toggle switch, for any number of options: the thumb slides under the labels to the tapped segment, as in the Cupertino sliding segmented control, but built from your own widgets. <a href="https://github.com/igorkurilenko/hero_here/tree/main/example/lib/segmented_control_hero">See the code ›</a></p>
+    </td>
+  </tr>
+  <tr>
+    <td align="center" valign="top" colspan="2">
+      <img src="https://github.com/igorkurilenko/hero_here/blob/main/assets/hero_here_chat_message.webp?raw=true"
+        alt="Chat message animation: sent messages fly from the text field up into the conversation" width="220"/>
+      <p><b>Chat message animation</b></p>
+      <p>Send a message, and it flies from the text field up into the conversation, landing on a soft spring, as in messaging apps: a chat message animation for any chat UI. <a href="https://github.com/igorkurilenko/hero_here/tree/main/example/lib/chat_message_hero">See the code ›</a></p>
+    </td>
+  </tr>
+</table>
 
-- Hero transitions within one page, with no `Navigator` or routes.
-- `HeroHereSwitcher` and `HeroHere`, which work like `AnimatedSwitcher` and `Hero`.
-- Custom hero animations: a flight's duration, curve, path and shuttle, and what drives it, such as a spring.
-- Flights that change course mid-flight: landing on each hero in turn, turning toward the new one at the speed they had, or starting over toward it from where they are.
-- Ready-made shuttles: a crossfade, a flip like a card's, and a scale that keeps text from reflowing in flight.
-- Flights that follow their heroes as they move, such as on a scroll or a window resize.
-- Android, iOS, web, macOS, Windows and Linux. Wasm-ready, with no dependencies beyond Flutter.
+## Get the highlights.
+
+- **Same page.** Hero transitions within one page, with no `Navigator` or routes.
+- **Two widgets.** `HeroHereSwitcher` and `HeroHere` work like `AnimatedSwitcher` and `Hero`.
+- **Custom flights.** Custom hero animations: a flight's duration, curve, path and shuttle, and what drives it, such as a spring.
+- **Changes of course.** A flight whose hero changes mid-flight lands on each hero in turn, turns toward the new one at the speed it had, or starts over toward it from where it is.
+- **Ready-made shuttles.** A crossfade, a flip like a card's, and a scale that keeps text from reflowing in flight.
+- **Moving heroes.** Flights follow their heroes as they move, such as on a scroll or a window resize.
+- **Every platform.** Android, iOS, web, macOS, Windows and Linux. Wasm-ready, with no dependencies beyond Flutter.
 
 ## Quick start
 
-Add hero_here to your `pubspec.yaml`:
+**1. Install.** Add hero_here to your `pubspec.yaml`:
 
 ```yaml
 dependencies:
   hero_here: ^2.3.1
 ```
 
-Wrap the part of the page whose widgets move in a `HeroHereSwitcher`. Put a `HeroHere` in each place the widget may be, with the same tag and a key of its own:
+**2. Tag the places.** Wrap the part of the page whose widgets move in a `HeroHereSwitcher`. Put a `HeroHere` in each place the widget may be, with the same tag and a key of its own. Here it's the flippers photo from Flutter's [hero animations guide](https://docs.flutter.dev/ui/animations/hero-animations), in the middle of the page or in its corner:
 
 ```dart
 HeroHereSwitcher(
-  child: Row(
-    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-    children: [
-      for (final side in ['left', 'right'])
-        SizedBox.square(
-          dimension: 64,
-          child: side == _side
-              ? HeroHere(
-                  key: ValueKey(side), // Its own key in each place.
-                  tag: 'ball', // The same tag in both places.
-                  child: const CircleAvatar(),
-                )
-              : null,
+  child: _inCorner
+      ? Align(
+          alignment: Alignment.topLeft,
+          child: SizedBox(
+            width: 100,
+            child: HeroHere(
+              key: const ValueKey('corner'), // Its own key in each place.
+              tag: 'flippers', // The same tag in both places.
+              child: Image.asset('images/flippers.png'),
+            ),
+          ),
+        )
+      : Center(
+          child: SizedBox(
+            width: 300,
+            child: HeroHere(
+              key: const ValueKey('center'),
+              tag: 'flippers',
+              child: Image.asset('images/flippers.png'),
+            ),
+          ),
         ),
-    ],
-  ),
 )
 ```
 
-Then change `_side`, a field of your `State`, and the ball flies there from where it was:
+**3. Change state.** Change `_inCorner`, a field of your `State`, such as on a tap, and the photo flies there from where it was, on the same page, with no `Navigator.push`:
 
 ```dart
-setState(() => _side = _side == 'left' ? 'right' : 'left');
+setState(() => _inCorner = !_inCorner);
 ```
 
 A switch flies a tag when it brings a hero with that tag and another key. A hero with the same key is the same hero: it shows where it is now, and nothing flies.
 
-The [Example tab](https://pub.dev/packages/hero_here/example) has a whole app, a Flutter hero animation example of an add to cart animation, and the repository's [example folder](https://github.com/igorkurilenko/hero_here/tree/main/example/lib) has the examples below. Each is a hero widget example of a pattern apps often need.
-
-## Examples
-
-### An add to cart animation
-
-In the [add to cart example](https://github.com/igorkurilenko/hero_here/blob/main/example/lib/main.dart), also on the Example tab, an add to cart animation flies a product's picture from its card into the cart, where it lands on a soft spring. Take it out of the cart, and it flies back, as the products after it in the cart slide along. Each product's card and its place in the cart share the product's tag, with keys of their own.
-
-### An animated bottom navigation bar with a sliding indicator
-
-In the [navigation bar example](https://github.com/igorkurilenko/hero_here/tree/main/example/lib/navigation_bar_hero), an animated bottom navigation bar slides its indicator to the tapped tab: a bottom navigation bar animation with no offsets to compute. The indicator is a hero under the selected tab's icon, with the same tag on every tab and a key of its own on each. It flies under the icons, as in [Layout](#layout), and a tap mid-flight starts it over to the new tab from where it is, as in [Redirected flights](#redirected-flights).
-
-### A sliding segmented control
-
-In the [segmented control example](https://github.com/igorkurilenko/hero_here/tree/main/example/lib/segmented_control_hero), the thumb of a sliding segmented control flies to the tapped period, Day, Week or Month, as the chart's bars grow and shrink, and the steps count to the period's total. It works as an animated toggle switch does, for any number of options, and the switcher flies the thumb under the labels, as in [Layout](#layout).
-
-### A splash screen logo that lands in the app bar
-
-In the [splash screen example](https://github.com/igorkurilenko/hero_here/tree/main/example/lib/splash_logo_hero), the logo and the name fly from the middle of the splash screen into the app bar once the app has loaded, landing on a soft spring as the content fades in: a splash screen animation on the same page, rather than an animated splash screen on a route of its own. In this logo animation, `HeroHereShuttles.scale()` scales the name from one size to the other rather than lay it out anew.
-
-### Grid to details on the same page (container transform without a route)
-
-In the [details example](https://github.com/igorkurilenko/hero_here/tree/main/example/lib/show_details_hero), a tapped mountain in a grid opens into its details in place, as in a container transform or an open container animation, but with no route: its photo, name and description each fly to their places in the details. Pull the photo down, and they fly back as the details collapse into the grid. This card expand animation is a shared element transition: each is a hero of its own, whose tag the grid's cell and the details share.
-
-<img src="https://github.com/igorkurilenko/hero_here/blob/main/assets/hero_here_show_details.webp?raw=true"
-  alt="A mountain's photo flies from a grid into its details on the same screen, and back" width="180"/>
-
-### A chat message that flies from the input into the list
-
-In the [chat example](https://github.com/igorkurilenko/hero_here/tree/main/example/lib/chat_message_hero), a chat message animation flies a sent message from the text field up into the chat, where it lands on a soft spring. The field's hero and the list's share the message's tag, with keys of their own.
-
-<img src="https://github.com/igorkurilenko/hero_here/blob/main/assets/hero_here_chat_message.webp?raw=true"
-  alt="Sent chat messages fly from the input field up into the conversation" width="180"/>
-
-### A card flip animation as a card flies open
-
-In the [flip card example](https://github.com/igorkurilenko/hero_here/tree/main/example/lib/flip_card_hero), a tapped photo in a grid flies to the middle on a bouncy spring, flipping over to show the mountain's name and description: a flip card animation, or card flip animation, as the card flies. Tap it again, or beside it, and it flies back. `HeroHereShuttles.flip()` turns the card over in flight, and its heroes run their flights on a `SpringSimulation`.
-
-<img src="https://github.com/igorkurilenko/hero_here/blob/main/assets/hero_here_flip_card.webp?raw=true"
-  alt="A tapped photo flies to the middle on a bouncy spring, flipping over to show the mountain's name and description" width="180"/>
+The [Example tab](https://pub.dev/packages/hero_here/example) has this Flutter hero animation example as a whole app, and the repository's [example folder](https://github.com/igorkurilenko/hero_here/tree/main/example/lib) has the [examples above](#flutter-hero-animation-examples). Each is a hero widget example of a pattern apps often need.
 
 ## hero_here, Hero, AnimatedSwitcher and similar packages
 
@@ -124,7 +136,7 @@ In the [flip card example](https://github.com/igorkurilenko/hero_here/tree/main/
 - To move one widget's position to wherever a rebuild lays it out, in a layout animation of one widget, local_hero and animated_to animate its position, with no second widget.
 - hero_here flies between two widgets that share a tag, as `Hero` does, to animate between two widgets that may look different, such as a thumbnail and a full photo, and a shuttle, such as a crossfade or a flip, can blend them in flight.
 
-## FAQ
+## Questions? Answers.
 
 ### Why doesn't `Hero` animate when I call `setState`?
 
@@ -146,16 +158,16 @@ Set them on the heroes. A flight takes each of its options from the hero it flie
 
 ```dart
 HeroHere(
-  key: ValueKey(side),
-  tag: 'ball',
+  key: const ValueKey('corner'),
+  tag: 'flippers',
   flightAnimationDuration: const Duration(milliseconds: 600),
   flightAnimationFactory: (controller) =>
       CurvedAnimation(parent: controller, curve: Curves.easeOutBack),
-  child: const CircleAvatar(),
+  child: Image.asset('images/flippers.png'),
 )
 ```
 
-For a spring, run the flight's controller on a `SpringSimulation` through `forwardFlightAnimation` and `reverseFlightAnimation`, as the [flip card example](https://github.com/igorkurilenko/hero_here/blob/main/example/lib/flip_card_hero/main.dart) does.
+For a spring, run the flight's controller on a `SpringSimulation` through `forwardFlightAnimation` and `reverseFlightAnimation`, as the examples' [`FlightSpring`](https://github.com/igorkurilenko/hero_here/blob/main/example/lib/style/motion.dart) does: its `softSpring` and `bouncySpring` each give a hero all four options it needs.
 
 ### Is it a shared element transition?
 
@@ -194,7 +206,7 @@ A flight shows a shuttle as it flies: by default, the child of the hero it flies
 
 ```dart
 HeroHere(
-  key: ValueKey(side),
+  key: ValueKey(place),
   tag: 'card',
   flightShuttleBuilder: HeroHereShuttles.flip(),
   child: card,

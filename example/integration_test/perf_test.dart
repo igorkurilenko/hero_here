@@ -1,9 +1,9 @@
 // Measures how long the frames of the examples' flights take on a device.
 // See README.md for how to run it.
 
-import 'package:example/add_to_cart/shop.dart';
+import 'package:example/add_to_cart_hero/main.dart';
+import 'package:example/add_to_cart_hero/shop.dart';
 import 'package:example/chat_message_hero/main.dart';
-import 'package:example/main.dart';
 import 'package:example/navigation_bar_hero/main.dart';
 import 'package:example/navigation_bar_hero/tabs.dart';
 import 'package:example/show_details_hero/main.dart';
