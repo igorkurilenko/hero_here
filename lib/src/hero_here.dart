@@ -109,8 +109,9 @@ enum HeroHereFlightRedirect {
   restart,
 }
 
-/// Flies [HeroHere] widgets between their places in [child] when [child]
-/// changes.
+/// Flies [HeroHere] widgets in [child] to their new places when [child]
+/// changes: a hero that shows up with the tag of one that showed before,
+/// and a key of its own, flies there from where that one was.
 ///
 /// Every rebuild of the switcher runs a switch, unless [switchKey] says
 /// otherwise. The new child shows on the frame of the rebuild. On that frame,
@@ -118,8 +119,8 @@ enum HeroHereFlightRedirect {
 /// they are, and each hero that went away shows where it was, as it last
 /// showed, with the clips, fades and transforms around it. After that frame,
 /// once the new child is laid out, the switch flies each tag whose [HeroHere]
-/// changed, from where its hero showed. The first child shows on the first
-/// frame, and nothing flies.
+/// has another key now, from where the hero before it showed. The first
+/// child shows on the first frame, and nothing flies.
 ///
 /// A rebuild builds the switcher's child anew, and its switch looks for the
 /// heroes in it, so keep frequently changing state, such as timers, streams
@@ -127,7 +128,8 @@ enum HeroHereFlightRedirect {
 /// may move. Where such state, or sizes, such as from a [LayoutBuilder] or a
 /// `MediaQuery.sizeOf`, can't be read below it, set [switchKey].
 class HeroHereSwitcher extends StatefulWidget {
-  /// The widget whose heroes fly when it changes.
+  /// The page, or the part of it, whose heroes fly to their new places as it
+  /// changes.
   final Widget? child;
 
   /// Lays out the switcher's [child] and its sky, the layer its flights fly
@@ -168,7 +170,8 @@ class HeroHereSwitcher extends StatefulWidget {
   /// flies on, with its shuttle built anew from its heroes.
   final Object? switchKey;
 
-  /// Creates a switcher that flies the heroes in [child] when it changes.
+  /// Creates a switcher that flies the heroes in [child] to their new places
+  /// as it changes.
   const HeroHereSwitcher({
     super.key,
     this.child,
@@ -214,8 +217,9 @@ class HeroHereSwitcher extends StatefulWidget {
   );
 }
 
-/// A [child] that flies, when a [HeroHereSwitcher]'s child changes, from
-/// where the hero with its [tag] was to where it is now.
+/// A [child] that flies to where it shows up in a [HeroHereSwitcher]'s
+/// child, from where a hero with the same [tag] and another key showed
+/// before.
 ///
 /// It paints [child] into a layer of its own, which a switch shows where the
 /// hero was, as it last showed, for the frame after the hero goes away,
