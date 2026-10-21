@@ -117,7 +117,7 @@ A shared element transition from a Pinterest-style grid: tap an image, and it op
 
 ### Add to cart animation
 
-Tap add to cart, and the product's image flies from its card into the cart, landing on a soft spring,<sup>3</sup> as in an e-commerce app. Remove it, and it flies back, as the items after it in the cart slide along. Each product's image is a `HeroHere` on its card or in the cart, with the product's name as its tag in both places. Its position in the cart is part of its key there, so when one item leaves, the ones after it fly along. [See the add to cart code ›](https://github.com/igorkurilenko/hero_here/tree/main/example/lib/add_to_cart_hero)
+Tap add to cart, and the product's image lifts off its card and flies into the cart, landing on a soft spring,<sup>3</sup> as in an e-commerce app. Remove it, and it flies back, as the items after it in the cart slide along. Its `flightShuttleBuilder` lifts it off the page with a shadow that grows as it takes off and fades as it lands. Each product's image is a `HeroHere` on its card or in the cart, with the product's name as its tag in both places. Its position in the cart is part of its key there, so when one item leaves, the ones after it fly along. [See the add to cart code ›](https://github.com/igorkurilenko/hero_here/tree/main/example/lib/add_to_cart_hero)
 
 <p align="center">
   <img src="https://github.com/igorkurilenko/hero_here/blob/main/assets/hero_here_add_to_cart.webp?raw=true"

@@ -1,3 +1,9 @@
+## Unreleased
+
+### Example
+
+* Lift the shop's flying picture off the page with a shadow, from a shuttle of its own: the shadow grows as the picture takes off and fades as it lands, so none shows at either end.
+
 ## 2.3.2
 
 ### Example

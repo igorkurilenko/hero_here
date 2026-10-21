@@ -67,6 +67,21 @@ void main() {
     expect(find.byKey(const ValueKey('card-Headphones')), findsOneWidget);
   });
 
+  testWidgets('lifts a product\'s picture off the page as it flies, with a '
+      'shadow that\'s gone once it lands', (tester) async {
+    await tester.pumpWidget(const MaterialApp(home: AddToCartExample()));
+    expect(_shadows(tester), isEmpty);
+
+    await startFlight(tester, _buttonOf(camera));
+    expect(_shadows(tester), isEmpty, reason: 'None as it takes off');
+
+    await tester.pump(midFlight);
+    expect(_shadows(tester), isNotEmpty);
+
+    await tester.pumpAndSettle();
+    expect(_shadows(tester), isEmpty);
+  });
+
   testWidgets('keeps the cart\'s height as products come and go', (
     tester,
   ) async {
@@ -115,4 +130,13 @@ List<Offset> _pictures(WidgetTester tester, Product product) => [
     ),
   ))
     rect.center,
+];
+
+/// The shadows that show under the products' pictures, such as under one in
+/// flight.
+List<BoxShadow> _shadows(WidgetTester tester) => [
+  for (final box in tester.widgetList<DecoratedBox>(find.byType(DecoratedBox)))
+    if (box.decoration case ShapeDecoration(:final shadows?))
+      for (final shadow in shadows)
+        if (shadow.color.a > 0) shadow,
 ];

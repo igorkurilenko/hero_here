@@ -65,6 +65,8 @@ class _AddToCartExampleState extends State<AddToCartExample> {
                   : HeroHere(
                       key: ValueKey('card-${product.name}'),
                       tag: product.name,
+                      // Lifted off the page as it flies.
+                      flightShuttleBuilder: liftedPicture,
                       // Lands on a soft spring.
                       flightAnimationControllerFactory: softSpring.controller,
                       flightAnimationFactory: softSpring.animation,
@@ -89,6 +91,8 @@ class _AddToCartExampleState extends State<AddToCartExample> {
               picture: HeroHere(
                 key: ValueKey('cart-${product.name}-$position'),
                 tag: product.name,
+                // Lifted off the page as it flies.
+                flightShuttleBuilder: liftedPicture,
                 // Lands on a soft spring.
                 flightAnimationControllerFactory: softSpring.controller,
                 flightAnimationFactory: softSpring.animation,
