@@ -79,7 +79,7 @@ hero_here is a Flutter package for a hero animation on the same page, or the sam
 
 ```yaml
 dependencies:
-  hero_here: ^2.3.4
+  hero_here: ^2.3.5
 ```
 
 **2. Tag the places.** Wrap the part of the page whose widgets move in a `HeroHereSwitcher`. Put a `HeroHere` in each place the widget may be, with the same tag and a key of its own. Here it's the flippers photo from Flutter's [hero animations guide](https://docs.flutter.dev/ui/animations/hero-animations), in the middle of the page or in its corner:
