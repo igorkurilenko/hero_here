@@ -247,15 +247,6 @@ HeroHereSwitcher(
 
 Each `HeroHere` paints its child into a layer of its own, which a switch keeps to show a hero that went away for that one frame.
 
-## Support and Contact
-
-For any questions or issues related to **hero_here**, please contact me via email at [mail@igorkurilenko.dev](mailto:mail@igorkurilenko.dev).
-
-
 ## Contributing
 
 Contributions are welcome! Feel free to submit pull requests on [GitHub](https://github.com/igorkurilenko/hero_here) to help improve **hero_here**.
-
-## Author and License
-
-**hero_here** was created by Igor Kurilenko and is licensed under Apache 2.0.

@@ -1,3 +1,9 @@
+## Unreleased
+
+### Docs
+
+* Take the "Support and Contact" and "Author and License" sections out of the README. pub.dev and GitHub show the license beside it.
+
 ## 2.3.4
 
 ### Docs
