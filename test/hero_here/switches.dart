@@ -3,6 +3,39 @@ part of '../hero_here_test.dart';
 /// What a switch flies and hides, on mount, on a rebuild and with a
 /// switch key, and the shuttles it builds.
 void _switchesTests() {
+  testWidgets('a switcher in another\'s child leaves the tags it doesn\'t '
+      'fly to the one around it', (tester) async {
+    final slot = ValueNotifier(0);
+    addTearDown(slot.dispose);
+    await tester.pumpWidget(
+      _NestedSwitchers(slot: slot, innerFlies: (tag) => tag != 'hero'),
+    );
+    await tester.pumpAndSettle();
+
+    slot.value = 1;
+    await _pumpSwitch(tester);
+
+    // The outer switcher flies it, though it's in the inner one's child.
+    expect(tester.getRect(find.byKey(_shuttleKey)), _slotRects[0]);
+    await tester.pumpAndSettle();
+    expect(_boxOf(const ValueKey('slot1')), findsOneWidget);
+  });
+
+  testWidgets('a switcher in another\'s child flies its heroes, by default '
+      'all of them', (tester) async {
+    final slot = ValueNotifier(0);
+    addTearDown(slot.dispose);
+    await tester.pumpWidget(_NestedSwitchers(slot: slot));
+    await tester.pumpAndSettle();
+
+    slot.value = 1;
+    await _pumpSwitch(tester);
+
+    // The inner switcher's key stays, so its hero shows in its new place.
+    expect(find.byKey(_shuttleKey), findsNothing);
+    expect(_boxOf(const ValueKey('slot1')), findsOneWidget);
+  });
+
   testWidgets('flies from the hero of its tag that the last switch showed, '
       'though one that mounted since comes first', (tester) async {
     final stage = ValueNotifier(0);
@@ -558,5 +591,32 @@ class _TwinSwitcher extends StatelessWidget {
     tag: 'hero',
     flightShuttleBuilder: _shuttleBox,
     child: child,
+  );
+}
+
+/// A switcher in another's child, whose key never changes, so its own
+/// rebuilds fly nothing. The hero tagged `hero`, in the inner switcher's
+/// child, is in the slot of [_slotRects] that [slot] says, keyed by it. The
+/// inner switcher flies what [innerFlies] says, or every tag.
+class _NestedSwitchers extends StatelessWidget {
+  const _NestedSwitchers({required this.slot, this.innerFlies});
+
+  final ValueNotifier<int> slot;
+  final bool Function(Object tag)? innerFlies;
+
+  @override
+  Widget build(BuildContext context) => MaterialApp(
+    home: ValueListenableBuilder(
+      valueListenable: slot,
+      builder: (context, slot, _) => HeroHereSwitcher(
+        child: HeroHereSwitcher(
+          switchKey: 'inner',
+          flies: innerFlies,
+          child: Stack(
+            children: [_heroAt(ValueKey('slot$slot'), _slotRects[slot])],
+          ),
+        ),
+      ),
+    ),
   );
 }

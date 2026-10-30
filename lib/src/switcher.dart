@@ -161,10 +161,22 @@ class _HeroScope extends InheritedWidget {
 
   final _Switcher? switcher;
 
-  /// The switcher of the hero with [context], if any, which the hero
-  /// depends on, so it learns of a global key moving it into another one.
-  static _Switcher? of(BuildContext context) =>
-      context.dependOnInheritedWidgetOfExactType<_HeroScope>()?.switcher;
+  /// The switcher of the hero with [context] and [tag], if any: the one
+  /// whose child it's in, or, if that one doesn't fly [tag], the nearest one
+  /// around it that does. The hero depends on the first, so it learns of a
+  /// global key moving it into another one.
+  static _Switcher? of(BuildContext context, Object tag) {
+    var switcher = context
+        .dependOnInheritedWidgetOfExactType<_HeroScope>()
+        ?.switcher;
+    while (switcher != null && !(switcher.widget.flies?.call(tag) ?? true)) {
+      // The scope around the switcher, past the one it puts around its sky.
+      switcher = switcher.context
+          .getInheritedWidgetOfExactType<_HeroScope>()
+          ?.switcher;
+    }
+    return switcher;
+  }
 
   @override
   bool updateShouldNotify(_HeroScope oldWidget) =>

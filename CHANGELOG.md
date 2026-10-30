@@ -1,3 +1,9 @@
+## Unreleased
+
+### Features
+
+* Add `HeroHereSwitcher.flies`, which tells, by tag, which of the heroes in its child the switcher flies; unset, it flies them all. A hero whose tag it doesn't fly belongs to the switcher around it, if any, as if this one weren't there. So switchers nest: a chat page's switcher, in a tab switcher's child, flies its own heroes, such as a message sent from the composer into its list, and leaves the others, such as the chat's title flying between its card and its page, to the tab switcher. A hero asks when it mounts, when a global key moves it, and when its tag changes.
+
 ## 2.3.5
 
 ### Docs

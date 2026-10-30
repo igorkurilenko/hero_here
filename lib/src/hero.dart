@@ -71,7 +71,20 @@ class _HeroHereState extends State<HeroHere> {
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    final switcher = _HeroScope.of(context);
+    _join();
+  }
+
+  // A new tag may belong to another switcher, where switchers nest.
+  @override
+  void didUpdateWidget(HeroHere oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.tag != oldWidget.tag) _join();
+  }
+
+  /// Registers with the switcher the hero belongs to, leaving the one it
+  /// belonged to, if another.
+  void _join() {
+    final switcher = _HeroScope.of(context, tag);
     // Deactivating it, as a global key moves it, unregistered it.
     switcher?.register(this);
     if (switcher == _switcher) return;
