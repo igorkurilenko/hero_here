@@ -1,3 +1,13 @@
+## Unreleased
+
+### Features
+
+* Add `HeroHereSwitcher.flies`, which tells, by tag, which of the heroes in its child the switcher flies; unset, it flies them all. A hero whose tag it doesn't fly belongs to the switcher around it, if any, as if this one weren't there. So switchers nest: a chat page's switcher, in a tab switcher's child, flies its own heroes, such as a message sent from the composer into its list, and leaves the others, such as the chat's title flying between its card and its page, to the tab switcher. A hero asks when it mounts, when a global key moves it, and when its tag changes.
+
+### Fixes
+
+* Fly to where the hero a flight flies to is on the frame a list lays it out anew, as an item comes above it or the list moves it to a new place. A flight measured its heroes as it laid out, which Flutter does before it lays out a deeper relayout boundary, such as a list's viewport: on such a frame the hero had no place yet, or its old one, and the shuttle jumped there for a frame. A shuttle now also places itself as it paints, once the whole screen is laid out, so a flight measures its heroes twice a frame.
+
 ## 2.3.5
 
 ### Docs

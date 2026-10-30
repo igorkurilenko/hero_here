@@ -22,7 +22,9 @@ class _FlightWidget extends StatelessWidget {
   // is after the switcher's child lays out, in the default layout. So the
   // flight finds its heroes where this frame's layout puts them, such as on
   // the frame of a window resize, rather than where they were on the last
-  // frame, and its shuttle shows what they are on this frame's build.
+  // frame, and its shuttle shows what they are on this frame's build. A hero
+  // below a layout of its own, such as a list's, may still lay out after
+  // it, so the shuttle measures its heroes again as it paints.
   @override
   Widget build(BuildContext context) => LayoutBuilder(
     builder: (context, _) => ListenableBuilder(
@@ -31,6 +33,7 @@ class _FlightWidget extends StatelessWidget {
         animation: flight.animation,
         builder: (context, _) => _ShuttleRect(
           rect: flight.evaluateRect(),
+          place: flight.evaluateRect,
           space: () => flight.switcher.childBox,
           // The shuttle moves on each frame. In its own layer, it repaints
           // only when it changes, such as when it changes size.
@@ -121,20 +124,29 @@ class _Shuttle extends StatelessWidget {
   Widget build(BuildContext context) => builder(context, animation, from, to);
 }
 
-/// Sizes its child to [rect] and places it there, in the space of the
-/// switcher's child, which [space] gives. It works out where that is on the
-/// screen when it paints, once the whole screen is laid out, so the shuttle
-/// is where its heroes are even when the switcher moves on the frame, such
-/// as on a window resize that lays the switcher out anew.
+/// Sizes its child to [rect] and places it where [place] says, or else at
+/// [rect], in the space of the switcher's child, which [space] gives. It
+/// works out where that is on the screen when it paints, once the whole
+/// screen is laid out, so the shuttle is where its heroes are on the frame:
+/// even when the switcher moves, such as on a window resize that lays the
+/// switcher out anew, and when a hero lays out after the flight does, such
+/// as in a list that lays out on its own, which may have moved the hero to
+/// a new index and not yet to its new place.
 class _ShuttleRect extends SingleChildRenderObjectWidget {
   final Rect rect;
+  final Rect Function()? place;
   final RenderBox? Function() space;
 
-  const _ShuttleRect({required this.rect, required this.space, super.child});
+  const _ShuttleRect({
+    required this.rect,
+    this.place,
+    required this.space,
+    super.child,
+  });
 
   @override
   _RenderShuttleRect createRenderObject(BuildContext context) =>
-      _RenderShuttleRect(rect, space);
+      _RenderShuttleRect(rect, place, space);
 
   @override
   void updateRenderObject(
@@ -142,14 +154,16 @@ class _ShuttleRect extends SingleChildRenderObjectWidget {
     _RenderShuttleRect renderObject,
   ) => renderObject
     ..rect = rect
+    ..place = place
     ..space = space;
 }
 
 class _RenderShuttleRect extends RenderProxyBox {
   Rect _rect;
+  Rect Function()? place;
   RenderBox? Function() space;
 
-  _RenderShuttleRect(this._rect, this.space);
+  _RenderShuttleRect(this._rect, this.place, this.space);
 
   set rect(Rect value) {
     if (_rect == value) return;
@@ -162,7 +176,8 @@ class _RenderShuttleRect extends RenderProxyBox {
   }
 
   Offset get _childOffset {
-    final topLeft = space()?.localToGlobal(_rect.topLeft) ?? _rect.topLeft;
+    final rect = place?.call() ?? _rect;
+    final topLeft = space()?.localToGlobal(rect.topLeft) ?? rect.topLeft;
     return topLeft - localToGlobal(Offset.zero);
   }
 

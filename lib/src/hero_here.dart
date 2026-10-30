@@ -170,6 +170,16 @@ class HeroHereSwitcher extends StatefulWidget {
   /// flies on, with its shuttle built anew from its heroes.
   final Object? switchKey;
 
+  /// Which of the heroes in its child the switcher flies, by tag. Unset, it
+  /// flies them all. Set, a hero whose tag it doesn't fly belongs to the
+  /// switcher around it, if any, as if this one weren't there. So a switcher
+  /// in another's child, such as a page's in a tab switcher's, flies its own
+  /// heroes, and leaves the others to the one around it.
+  ///
+  /// A hero asks when it mounts, when a global key moves it, and when its tag
+  /// changes.
+  final bool Function(Object tag)? flies;
+
   /// Creates a switcher that flies the heroes in [child] to their new places
   /// as it changes.
   const HeroHereSwitcher({
@@ -177,6 +187,7 @@ class HeroHereSwitcher extends StatefulWidget {
     this.child,
     this.layoutBuilder = HeroHereSwitcher.defaultLayoutBuilder,
     this.switchKey,
+    this.flies,
   });
 
   @override
