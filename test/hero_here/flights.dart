@@ -52,8 +52,8 @@ void _flightsTests() {
     expect(tester.getRect(find.byKey(_shuttleKey)), _stayRect);
   });
 
-  testWidgets('measures the hero a flight leaves once a frame, and only '
-      'while its path starts there', (tester) async {
+  testWidgets('measures the hero a flight leaves as it lays out and as it '
+      'paints, and only while its path starts there', (tester) async {
     final split = ValueNotifier(false);
     addTearDown(split.dispose);
     var measures = 0;
@@ -74,12 +74,12 @@ void _flightsTests() {
 
     split.value = true;
     await _pumpSwitch(tester);
-    expect(await measuresPerFrame(), [1, 1, 1]);
+    expect(await measuresPerFrame(), [2, 2, 2]);
 
     // Turned back, it heads for where 'a' is.
     split.value = false;
     await _pumpSwitch(tester);
-    expect(await measuresPerFrame(), [1, 1, 1]);
+    expect(await measuresPerFrame(), [2, 2, 2]);
 
     // Turned around again, it heads from where it turned to 'b'.
     split.value = true;

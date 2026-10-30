@@ -304,6 +304,38 @@ void _midFlightTests() {
       reason: 'The shuttle landed at $shuttleRect, the hero is at $heroRect.',
     );
   });
+
+  testWidgets('flies to where the hero it flies to is on the frame a list '
+      'lays it out anew, as an item comes above it', (tester) async {
+    final inList = ValueNotifier(false);
+    addTearDown(inList.dispose);
+    final items = ValueNotifier(['x', 'y']);
+    addTearDown(items.dispose);
+
+    await tester.pumpWidget(_ListSwitcher(inList: inList, items: items));
+    await tester.pumpAndSettle();
+    final from = tester.getRect(find.byKey(const ValueKey('a')));
+
+    inList.value = true;
+    await _pumpSwitch(tester);
+    await tester.pump(_ListSwitcher.duration * .25);
+
+    // The list lays out on its own, after the flight's layout measured the
+    // hero where it was.
+    items.value = ['w', 'x', 'y'];
+    await tester.pump(_frame);
+
+    final to = tester.getRect(
+      find.byKey(const ValueKey('b'), skipOffstage: false),
+    );
+    final t =
+        (_ListSwitcher.duration * .25 + _frame).inMicroseconds /
+        _ListSwitcher.duration.inMicroseconds;
+    expect(
+      tester.getRect(find.byKey(_shuttleKey)),
+      _rectMoreOrLessEquals(Rect.lerp(from, to, t)!),
+    );
+  });
 }
 
 /// Phase 0 shows hero 'a' in the first slot of [_slotRects]. Phase 1 adds
@@ -643,5 +675,56 @@ class _PageSwitcher extends StatelessWidget {
     tag: 'hero',
     flightShuttleBuilder: _shuttleBox,
     child: const SizedBox(width: 40, height: 40),
+  );
+}
+
+/// Hero 'a' above a list of [items], or, [inList], hero 'b' with its tag
+/// after the items, in the list, so 'a' flies there. Its flight runs at an
+/// even pace over [duration].
+class _ListSwitcher extends StatelessWidget {
+  const _ListSwitcher({required this.inList, required this.items});
+
+  static const duration = Duration(seconds: 1);
+
+  final ValueNotifier<bool> inList;
+  final ValueNotifier<List<String>> items;
+
+  @override
+  Widget build(BuildContext context) => MaterialApp(
+    home: ValueListenableBuilder(
+      valueListenable: inList,
+      builder: (context, inList, _) {
+        Widget hero(String key) => HeroHere(
+          key: ValueKey(key),
+          tag: 'hero',
+          flightShuttleBuilder: _shuttleBox,
+          flightAnimationDuration: duration,
+          flightAnimationFactory: (controller) => controller,
+          child: const SizedBox.square(
+            dimension: 40,
+            child: ColoredBox(color: _heroColor),
+          ),
+        );
+        return HeroHereSwitcher(
+          child: Column(
+            children: [
+              SizedBox(height: 40, child: inList ? null : hero('a')),
+              Expanded(
+                child: ValueListenableBuilder(
+                  valueListenable: items,
+                  builder: (context, items, _) => ListView(
+                    children: [
+                      for (final item in items)
+                        SizedBox(key: ValueKey(item), height: 50),
+                      if (inList) Align(alignment: .topLeft, child: hero('b')),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    ),
   );
 }
